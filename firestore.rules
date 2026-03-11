@@ -11,33 +11,56 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isValidContext(data) {
+      return data.context is string
+             && data.context in ['Trabajo', 'Estudio'];
+    }
+
+    function isValidPriority(data) {
+      return data.priority is string
+             && data.priority in ['baja', 'media', 'alta'];
+    }
+
+    // ── Perfil de usuario ──────────────────────────────────────
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow create: if isOwner(userId) 
-                    && request.resource.data.id == userId;
-      allow update: if isOwner(userId);
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+                    && (!('email' in request.resource.data) || request.resource.data.email is string)
+                    && (!('displayName' in request.resource.data) || request.resource.data.displayName is string);
       allow delete: if isOwner(userId);
 
+      // ── Configuraciones del usuario ────────────────────────
       match /settings/{settingId} {
-        allow read, write: if isOwner(userId);
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isOwner(userId);
+        allow delete: if isOwner(userId);
       }
 
+      // ── Tareas del usuario ─────────────────────────────────
       match /tasks/{taskId} {
         allow read: if isOwner(userId);
-        
-        allow create: if isOwner(userId) 
+
+        allow create: if isOwner(userId)
                       && request.resource.data.userId == userId
                       && request.resource.data.title is string
-                      && request.resource.data.context in ['Trabajo', 'Estudio'];
-        
-        allow update: if isOwner(userId) 
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data)
+                      && isValidPriority(request.resource.data);
+
+        allow update: if isOwner(userId)
                       && request.resource.data.userId == userId
-                      && request.resource.data.context in ['Trabajo', 'Estudio'];
-        
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data)
+                      && isValidPriority(request.resource.data);
+
         allow delete: if isOwner(userId);
       }
     }
 
+    // ── Denegar todo lo demás ────────────────────────────────
     match /{path=**} {
       allow read, write: if false;
     }
