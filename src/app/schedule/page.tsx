@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -35,7 +34,18 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
+import { z } from "zod";
+import { toast } from "@/hooks/use-toast";
+
+// Esquema de validación para mayor seguridad
+const ScheduleTaskSchema = z.object({
+  title: z.string().min(1, "El título es obligatorio").max(100, "El título es demasiado largo"),
+  startTime: z.string(),
+  endTime: z.string(),
+  priority: z.enum(['baja', 'media', 'alta']),
+  isRecurring: z.boolean(),
+  recurringDays: z.array(z.number()),
+});
 
 interface ScheduledTask {
   id: string;
@@ -46,7 +56,7 @@ interface ScheduledTask {
   priority?: 'baja' | 'media' | 'alta';
   userId: string;
   isRecurring?: boolean;
-  recurringDays?: number[]; // 0: Dom, 1: Lun, etc.
+  recurringDays?: number[];
 }
 
 const WEEK_DAYS = [
@@ -69,7 +79,6 @@ export default function SchedulePage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
 
-  // Form State
   const [formData, setFormData] = useState({
     title: "",
     startTime: "09:00",
@@ -95,46 +104,44 @@ export default function SchedulePage() {
     return null;
   }
 
-  // Filter tasks for the selected date or recurring day
   const dailyTasks = tasks?.filter(task => {
     if (task.context !== context) return false;
-
-    // Filter to show only tasks within the current year for a cleaner planner feel
     const taskDate = task.scheduledStartTime ? parseISO(task.scheduledStartTime) : null;
     if (taskDate && (isBefore(taskDate, startOfYear(new Date())) || isAfter(taskDate, endOfYear(new Date())))) {
       return false;
     }
-
-    // Logic: Match specific date OR match recurring day of week
-    if (task.isRecurring && task.recurringDays?.includes(getDay(selectedDate))) {
-      return true;
-    }
-    
+    if (task.isRecurring && task.recurringDays?.includes(getDay(selectedDate))) return true;
     return task.scheduledStartTime && isSameDay(parseISO(task.scheduledStartTime), selectedDate);
-  }).sort((a, b) => {
-    const timeA = format(parseISO(a.scheduledStartTime), "HH:mm");
-    const timeB = format(parseISO(b.scheduledStartTime), "HH:mm");
-    return timeA.localeCompare(timeB);
-  }) || [];
+  }).sort((a, b) => a.scheduledStartTime.localeCompare(b.scheduledStartTime)) || [];
 
   const handleSaveTask = () => {
-    if (!formData.title.trim()) return;
+    const result = ScheduleTaskSchema.safeParse(formData);
+    
+    if (!result.success) {
+      toast({
+        variant: "destructive",
+        title: "Error de validación",
+        description: result.error.errors[0].message
+      });
+      return;
+    }
 
-    const [startH, startM] = formData.startTime.split(':').map(Number);
-    const [endH, endM] = formData.endTime.split(':').map(Number);
+    const { title, startTime, endTime, priority, isRecurring, recurringDays } = result.data;
+    const [startH, startM] = startTime.split(':').map(Number);
+    const [endH, endM] = endTime.split(':').map(Number);
 
     const scheduledStartTime = setMinutes(setHours(selectedDate, startH), startM).toISOString();
     const scheduledEndTime = setMinutes(setHours(selectedDate, endH), endM).toISOString();
 
     const taskData = {
-      title: formData.title,
+      title,
       scheduledStartTime,
       scheduledEndTime,
-      priority: formData.priority,
+      priority,
       context,
       userId: user.uid,
-      isRecurring: formData.isRecurring,
-      recurringDays: formData.isRecurring ? formData.recurringDays : [],
+      isRecurring,
+      recurringDays: isRecurring ? recurringDays : [],
       updatedAt: serverTimestamp(),
       status: 'Pendiente',
       dueDate: scheduledStartTime,
@@ -150,6 +157,7 @@ export default function SchedulePage() {
 
     resetForm();
     setIsDialogOpen(false);
+    toast({ title: editingTask ? "Rutina actualizada" : "Bloque sincronizado" });
   };
 
   const resetForm = () => {
@@ -171,27 +179,6 @@ export default function SchedulePage() {
         ? prev.recurringDays.filter(d => d !== day)
         : [...prev.recurringDays, day]
     }));
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
-    deleteDocumentNonBlocking(docRef);
-  };
-
-  const openEditDialog = (task: ScheduledTask) => {
-    setEditingTask(task);
-    const start = parseISO(task.scheduledStartTime);
-    const end = task.scheduledEndTime ? parseISO(task.scheduledEndTime) : addDays(start, 0);
-    
-    setFormData({
-      title: task.title,
-      startTime: format(start, "HH:mm"),
-      endTime: format(end, "HH:mm"),
-      priority: task.priority || "media",
-      isRecurring: task.isRecurring || false,
-      recurringDays: task.recurringDays || []
-    });
-    setIsDialogOpen(true);
   };
 
   return (
@@ -216,7 +203,7 @@ export default function SchedulePage() {
                 {editingTask ? 'Modificar Rutina' : 'Nuevo Bloque Temporal'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-6 md:space-y-8 py-6">
+            <div className="space-y-6 py-6">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase font-black text-primary tracking-[0.2em]">Identificador de Actividad</Label>
                 <Input 
@@ -304,7 +291,6 @@ export default function SchedulePage() {
         </Dialog>
       </div>
 
-      {/* Day Selector */}
       <div className="flex gap-4 overflow-x-auto pb-8 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
         {days.map((day) => {
           const isSelected = isSameDay(day, selectedDate);
@@ -335,7 +321,6 @@ export default function SchedulePage() {
         })}
       </div>
 
-      {/* Timeline View */}
       <div className="relative mt-8 md:mt-12 ml-6 md:ml-32">
         <div className="absolute left-[-20px] md:left-[-48px] top-0 bottom-0 w-px bg-white/5 shadow-[0_0_10px_rgba(255,255,255,0.05)]" />
         
@@ -352,7 +337,7 @@ export default function SchedulePage() {
                   className="relative group"
                 >
                   <div className={cn(
-                    "absolute left-[-26px] md:left-[-54px] top-6 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all group-hover:scale-125",
+                    "absolute left-[-26px] md:left-[-54px] top-6 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all",
                     task.priority === 'alta' ? 'bg-red-500 border-red-200' :
                     task.priority === 'media' ? 'bg-primary border-green-200' : 'bg-white/20 border-white/40'
                   )} />
@@ -365,21 +350,20 @@ export default function SchedulePage() {
                     </div>
 
                     <div className={cn(
-                      "flex-1 glass p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-between border-l-[6px] transition-all hover:translate-x-3 group-hover:border-primary/60 hover:shadow-2xl",
+                      "flex-1 glass p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-between border-l-[6px] transition-all hover:translate-x-3 group-hover:border-primary/60",
                       task.priority === 'alta' ? 'border-l-red-500' : 
                       task.priority === 'media' ? 'border-l-primary' : 'border-l-white/20'
                     )}>
                       <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-3">
-                          <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase px-3 py-0.5 border-white/10 text-muted-foreground bg-white/5">
+                          <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase px-3 py-0.5">
                             {task.priority || 'media'}
                           </Badge>
                           {task.isRecurring && (
                             <Badge className="bg-primary/20 text-primary border-primary/20 text-[8px] md:text-[9px] font-black flex items-center gap-1.5 px-3 py-0.5">
-                              <RotateCcw className="w-3 h-3" /> RUTINA SEMANAL
+                              <RotateCcw className="w-3 h-3" /> RUTINA
                             </Badge>
                           )}
-                          <span className="text-[10px] font-black text-muted-foreground/30 uppercase tracking-[0.3em]">{task.context}</span>
                         </div>
                         <h4 className="text-xl md:text-3xl font-black tracking-tight leading-none text-white group-hover:text-primary transition-colors">
                           {task.title}
@@ -388,12 +372,6 @@ export default function SchedulePage() {
                           <span className="flex items-center gap-3">
                             <Clock className="w-4 h-4 text-primary" /> 
                             {format(parseISO(task.scheduledStartTime), "HH:mm")} 
-                            {task.scheduledEndTime && ` — ${format(parseISO(task.scheduledEndTime), "HH:mm")}`}
-                          </span>
-                          <span className="hidden sm:inline text-white/10">|</span>
-                          <span className="hidden sm:flex items-center gap-2">
-                            <CheckCircle2 className="w-4 h-4 text-white/20" /> 
-                            ID: {task.id.slice(0, 8)}
                           </span>
                         </div>
                       </div>
@@ -403,15 +381,20 @@ export default function SchedulePage() {
                           variant="ghost" 
                           size="icon" 
                           onClick={() => openEditDialog(task)}
-                          className="h-12 w-12 md:h-14 md:w-14 rounded-2xl hover:bg-primary/10 hover:text-primary transition-colors"
+                          className="h-12 w-12 rounded-2xl hover:bg-primary/10 hover:text-primary"
                         >
                           <Edit3 className="w-5 h-5" />
                         </Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="h-12 w-12 md:h-14 md:w-14 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                          onClick={() => {
+                            if(confirm("¿Confirmar eliminación del bloque?")) {
+                              const docRef = doc(firestore, "users", user.uid, "tasks", task.id);
+                              deleteDocumentNonBlocking(docRef);
+                            }
+                          }}
+                          className="h-12 w-12 rounded-2xl hover:bg-red-500/10 hover:text-red-500"
                         >
                           <Trash2 className="w-5 h-5" />
                         </Button>
@@ -424,11 +407,10 @@ export default function SchedulePage() {
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-24 md:py-40 glass rounded-[3.5rem] md:rounded-[5rem] border-dashed border-white/5 text-muted-foreground/10 mx-4 md:mx-0"
+                className="flex flex-col items-center justify-center py-24 glass rounded-[3.5rem] border-dashed border-white/5 text-muted-foreground/10"
               >
-                <Inbox className="w-20 h-20 md:w-32 md:h-32 mb-8 stroke-[0.5]" />
-                <p className="text-[11px] md:text-sm font-black uppercase tracking-[0.6em] text-center">Sin Actividades Sincronizadas</p>
-                <p className="text-[9px] md:text-[10px] mt-4 font-bold uppercase tracking-widest text-white/20">Optimiza tu tiempo programando una rutina hoy</p>
+                <Inbox className="w-20 h-20 mb-8 stroke-[0.5]" />
+                <p className="text-[11px] font-black uppercase tracking-[0.6em] text-center">Sin Actividades Sincronizadas</p>
               </motion.div>
             )}
           </AnimatePresence>

@@ -43,7 +43,8 @@ service cloud.firestore {
         allow create: if isOwner(userId) 
                       && request.resource.data.userId == userId
                       && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0;
+                      && request.resource.data.title.size() > 0
+                      && request.resource.data.title.size() < 100;
         
         // Impedir que se cambie el dueño de la tarea en actualización
         allow update: if isExistingOwner(userId) 
