@@ -149,7 +149,7 @@ export default function SettingsPage() {
                   <KeyRound className="w-4 h-4 text-primary" /> Nueva Clave
                 </Button>
               </DialogTrigger>
-              <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95">
+              <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 w-[95vw] sm:max-w-[420px] p-5 md:p-8">
                 <DialogHeader><DialogTitle className="text-lg font-black uppercase">Cambiar Password</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-1.5">

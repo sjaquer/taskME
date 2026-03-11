@@ -201,9 +201,9 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="space-y-8 pb-24 px-1 md:px-4">
+    <div className="space-y-6 pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2 md:px-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
@@ -230,7 +230,7 @@ export default function KanbanPage() {
                 <Plus className="w-4 h-4 mr-2" /> Inyectar
               </TacticalButton>
             </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 w-[95vw] sm:max-w-[500px] p-6 md:p-8 mx-auto">
+            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 w-[95vw] sm:max-w-[500px] p-5 md:p-8">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tighter uppercase flex items-center gap-3">
                   <Layers className="w-6 h-6 text-primary" />
@@ -246,7 +246,7 @@ export default function KanbanPage() {
                   <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
                   <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="bg-white/[0.03] border-white/[0.08] min-h-[80px] rounded-lg" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
                     <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>

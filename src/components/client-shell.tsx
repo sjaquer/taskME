@@ -50,7 +50,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-2xl font-black tracking-tighter leading-none glow-text">TaskMe</span>
-                    <span className="text-[9px] font-black tracking-[0.3em] text-primary uppercase mt-1 font-data">v2.0</span>
+
                   </div>
                 </div>
               </SidebarHeader>
@@ -84,7 +84,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
 
             <div className="flex-1 flex flex-col min-w-0 z-10">
               <Header />
-              <main className="flex-1 pt-24 pb-24 px-4 md:px-12 md:pb-12 max-w-7xl mx-auto w-full">
+              <main className="flex-1 pt-20 pb-24 px-4 md:px-10 md:pb-10 max-w-7xl mx-auto w-full">
                 {children}
               </main>
               <BottomNav />

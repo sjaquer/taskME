@@ -144,9 +144,9 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-24 px-1 md:px-0">
+    <div className="space-y-6 max-w-5xl mx-auto pb-24">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-4 md:px-0">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
@@ -165,7 +165,7 @@ export default function SchedulePage() {
           <DialogTrigger asChild>
             <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Programar</TacticalButton>
           </DialogTrigger>
-          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 w-[95vw] sm:max-w-[450px] p-6 md:p-8 mx-auto">
+          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 w-[95vw] sm:max-w-[450px] p-5 md:p-8">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase tracking-tighter">Nueva Actividad</DialogTitle>
             </DialogHeader>
@@ -200,14 +200,14 @@ export default function SchedulePage() {
                   ))}
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black">Inicio</Label>
-                  <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data" />
+                  <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg font-data" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black">Fin</Label>
-                  <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data" />
+                  <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg font-data" />
                 </div>
               </div>
             </div>
@@ -219,7 +219,7 @@ export default function SchedulePage() {
       </div>
 
       {/* Day Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 md:mx-0">
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {days.map((day) => {
           const isSelected = isSameDay(day, selectedDate);
           return (
