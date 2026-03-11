@@ -63,40 +63,37 @@
         },
         "status": {
           "type": "string",
-          "description": "The current state or progress of the task, corresponding to Kanban board columns.",
-          "items": {
-            "type": "string"
-          }
+          "description": "The current state or progress of the task, corresponding to Kanban board columns."
         },
         "context": {
           "type": "string",
-          "description": "The context (e.g., 'Work' or 'Study') to which this task belongs, used for filtering across the application.",
-          "items": {
-            "type": "string"
-          }
+          "description": "The context (e.g., 'Trabajo' or 'Estudio') to which this task belongs, used for filtering across the application."
         },
         "dueDate": {
           "type": "string",
           "description": "Optional date and time when the task is due, used for reminders and notifications.",
           "format": "date-time"
         },
-        "scheduledStartTime": {
+        "location": {
           "type": "string",
-          "description": "Optional start date and time if the task is explicitly scheduled in the weekly calendar view.",
-          "format": "date-time"
+          "description": "Physical or virtual location associated with the task/event."
         },
-        "scheduledEndTime": {
+        "category": {
           "type": "string",
-          "description": "Optional end date and time if the task is explicitly scheduled in the weekly calendar view.",
-          "format": "date-time"
+          "description": "Categorization of the event (e.g., 'Personal', 'Académico')."
         },
         "isRecurring": {
           "type": "boolean",
-          "description": "Whether the task is a recurring routine (e.g., every Monday)."
+          "description": "Whether the task is a recurring routine."
+        },
+        "recurrenceType": {
+          "type": "string",
+          "enum": ["none", "weekly", "monthly"],
+          "description": "Type of recurrence for the task."
         },
         "recurringDays": {
           "type": "array",
-          "description": "Array of numbers representing days of the week (0-6) for recurring tasks.",
+          "description": "Array of numbers representing days of the week (0-6) for weekly recurrence.",
           "items": {
             "type": "integer"
           }
