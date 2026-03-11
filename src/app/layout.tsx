@@ -1,4 +1,6 @@
 
+"use client";
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Header } from '@/components/layout/header';
@@ -7,12 +9,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import { Home, LayoutGrid, Clock, Calendar, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-
-export const metadata: Metadata = {
-  title: 'TaskMe | Gestión de Tareas Cyber',
-  description: 'Kanban inteligente y programación para el profesional moderno.',
-};
+import { cn } from '@/lib/utils';
 
 const desktopItems = [
   { icon: Home, label: "Inicio", href: "/" },
@@ -27,6 +26,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+
   return (
     <html lang="es" className="dark">
       <head>
@@ -40,34 +41,46 @@ export default function RootLayout({
           <SidebarProvider defaultOpen={true}>
             <div className="flex min-h-screen w-full">
               {/* Desktop Sidebar */}
-              <Sidebar className="hidden md:flex border-r border-white/5 bg-black/40 backdrop-blur-xl">
-                <SidebarHeader className="p-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center neon-glow">
-                      <span className="text-primary-foreground font-black text-sm">TM</span>
+              <Sidebar className="hidden md:flex border-r border-white/5 bg-black/60 backdrop-blur-3xl">
+                <SidebarHeader className="p-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center neon-glow">
+                      <span className="text-primary-foreground font-black text-lg">TM</span>
                     </div>
-                    <span className="text-xl font-black tracking-tighter">TaskMe</span>
+                    <span className="text-2xl font-black tracking-tighter">TaskMe</span>
                   </div>
                 </SidebarHeader>
-                <SidebarContent className="px-4 py-6">
-                  <SidebarMenu>
-                    {desktopItems.map((item) => (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton asChild className="hover:bg-primary/10 hover:text-primary rounded-xl py-6 px-4 transition-all">
-                          <Link href={item.href} className="flex items-center gap-4">
-                            <item.icon className="w-5 h-5" />
-                            <span className="font-bold">{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
+                <SidebarContent className="px-6 py-8">
+                  <SidebarMenu className="gap-2">
+                    {desktopItems.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton 
+                            asChild 
+                            isActive={isActive}
+                            className={cn(
+                              "rounded-2xl py-8 px-6 transition-all duration-300",
+                              isActive 
+                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(57,255,20,0.1)]" 
+                                : "hover:bg-white/5 text-muted-foreground hover:text-white"
+                            )}
+                          >
+                            <Link href={item.href} className="flex items-center gap-5">
+                              <item.icon className={cn("w-6 h-6", isActive && "neon-glow")} />
+                              <span className="font-black uppercase tracking-widest text-[10px]">{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
                   </SidebarMenu>
                 </SidebarContent>
               </Sidebar>
 
               <div className="flex-1 flex flex-col min-w-0">
                 <Header />
-                <main className="flex-1 pt-20 pb-24 px-4 md:px-10 md:pb-10 max-w-7xl mx-auto w-full transition-all">
+                <main className="flex-1 pt-24 pb-24 px-4 md:px-12 md:pb-12 max-w-7xl mx-auto w-full transition-all">
                   {children}
                 </main>
                 <BottomNav />

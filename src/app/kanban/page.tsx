@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -10,7 +11,8 @@ import {
   Tag, 
   AlertCircle, 
   Settings2,
-  X
+  X,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { z } from "zod";
 
 // Drag and Drop Imports
@@ -84,6 +87,7 @@ export default function KanbanPage() {
   const [isManagingColumns, setIsManagingColumns] = useState(false);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
@@ -99,7 +103,7 @@ export default function KanbanPage() {
     return collection(firestore, "users", user.uid, "tasks");
   }, [firestore, user]);
 
-  const { data: tasks } = useCollection<Task>(tasksQuery);
+  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -120,6 +124,7 @@ export default function KanbanPage() {
   }
 
   const handleAddTask = () => {
+    setIsSaving(true);
     const rawData = {
       title: newTask.title,
       description: newTask.description,
@@ -131,7 +136,10 @@ export default function KanbanPage() {
     };
 
     const result = TaskSchema.safeParse(rawData);
-    if (!result.success) return;
+    if (!result.success) {
+      setIsSaving(false);
+      return;
+    }
 
     const taskData = {
       ...result.data,
@@ -142,8 +150,12 @@ export default function KanbanPage() {
 
     const colRef = collection(firestore, "users", user.uid, "tasks");
     addDocumentNonBlocking(colRef, taskData);
-    setNewTask({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
-    setIsDialogOpen(false);
+    
+    setTimeout(() => {
+      setNewTask({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+      setIsDialogOpen(false);
+      setIsSaving(false);
+    }, 400);
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -213,73 +225,73 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="space-y-6 md:space-y-10 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-8 md:space-y-12 pb-24 px-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
         <div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tighter flex items-center gap-4">
-            Sistema <span className="text-primary">{context}</span>
+          <h2 className="text-4xl md:text-6xl font-black tracking-tighter flex items-center gap-6">
+            Tablero <span className="text-primary glow-text">{context}</span>
           </h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] mt-2 flex items-center gap-2">
-            <span className="w-10 h-px bg-primary/30" /> Gestión de Flujo de Trabajo
+          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] mt-3 flex items-center gap-3">
+            <span className="w-12 h-px bg-primary/30" /> Orquestación de Procesos
           </p>
         </div>
         
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-3 w-full md:w-auto">
           <Button 
             variant="outline" 
             onClick={() => setIsManagingColumns(!isManagingColumns)}
-            className="flex-1 md:flex-none rounded-2xl h-12 md:h-14 px-4 md:px-6 border-white/5 bg-white/5 hover:bg-white/10"
+            className="flex-1 md:flex-none rounded-2xl h-14 md:h-16 px-6 border-white/5 bg-white/5 hover:bg-white/10 transition-all"
           >
-            <Settings2 className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Estados
+            <Settings2 className="w-5 h-5 mr-3" /> <span className="text-[10px] font-black uppercase">Estados</span>
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="flex-1 md:flex-none rounded-2xl h-12 md:h-14 px-6 md:px-8 font-black uppercase tracking-widest text-[10px] md:text-xs neon-glow transition-all hover:scale-105 active:scale-95">
-                <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Nueva Tarea
+              <Button className="flex-1 md:flex-none rounded-2xl h-14 md:h-16 px-8 md:px-12 font-black uppercase tracking-widest text-[10px] md:text-xs neon-glow transition-all hover:scale-105 active:scale-95">
+                <Plus className="w-5 h-5 mr-3" /> Inyectar Tarea
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[500px] p-6 md:p-8">
+            <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[550px] p-8 md:p-10">
               <DialogHeader>
-                <DialogTitle className="text-2xl md:text-3xl font-black tracking-tighter uppercase">Inyectar Tarea</DialogTitle>
+                <DialogTitle className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-white">Inyectar Tarea</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 md:space-y-6 py-4">
+              <div className="space-y-6 py-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-black text-primary">Identificador</Label>
+                  <Label className="text-[10px] uppercase font-black text-primary tracking-widest">Nombre del Proceso</Label>
                   <Input 
-                    placeholder="Nombre del proceso..."
+                    placeholder="Ej: Análisis de Datos Alpha..."
                     value={newTask.title} 
                     onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl focus:ring-primary" 
+                    className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary/40 text-white" 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-black">Bitácora</Label>
+                  <Label className="text-[10px] uppercase font-black text-white/40 tracking-widest">Descripción Técnica</Label>
                   <Textarea 
-                    placeholder="Detalles técnicos..."
+                    placeholder="Detalla los requisitos del nodo..."
                     value={newTask.description}
                     onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                    className="bg-white/5 border-white/10 min-h-[80px] md:min-h-[100px] rounded-xl" 
+                    className="bg-white/5 border-white/10 min-h-[120px] rounded-xl text-white" 
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black">Prioridad</Label>
+                    <Label className="text-[10px] uppercase font-black tracking-widest">Prioridad</Label>
                     <Select value={newTask.priority} onValueChange={(v: Priority) => setNewTask({...newTask, priority: v})}>
-                      <SelectTrigger className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl">
+                      <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-white/10">
-                        <SelectItem value="baja">Baja</SelectItem>
-                        <SelectItem value="media">Media</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
+                        <SelectItem value="baja">BAJA</SelectItem>
+                        <SelectItem value="media">MEDIA</SelectItem>
+                        <SelectItem value="alta">ALTA</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black">Estado Inicial</Label>
+                    <Label className="text-[10px] uppercase font-black tracking-widest">Estado Inicial</Label>
                     <Select value={newTask.status} onValueChange={(v) => setNewTask({...newTask, status: v})}>
-                      <SelectTrigger className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl">
+                      <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl text-white">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-white/10">
@@ -291,17 +303,23 @@ export default function KanbanPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-black">Etiquetas</Label>
+                  <Label className="text-[10px] uppercase font-black text-white/40 tracking-widest">Etiquetas (separadas por coma)</Label>
                   <Input 
-                    placeholder="UI, UX, Backend..."
+                    placeholder="UI, Backend, Dev..."
                     value={newTask.tags} 
                     onChange={(e) => setNewTask({...newTask, tags: e.target.value})}
-                    className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl" 
+                    className="bg-white/5 border-white/10 h-12 rounded-xl text-white" 
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddTask} className="w-full neon-glow font-black uppercase text-xs h-12 md:h-14 rounded-2xl">Confirmar Inyección</Button>
+                <Button 
+                  onClick={handleAddTask} 
+                  disabled={isSaving}
+                  className="w-full neon-glow font-black uppercase text-xs h-16 rounded-2xl flex items-center justify-center gap-3"
+                >
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirmar Inyección de Datos"}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -314,32 +332,32 @@ export default function KanbanPage() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="glass p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border-white/10 space-y-4 overflow-hidden"
+            className="glass p-6 md:p-8 rounded-[3rem] border-white/10 space-y-6 overflow-hidden bg-black/40"
           >
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-widest">Configuración de Estados</h3>
-              <Button variant="ghost" size="icon" onClick={() => setIsManagingColumns(false)}>
-                <X className="w-4 h-4" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Configuración de Estados</h3>
+              <Button variant="ghost" size="icon" onClick={() => setIsManagingColumns(false)} className="rounded-xl hover:bg-white/10">
+                <X className="w-5 h-5" />
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2 md:gap-3">
+            <div className="flex flex-wrap gap-3">
               {columns.map(col => (
-                <Badge key={col} variant="secondary" className="pl-3 md:pl-4 pr-2 py-1.5 md:py-2 rounded-xl bg-white/5 border-white/10 gap-2">
-                  <span className="font-bold text-[10px] md:text-sm">{col}</span>
-                  <button onClick={() => handleRemoveColumn(col)} className="hover:text-red-500 transition-colors">
-                    <X className="w-3 h-3" />
+                <Badge key={col} variant="secondary" className="pl-5 pr-3 py-2.5 rounded-2xl bg-white/5 border-white/10 gap-3 hover:border-primary/40 transition-all">
+                  <span className="font-black uppercase tracking-widest text-[10px]">{col}</span>
+                  <button onClick={() => handleRemoveColumn(col)} className="text-muted-foreground hover:text-red-500 transition-colors">
+                    <X className="w-4 h-4" />
                   </button>
                 </Badge>
               ))}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Input 
                   placeholder="Nuevo estado..."
                   value={newColumnName}
                   onChange={(e) => setNewColumnName(e.target.value)}
-                  className="bg-white/5 border-white/10 h-9 w-32 md:w-40 rounded-xl text-xs"
+                  className="bg-white/5 border-white/10 h-10 w-40 md:w-56 rounded-xl text-[10px] font-black uppercase tracking-widest"
                 />
-                <Button size="icon" onClick={handleAddColumn} className="h-9 w-9 rounded-xl bg-primary text-black">
-                  <Plus className="w-4 h-4" />
+                <Button size="icon" onClick={handleAddColumn} className="h-10 w-10 rounded-xl bg-primary text-black hover:scale-110 transition-transform">
+                  <Plus className="w-5 h-5" />
                 </Button>
               </div>
             </div>
@@ -354,19 +372,28 @@ export default function KanbanPage() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 md:gap-6 overflow-x-auto pb-8 scrollbar-hide min-h-[60vh] md:min-h-[70vh] -mx-4 px-4">
-          {columns.map((status) => (
-            <Column 
-              key={status} 
-              status={status} 
-              tasks={tasks?.filter(t => t.status === status && t.context === context) || []}
-              onDelete={handleDeleteTask}
-            />
-          ))}
+        <div className="flex gap-6 md:gap-8 overflow-x-auto pb-12 scrollbar-hide min-h-[70vh] -mx-4 px-4 md:mx-0">
+          {isTasksLoading ? (
+            [...Array(3)].map((_, i) => (
+              <div key={i} className="flex-shrink-0 w-80 space-y-6">
+                <Skeleton className="h-8 w-32 bg-white/5" />
+                <Skeleton className="h-[500px] w-full rounded-[3rem] bg-white/5" />
+              </div>
+            ))
+          ) : (
+            columns.map((status) => (
+              <Column 
+                key={status} 
+                status={status} 
+                tasks={tasks?.filter(t => t.status === status && t.context === context) || []}
+                onDelete={handleDeleteTask}
+              />
+            ))
+          )}
         </div>
         <DragOverlay>
           {activeTask ? (
-            <div className="w-[280px] md:w-[300px] rotate-3 scale-105 pointer-events-none opacity-90 shadow-2xl">
+            <div className="w-[300px] rotate-3 scale-105 pointer-events-none opacity-90 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
                <TaskCard task={activeTask} onDelete={() => {}} isOverlay />
             </div>
           ) : null}
@@ -378,23 +405,23 @@ export default function KanbanPage() {
 
 function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], onDelete: (id: string) => void }) {
   return (
-    <div className="flex-shrink-0 w-72 md:w-80 flex flex-col gap-4 md:gap-6">
-      <div className="flex items-center justify-between px-2 md:px-4">
-        <div className="flex items-center gap-3">
+    <div className="flex-shrink-0 w-80 md:w-96 flex flex-col gap-6">
+      <div className="flex items-center justify-between px-4">
+        <div className="flex items-center gap-4">
           <div className={cn(
-            "w-2 md:w-2.5 h-2 md:h-2.5 rounded-full",
+            "w-2.5 h-2.5 rounded-full",
             status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20'
           )} />
-          <h3 className="font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px]">{status}</h3>
-          <span className="text-[8px] md:text-[9px] font-black bg-white/5 px-2 py-0.5 md:py-1 rounded-full border border-white/10 text-muted-foreground">
+          <h3 className="font-black uppercase tracking-[0.3em] text-[10px] md:text-[11px] text-white/80">{status}</h3>
+          <span className="text-[9px] font-black bg-white/5 px-3 py-1 rounded-full border border-white/10 text-muted-foreground shadow-inner">
             {tasks.length}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 glass rounded-[2.5rem] md:rounded-[3rem] p-3 md:p-4 bg-white/[0.01] border-white/5 border-dashed min-h-[400px]">
+      <div className="flex-1 glass rounded-[3.5rem] md:rounded-[4rem] p-4 md:p-6 bg-white/[0.01] border-white/5 border-dashed min-h-[500px] hover:bg-white/[0.02] transition-colors">
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-3 md:space-y-4">
+          <div className="space-y-4">
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onDelete={onDelete} />
             ))}
@@ -402,9 +429,9 @@ function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], on
         </SortableContext>
         
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20 md:py-24 text-muted-foreground opacity-10">
-            <AlertCircle className="w-10 h-10 md:w-12 md:h-12 mb-4 stroke-[1]" />
-            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-center">Sin Tareas</p>
+          <div className="flex flex-col items-center justify-center py-32 md:py-40 text-muted-foreground opacity-10">
+            <AlertCircle className="w-16 h-16 mb-6 stroke-[0.5]" />
+            <p className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.6em] text-center">Zona de Vacío</p>
           </div>
         )}
       </div>
@@ -424,12 +451,12 @@ function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: st
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging && !isOverlay ? 0.4 : 1,
+    opacity: isDragging && !isOverlay ? 0.3 : 1,
   };
 
   const priorityColors = {
-    alta: "border-red-500/40 text-red-500 bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.2)]",
-    media: "border-primary/40 text-primary bg-primary/10 shadow-[0_0_15px_rgba(57,255,20,0.1)]",
+    alta: "border-red-500/40 text-red-500 bg-red-500/10 shadow-[0_0_20px_rgba(239,68,68,0.2)]",
+    media: "border-primary/40 text-primary bg-primary/10 shadow-[0_0_20px_rgba(57,255,20,0.1)]",
     baja: "border-white/10 text-muted-foreground bg-white/5"
   };
 
@@ -438,54 +465,54 @@ function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: st
       ref={setNodeRef}
       style={style}
       layoutId={task.id}
-      className="group relative bg-card/60 backdrop-blur-xl border border-white/5 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden"
+      className="group relative bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden shadow-xl"
     >
-      <div className="absolute top-0 right-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="p-1.5 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
+          className="p-2 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="space-y-3 md:space-y-4">
-        <div className="flex items-center gap-2">
-          <Badge className={cn("text-[7px] md:text-[8px] font-black px-2 md:px-3 py-0.5 md:py-1 rounded-full uppercase border", priorityColors[task.priority])}>
+      <div className="space-y-4 md:space-y-6">
+        <div className="flex items-center gap-3">
+          <Badge className={cn("text-[8px] font-black px-3 py-1 rounded-full uppercase border tracking-widest", priorityColors[task.priority])}>
             {task.priority}
           </Badge>
-          <div {...attributes} {...listeners} className="p-1 hover:bg-white/5 rounded-lg cursor-grab active:cursor-grabbing ml-auto opacity-30 group-hover:opacity-100 transition-opacity">
-            <GripVertical className="w-3.5 h-3.5" />
+          <div {...attributes} {...listeners} className="p-2 hover:bg-white/5 rounded-xl cursor-grab active:cursor-grabbing ml-auto opacity-20 group-hover:opacity-100 transition-opacity">
+            <GripVertical className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="space-y-1">
-          <h4 className="text-xs md:text-sm font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
+        <div className="space-y-2">
+          <h4 className="text-sm md:text-base font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
             {task.title}
           </h4>
           {task.description && (
-            <p className="text-[9px] md:text-[10px] text-muted-foreground/60 line-clamp-2 font-medium leading-relaxed">
+            <p className="text-[10px] md:text-[11px] text-muted-foreground/60 line-clamp-3 font-medium leading-relaxed">
               {task.description}
             </p>
           )}
         </div>
 
         {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 md:gap-1.5">
+          <div className="flex flex-wrap gap-2">
             {task.tags.map((tag, i) => (
-              <span key={i} className="text-[7px] md:text-[8px] font-bold px-1.5 md:px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground">
+              <span key={i} className="text-[8px] font-black px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-muted-foreground/50 tracking-widest uppercase">
                 #{tag}
               </span>
             ))}
           </div>
         )}
 
-        <div className="pt-2 flex items-center justify-between border-t border-white/5">
-          <div className="flex items-center gap-1.5 text-[7px] md:text-[8px] font-black text-muted-foreground uppercase">
-            <Tag className="w-3 h-3 text-primary/50" /> {task.context}
+        <div className="pt-4 flex items-center justify-between border-t border-white/5">
+          <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase tracking-widest">
+            <Tag className="w-3.5 h-3.5 text-primary/50" /> {task.context}
           </div>
-          <div className="text-[7px] md:text-[8px] font-black text-muted-foreground/30 uppercase">
-            ID: {task.id.slice(0, 5)}
+          <div className="text-[8px] font-black text-muted-foreground/20 uppercase">
+            {task.id.slice(0, 8)}
           </div>
         </div>
       </div>
