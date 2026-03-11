@@ -13,7 +13,8 @@ import {
   AlertTriangle,
   ArrowUpRight,
   Target,
-  Loader2
+  Terminal,
+  Activity
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -85,115 +86,138 @@ export default function Home() {
       animate={{ opacity: 1 }}
       className="space-y-12 pb-24"
     >
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 px-2">
-        <div className="space-y-4">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 px-2">
+        <div className="space-y-6 max-w-3xl">
           <motion.div 
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="flex items-center gap-3 text-primary text-[10px] font-black uppercase tracking-[0.5em]"
+            className="flex items-center gap-4"
           >
-            <span className="w-10 h-px bg-primary/40" /> Terminal de Control Activa
+            <div className="bg-primary/10 border border-primary/20 px-3 py-1 rounded-md">
+              <span className="text-primary text-[9px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
+                <Terminal className="w-3 h-3" /> System Terminal Ready
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(57,255,20,0.8)]" />
+              <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">Online</span>
+            </div>
           </motion.div>
-          <h2 className="text-5xl md:text-7xl font-black tracking-tighter leading-none">
-            Enfoque: <span className="text-primary glow-text">{context}</span>
+          
+          <h2 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.85] text-white">
+            Protocolo <span className="text-primary italic glow-text">{context}</span>
           </h2>
-          <div className="flex items-center gap-3">
+          
+          <div className="flex items-center gap-4">
             {isTasksLoading ? (
-              <Skeleton className="h-4 w-64 bg-white/5" />
+              <Skeleton className="h-6 w-80 bg-white/5 rounded-full" />
             ) : (
-              <p className="text-muted-foreground text-sm font-bold flex items-center gap-3">
-                <Zap className="w-4 h-4 text-primary animate-pulse" />
+              <p className="text-white/60 text-lg font-medium tracking-tight">
                 {metrics.pendingTasksCount > 0 
-                  ? `${metrics.pendingTasksCount} nodos críticos pendientes para el ciclo actual.` 
-                  : "Estado nominal. Sin tareas pendientes para hoy."}
+                  ? `Optimización requerida: ${metrics.pendingTasksCount} nodos críticos detectados en el pipeline diario.` 
+                  : "Estado del sistema: Nominal. Todos los procesos del ciclo actual finalizados."}
               </p>
             )}
           </div>
         </div>
 
         <Link href="/kanban" className="group">
-          <div className="glass px-8 py-4 rounded-[2rem] flex items-center gap-4 border-white/5 group-hover:border-primary/40 transition-all cursor-pointer shadow-xl">
-            <span className="text-[10px] font-black uppercase tracking-widest">Abrir Tablero</span>
-            <ArrowUpRight className="w-5 h-5 text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+          <div className="glass px-10 py-5 rounded-[2.5rem] flex items-center gap-5 border-white/5 group-hover:border-primary/40 group-hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <span className="text-[11px] font-black uppercase tracking-[0.2em] relative z-10">Acceder al Tablero</span>
+            <ArrowUpRight className="w-6 h-6 text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform relative z-10" />
           </div>
         </Link>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2">
         {isTasksLoading ? (
-          [...Array(4)].map((_, i) => <Skeleton key={i} className="h-32 rounded-[2rem] bg-white/5" />)
+          [...Array(4)].map((_, i) => <Skeleton key={i} className="h-44 rounded-[2.5rem] bg-white/5" />)
         ) : (
           <>
             <MetricCard 
-              label="Eficiencia Diaria" 
+              label="Eficiencia de Ciclo" 
               value={`${metrics.progressPercent}%`} 
-              icon={<Target className="w-5 h-5 text-primary" />} 
-              subValue={`${metrics.completedToday}/${metrics.todayTasks.length} Tareas`}
+              icon={<Target className="w-6 h-6 text-primary" />} 
+              subValue={`${metrics.completedToday} de ${metrics.todayTasks.length} Tareas Procesadas`}
               color="text-primary"
             />
             <MetricCard 
-              label="Nodos Pendientes" 
+              label="Carga del Sistema" 
               value={metrics.pendingTasksCount.toString()} 
-              icon={<Clock className="w-5 h-5" />} 
-              subValue="Procesos en cola"
+              icon={<Activity className="w-6 h-6 text-blue-400" />} 
+              subValue="Nodos en cola de ejecución"
+              color="text-blue-400"
             />
             <MetricCard 
-              label="Alertas Críticas" 
+              label="Alertas de Enfoque" 
               value={metrics.highPriorityTasks.length.toString()} 
-              icon={<AlertTriangle className="w-5 h-5 text-red-500" />} 
-              subValue="Requiere intervención"
-              color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : ""}
+              icon={<AlertTriangle className="w-6 h-6 text-red-500" />} 
+              subValue="Requieren intervención inmediata"
+              color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : "text-white/20"}
             />
             <MetricCard 
-              label="Estado Global" 
-              value="ACTIVO" 
-              icon={<Zap className="w-5 h-5 text-yellow-500" />} 
-              subValue="Integridad del sistema"
+              label="Integridad Operativa" 
+              value="ACTIVA" 
+              icon={<Zap className="w-6 h-6 text-yellow-500" />} 
+              subValue="Servicios de backend estables"
+              color="text-yellow-500"
             />
           </>
         )}
       </div>
 
-      <div className="space-y-8 px-2">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-black uppercase tracking-[0.5em] text-muted-foreground flex items-center gap-4">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            Prioridades en Pipeline
+      <div className="space-y-10 px-2">
+        <div className="flex items-center justify-between border-b border-white/5 pb-6">
+          <h3 className="text-sm font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-5">
+            <TrendingUp className="w-6 h-6 text-primary" />
+            Prioridades en Ejecución
           </h3>
-          <span className="text-[10px] font-black text-primary/30 uppercase tracking-[0.3em]">Monitor en tiempo real</span>
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
+            <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Live Monitor</span>
+          </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <AnimatePresence mode="popLayout">
             {isTasksLoading ? (
-               [...Array(3)].map((_, i) => <Skeleton key={i} className="h-64 rounded-[3rem] bg-white/5" />)
+               [...Array(3)].map((_, i) => <Skeleton key={i} className="h-72 rounded-[3rem] bg-white/5" />)
             ) : metrics.highPriorityTasks.length > 0 ? (
               metrics.highPriorityTasks.map((task, i) => (
                 <motion.div
                   key={task.id}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="glass p-8 md:p-10 rounded-[3rem] flex flex-col gap-6 hover:border-primary/50 transition-all cursor-pointer group relative overflow-hidden shadow-2xl"
+                  transition={{ delay: i * 0.1, type: "spring", stiffness: 100 }}
+                  className="glass-card p-10 flex flex-col gap-8 hover:scale-[1.02] active:scale-95 group relative shadow-2xl border-white/5 hover:border-primary/30"
                 >
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/10 transition-colors" />
+                  <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/15 transition-colors duration-500" />
                   
-                  <div className="flex items-start justify-between relative">
-                    <div className="w-14 h-14 rounded-[1.5rem] bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 transition-colors shadow-inner">
-                      <Circle className="w-7 h-7 text-primary" />
+                  <div className="flex items-center justify-between relative">
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 transition-colors shadow-2xl">
+                      <Activity className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
                     </div>
-                    <div className="text-[10px] font-black text-red-500 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_20px_rgba(239,68,68,0.2)]">
-                      CRÍTICO
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[10px] font-black text-red-500 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                        PRIORIDAD ALTA
+                      </span>
+                      <span className="text-[8px] font-mono text-white/20 mt-1">NODE: {task.id.slice(0, 12)}</span>
                     </div>
                   </div>
 
-                  <div className="space-y-2 relative">
-                    <h4 className="font-black text-2xl md:text-3xl tracking-tight leading-tight group-hover:text-primary transition-colors">
+                  <div className="space-y-4 relative">
+                    <h4 className="font-black text-3xl tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">
                       {task.title}
                     </h4>
-                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-2 flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Vence hoy • {task.dueDate ? task.dueDate.split('T')[1].slice(0, 5) : '00:00'}
+                    <p className="text-[11px] text-white/40 uppercase font-black tracking-widest flex items-center gap-3">
+                      <Clock className="w-4 h-4 text-primary" /> Vence: {task.dueDate ? task.dueDate.split('T')[1].slice(0, 5) : '00:00'} h
                     </p>
+                  </div>
+                  
+                  <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{context} UNIT</span>
+                     <ArrowUpRight className="w-5 h-5 text-white/10 group-hover:text-primary transition-colors" />
                   </div>
                 </motion.div>
               ))
@@ -201,11 +225,11 @@ export default function Home() {
               <motion.div 
                 initial={{ opacity: 0 }} 
                 animate={{ opacity: 1 }}
-                className="col-span-full py-24 md:py-32 glass rounded-[4rem] border-dashed border-white/10 flex flex-col items-center justify-center text-muted-foreground/10"
+                className="col-span-full py-32 glass rounded-[4rem] border-dashed border-white/10 flex flex-col items-center justify-center text-white/5"
               >
-                <CheckCircle2 className="w-24 h-24 mb-6 stroke-[0.5] text-primary/20" />
-                <p className="text-[12px] font-black uppercase tracking-[0.6em] text-center">Protocolos Completados</p>
-                <p className="text-[9px] mt-4 font-bold uppercase tracking-widest text-white/20">Sin alertas de prioridad en el ciclo actual</p>
+                <CheckCircle2 className="w-24 h-24 mb-6 stroke-[0.5] text-primary/30 animate-float" />
+                <p className="text-xl font-black uppercase tracking-[0.5em] text-center text-white/20">Protocolos Sincronizados</p>
+                <p className="text-[10px] mt-4 font-bold uppercase tracking-[0.3em] text-white/10">No hay alertas críticas en el sector actual</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -217,18 +241,21 @@ export default function Home() {
 
 function MetricCard({ label, value, icon, subValue, color }: { label: string, value: string, icon: React.ReactNode, subValue: string, color?: string }) {
   return (
-    <Card className="glass-card border-white/5 bg-black/40 hover:border-primary/20 transition-all group relative overflow-hidden p-2">
-      <div className="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
-      <CardHeader className="pb-4 relative">
-        <CardTitle className="text-[10px] text-muted-foreground flex items-center gap-3 uppercase tracking-[0.3em] font-black">
-          {icon} {label}
+    <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-1">
+      <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-[60px] group-hover:bg-primary/10 transition-colors duration-700" />
+      <CardHeader className="pb-6 relative px-8 pt-8">
+        <CardTitle className="text-[10px] text-white/40 flex items-center gap-4 uppercase tracking-[0.4em] font-black">
+          <div className="p-2 bg-white/5 rounded-xl border border-white/10 group-hover:bg-primary/10 transition-colors">
+            {icon}
+          </div>
+          {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="relative space-y-1">
-        <div className={cn("text-4xl md:text-6xl font-black tracking-tighter leading-none", color)}>
+      <CardContent className="relative px-8 pb-10 space-y-3">
+        <div className={cn("text-5xl md:text-7xl font-black tracking-tighter leading-none italic", color)}>
           {value}
         </div>
-        <p className="text-[10px] text-muted-foreground/30 font-black uppercase tracking-widest pt-2">
+        <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em] pt-2 border-t border-white/5">
           {subValue}
         </p>
       </CardContent>

@@ -5,26 +5,26 @@
 
 @layer base {
   :root {
-    --background: 0 0% 5%;
+    --background: 0 0% 2%;
     --foreground: 0 0% 98%;
-    --card: 0 0% 7%;
+    --card: 0 0% 4%;
     --card-foreground: 0 0% 98%;
-    --popover: 0 0% 5%;
+    --popover: 0 0% 3%;
     --popover-foreground: 0 0% 98%;
     --primary: 111 100% 54%;
     --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 12%;
+    --secondary: 0 0% 8%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 65%;
+    --muted-foreground: 0 0% 60%;
     --accent: 111 100% 54%;
     --accent-foreground: 0 0% 5%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
     --ring: 111 100% 54%;
-    --radius: 1rem;
+    --radius: 1.5rem;
   }
 }
 
@@ -33,33 +33,51 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground selection:bg-primary/30;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    @apply bg-background text-foreground selection:bg-primary/30 antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
+    background-image: 
+      radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.08), transparent 50%),
+      linear-gradient(to bottom, transparent, hsl(var(--background))),
+      url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.02' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
 
 @layer utilities {
   .glass {
-    @apply bg-white/[0.03] backdrop-blur-[20px] border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.37)];
+    @apply bg-black/40 backdrop-blur-2xl border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)];
   }
   .glass-card {
-    @apply glass rounded-2xl overflow-hidden;
+    @apply glass rounded-[2rem] overflow-hidden transition-all duration-300;
   }
   .neon-glow {
-    @apply shadow-[0_0_15px_rgba(57,255,20,0.4)];
+    @apply shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] transition-shadow duration-300;
+  }
+  .glow-text {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
-/* Custom scrollbar for cyber aesthetic */
+/* Scrollbar Estilizada */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  @apply bg-black/20;
 }
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/10 rounded-full hover:bg-primary/50 transition-colors;
+  @apply bg-white/5 rounded-full hover:bg-primary/40 transition-colors;
+}
+
+/* Animaciones suaves */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 }
