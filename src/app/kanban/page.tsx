@@ -33,6 +33,7 @@ import {
   closestCorners,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -94,9 +95,17 @@ export default function KanbanPage() {
 
   const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
+  // Sensors configuration for Desktop and Mobile
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { 
+      activationConstraint: { distance: 8 } 
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 }
+    }),
+    useSensor(KeyboardSensor, { 
+      coordinateGetter: sortableKeyboardCoordinates 
+    })
   );
 
   useEffect(() => {
@@ -201,10 +210,10 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-6 md:space-y-10 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-5xl font-black tracking-tighter flex items-center gap-4">
+          <h2 className="text-4xl md:text-5xl font-black tracking-tighter flex items-center gap-4">
             Sistema <span className="text-primary">{context}</span>
           </h2>
           <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] mt-2 flex items-center gap-2">
@@ -212,33 +221,33 @@ export default function KanbanPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <Button 
             variant="outline" 
             onClick={() => setIsManagingColumns(!isManagingColumns)}
-            className="rounded-2xl h-14 px-6 border-white/5 bg-white/5 hover:bg-white/10"
+            className="flex-1 md:flex-none rounded-2xl h-12 md:h-14 px-4 md:px-6 border-white/5 bg-white/5 hover:bg-white/10"
           >
-            <Settings2 className="w-5 h-5 mr-2" /> Estados
+            <Settings2 className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Estados
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-xs neon-glow transition-all hover:scale-105 active:scale-95">
-                <Plus className="w-5 h-5 mr-2" /> Nueva Tarea
+              <Button className="flex-1 md:flex-none rounded-2xl h-12 md:h-14 px-6 md:px-8 font-black uppercase tracking-widest text-[10px] md:text-xs neon-glow transition-all hover:scale-105 active:scale-95">
+                <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Nueva Tarea
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[500px] p-8">
+            <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[500px] p-6 md:p-8">
               <DialogHeader>
-                <DialogTitle className="text-3xl font-black tracking-tighter uppercase">Inyectar Tarea</DialogTitle>
+                <DialogTitle className="text-2xl md:text-3xl font-black tracking-tighter uppercase">Inyectar Tarea</DialogTitle>
               </DialogHeader>
-              <div className="space-y-6 py-4">
+              <div className="space-y-4 md:space-y-6 py-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black text-primary">Identificador</Label>
                   <Input 
                     placeholder="Nombre del proceso..."
                     value={newTask.title} 
                     onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary" 
+                    className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl focus:ring-primary" 
                   />
                 </div>
                 <div className="space-y-2">
@@ -247,14 +256,14 @@ export default function KanbanPage() {
                     placeholder="Detalles técnicos..."
                     value={newTask.description}
                     onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                    className="bg-white/5 border-white/10 min-h-[100px] rounded-xl" 
+                    className="bg-white/5 border-white/10 min-h-[80px] md:min-h-[100px] rounded-xl" 
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black">Nivel de Prioridad</Label>
                     <Select value={newTask.priority} onValueChange={(v: Priority) => setNewTask({...newTask, priority: v})}>
-                      <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
+                      <SelectTrigger className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-white/10">
@@ -267,7 +276,7 @@ export default function KanbanPage() {
                   <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black">Estado Inicial</Label>
                     <Select value={newTask.status} onValueChange={(v) => setNewTask({...newTask, status: v})}>
-                      <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
+                      <SelectTrigger className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-zinc-900 border-white/10">
@@ -284,53 +293,56 @@ export default function KanbanPage() {
                     placeholder="UI, UX, Backend..."
                     value={newTask.tags} 
                     onChange={(e) => setNewTask({...newTask, tags: e.target.value})}
-                    className="bg-white/5 border-white/10 h-12 rounded-xl" 
+                    className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl" 
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button onClick={handleAddTask} className="w-full neon-glow font-black uppercase text-xs h-14 rounded-2xl">Confirmar Inyección</Button>
+                <Button onClick={handleAddTask} className="w-full neon-glow font-black uppercase text-xs h-12 md:h-14 rounded-2xl">Confirmar Inyección</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {isManagingColumns && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          className="glass p-6 rounded-[2.5rem] border-white/10 space-y-4"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-widest">Configuración de Estados</h3>
-            <Button variant="ghost" size="icon" onClick={() => setIsManagingColumns(false)}>
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {columns.map(col => (
-              <Badge key={col} variant="secondary" className="pl-4 pr-2 py-2 rounded-xl bg-white/5 border-white/10 gap-2">
-                <span className="font-bold">{col}</span>
-                <button onClick={() => handleRemoveColumn(col)} className="hover:text-red-500 transition-colors">
-                  <X className="w-3 h-3" />
-                </button>
-              </Badge>
-            ))}
-            <div className="flex items-center gap-2">
-              <Input 
-                placeholder="Nuevo estado..."
-                value={newColumnName}
-                onChange={(e) => setNewColumnName(e.target.value)}
-                className="bg-white/5 border-white/10 h-9 w-40 rounded-xl"
-              />
-              <Button size="icon" onClick={handleAddColumn} className="h-9 w-9 rounded-xl bg-primary text-black">
-                <Plus className="w-4 h-4" />
+      <AnimatePresence>
+        {isManagingColumns && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="glass p-5 md:p-6 rounded-[2rem] md:rounded-[2.5rem] border-white/10 space-y-4 overflow-hidden"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest">Configuración de Estados</h3>
+              <Button variant="ghost" size="icon" onClick={() => setIsManagingColumns(false)}>
+                <X className="w-4 h-4" />
               </Button>
             </div>
-          </div>
-        </motion.div>
-      )}
+            <div className="flex flex-wrap gap-2 md:gap-3">
+              {columns.map(col => (
+                <Badge key={col} variant="secondary" className="pl-3 md:pl-4 pr-2 py-1.5 md:py-2 rounded-xl bg-white/5 border-white/10 gap-2">
+                  <span className="font-bold text-[10px] md:text-sm">{col}</span>
+                  <button onClick={() => handleRemoveColumn(col)} className="hover:text-red-500 transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                </Badge>
+              ))}
+              <div className="flex items-center gap-2">
+                <Input 
+                  placeholder="Nuevo estado..."
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  className="bg-white/5 border-white/10 h-9 w-32 md:w-40 rounded-xl text-xs"
+                />
+                <Button size="icon" onClick={handleAddColumn} className="h-9 w-9 rounded-xl bg-primary text-black">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <DndContext 
         sensors={sensors} 
@@ -339,7 +351,7 @@ export default function KanbanPage() {
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide min-h-[70vh]">
+        <div className="flex gap-4 md:gap-6 overflow-x-auto pb-8 scrollbar-hide min-h-[60vh] md:min-h-[70vh] -mx-4 px-4">
           {columns.map((status) => (
             <Column 
               key={status} 
@@ -351,7 +363,7 @@ export default function KanbanPage() {
         </div>
         <DragOverlay>
           {activeTask ? (
-            <div className="w-[300px] rotate-3 scale-105 pointer-events-none opacity-90">
+            <div className="w-[280px] md:w-[300px] rotate-3 scale-105 pointer-events-none opacity-90 shadow-2xl">
                <TaskCard task={activeTask} onDelete={() => {}} />
             </div>
           ) : null}
@@ -363,23 +375,23 @@ export default function KanbanPage() {
 
 function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], onDelete: (id: string) => void }) {
   return (
-    <div className="flex-shrink-0 w-80 flex flex-col gap-6">
-      <div className="flex items-center justify-between px-4">
+    <div className="flex-shrink-0 w-72 md:w-80 flex flex-col gap-4 md:gap-6">
+      <div className="flex items-center justify-between px-2 md:px-4">
         <div className="flex items-center gap-3">
           <div className={cn(
-            "w-2.5 h-2.5 rounded-full",
+            "w-2 md:w-2.5 h-2 md:h-2.5 rounded-full",
             status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20'
           )} />
-          <h3 className="font-black uppercase tracking-[0.2em] text-[10px]">{status}</h3>
-          <span className="text-[9px] font-black bg-white/5 px-2.5 py-1 rounded-full border border-white/10 text-muted-foreground">
+          <h3 className="font-black uppercase tracking-[0.2em] text-[9px] md:text-[10px]">{status}</h3>
+          <span className="text-[8px] md:text-[9px] font-black bg-white/5 px-2 py-0.5 md:py-1 rounded-full border border-white/10 text-muted-foreground">
             {tasks.length}
           </span>
         </div>
       </div>
 
-      <div className="flex-1 glass rounded-[3rem] p-4 bg-white/[0.01] border-white/5 border-dashed min-h-[500px]">
+      <div className="flex-1 glass rounded-[2.5rem] md:rounded-[3rem] p-3 md:p-4 bg-white/[0.01] border-white/5 border-dashed min-h-[400px]">
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-4">
+          <div className="space-y-3 md:space-y-4">
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onDelete={onDelete} />
             ))}
@@ -387,9 +399,9 @@ function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], on
         </SortableContext>
         
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground opacity-10">
-            <AlertCircle className="w-12 h-12 mb-4 stroke-[1]" />
-            <p className="text-[10px] font-black uppercase tracking-widest">Estado Vacío</p>
+          <div className="flex flex-col items-center justify-center py-20 md:py-24 text-muted-foreground opacity-10">
+            <AlertCircle className="w-10 h-10 md:w-12 md:h-12 mb-4 stroke-[1]" />
+            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-center">Sin Tareas</p>
           </div>
         )}
       </div>
@@ -423,42 +435,42 @@ function TaskCard({ task, onDelete }: { task: Task, onDelete: (id: string) => vo
       ref={setNodeRef}
       style={style}
       layoutId={task.id}
-      className="group relative bg-card/60 backdrop-blur-xl border border-white/5 rounded-[2rem] p-6 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden"
+      className="group relative bg-card/60 backdrop-blur-xl border border-white/5 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden"
     >
-      <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute top-0 right-0 p-2 md:p-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="p-2 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
+          className="p-1.5 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 md:space-y-4">
         <div className="flex items-center gap-2">
-          <Badge className={cn("text-[8px] font-black px-3 py-1 rounded-full uppercase border", priorityColors[task.priority])}>
+          <Badge className={cn("text-[7px] md:text-[8px] font-black px-2 md:px-3 py-0.5 md:py-1 rounded-full uppercase border", priorityColors[task.priority])}>
             {task.priority}
           </Badge>
           <div {...attributes} {...listeners} className="p-1 hover:bg-white/5 rounded-lg cursor-grab active:cursor-grabbing ml-auto opacity-30 group-hover:opacity-100 transition-opacity">
-            <GripVertical className="w-4 h-4" />
+            <GripVertical className="w-3.5 h-3.5" />
           </div>
         </div>
 
         <div className="space-y-1">
-          <h4 className="text-sm font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
+          <h4 className="text-xs md:text-sm font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
             {task.title}
           </h4>
           {task.description && (
-            <p className="text-[10px] text-muted-foreground/60 line-clamp-2 font-medium leading-relaxed">
+            <p className="text-[9px] md:text-[10px] text-muted-foreground/60 line-clamp-2 font-medium leading-relaxed">
               {task.description}
             </p>
           )}
         </div>
 
         {task.tags && task.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1 md:gap-1.5">
             {task.tags.map((tag, i) => (
-              <span key={i} className="text-[8px] font-bold px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground">
+              <span key={i} className="text-[7px] md:text-[8px] font-bold px-1.5 md:px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground">
                 #{tag}
               </span>
             ))}
@@ -466,10 +478,10 @@ function TaskCard({ task, onDelete }: { task: Task, onDelete: (id: string) => vo
         )}
 
         <div className="pt-2 flex items-center justify-between border-t border-white/5">
-          <div className="flex items-center gap-1.5 text-[8px] font-black text-muted-foreground uppercase">
+          <div className="flex items-center gap-1.5 text-[7px] md:text-[8px] font-black text-muted-foreground uppercase">
             <Tag className="w-3 h-3 text-primary/50" /> {task.context}
           </div>
-          <div className="text-[8px] font-black text-muted-foreground/30 uppercase">
+          <div className="text-[7px] md:text-[8px] font-black text-muted-foreground/30 uppercase">
             ID: {task.id.slice(0, 5)}
           </div>
         </div>
