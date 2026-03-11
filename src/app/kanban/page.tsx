@@ -34,6 +34,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
+import { Task, Priority } from "@/types/task";
 
 // Drag and Drop Imports
 import {
@@ -58,7 +59,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 const TaskSchema = z.object({
-  title: z.string().min(1, "El título es requerido").max(100),
+  title: z.string().min(1, "El tÃ­tulo es requerido").max(100),
   description: z.string().optional(),
   priority: z.enum(['baja', 'media', 'alta']),
   status: z.string().min(1),
@@ -67,27 +68,12 @@ const TaskSchema = z.object({
   userId: z.string(),
 });
 
-type Priority = 'baja' | 'media' | 'alta';
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: string;
-  priority: Priority;
-  context: string;
-  userId: string;
-  dueDate: string;
-  tags?: string[];
-}
-
 export default function KanbanPage() {
-  const { context } = useAppContextStore();
+  const { context, kanbanColumns: columns, setKanbanColumns: setColumns } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   
-  const [columns, setColumns] = useState<string[]>(['Pendiente', 'Haciendo', 'Hecho']);
   const [newColumnName, setNewColumnName] = useState("");
   const [isManagingColumns, setIsManagingColumns] = useState(false);
 
@@ -127,11 +113,17 @@ export default function KanbanPage() {
     }
   }, [columns]);
 
-  if (isUserLoading) return null;
-  if (!user) {
-    router.push("/login");
-    return null;
-  }
+  useEffect(() => {
+    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+    setEditingTask(null);
+    setIsDialogOpen(false);
+  }, [context]);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) router.push("/login");
+  }, [user, isUserLoading, router]);
+
+  if (isUserLoading || !user) return null;
 
   const handleSaveTask = () => {
     setIsSaving(true);
@@ -168,11 +160,9 @@ export default function KanbanPage() {
       toast({ title: "Inyectado" });
     }
     
-    setTimeout(() => {
-      resetForm();
-      setIsDialogOpen(false);
-      setIsSaving(false);
-    }, 400);
+    resetForm();
+    setIsDialogOpen(false);
+    setIsSaving(false);
   };
 
   const resetForm = () => {
@@ -219,24 +209,8 @@ export default function KanbanPage() {
     if (task) setActiveTask(task);
   }
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) return;
-    const activeId = active.id;
-    const overId = over.id;
-    if (activeId === overId) return;
-
-    const isActiveATask = active.data.current?.type === "Task";
-    const isOverAColumn = over.data.current?.type === "Column";
-
-    if (isActiveATask && isOverAColumn) {
-      const overStatus = overId as string;
-      const task = tasks?.find(t => t.id === activeId);
-      if (task && task.status !== overStatus) {
-        const docRef = doc(firestore, "users", user.uid, "tasks", activeId as string);
-        updateDocumentNonBlocking(docRef, { status: overStatus, updatedAt: serverTimestamp() });
-      }
-    }
+  function handleDragOver(_event: DragOverEvent) {
+    // Visual-only preview during drag. Firestore write happens in handleDragEnd.
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -265,12 +239,12 @@ export default function KanbanPage() {
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
               Tablero <span className="text-primary italic glow-text">{context}</span>
             </h2>
-            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-2 h-5 font-black text-[8px]">
+            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-2 h-5 font-black text-[11px]">
               {tasks?.length || 0} NODOS
             </Badge>
           </div>
           <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] flex items-center gap-3">
-            <Database className="w-3 h-3 text-primary/40" /> Orquestación de Datos
+            <Database className="w-3 h-3 text-primary/40" /> OrquestaciÃ³n de Datos
           </p>
         </div>
         
@@ -303,7 +277,7 @@ export default function KanbanPage() {
                   <Input value={taskForm.title} onChange={(e) => setTaskForm({...taskForm, title: e.target.value})} className="bg-white/5 border-white/10 h-11 rounded-lg" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
+                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">DescripciÃ³n</Label>
                   <Textarea value={taskForm.description} onChange={(e) => setTaskForm({...taskForm, description: e.target.value})} className="bg-white/5 border-white/10 min-h-[80px] rounded-lg" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -333,7 +307,7 @@ export default function KanbanPage() {
               </div>
               <DialogFooter>
                 <Button onClick={handleSaveTask} disabled={isSaving} className="w-full neon-glow font-black uppercase text-[10px] h-12 rounded-xl">
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Operación"}
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar OperaciÃ³n"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -351,12 +325,12 @@ export default function KanbanPage() {
             <div className="flex flex-wrap gap-2">
               {columns.map(col => (
                 <Badge key={col} variant="secondary" className="pl-3 pr-1 py-1 rounded-lg bg-white/5 border-white/10 gap-2">
-                  <span className="font-black uppercase tracking-widest text-[8px]">{col}</span>
+                  <span className="font-black uppercase tracking-widest text-[11px]">{col}</span>
                   <button onClick={() => handleRemoveColumn(col)} className="text-muted-foreground hover:text-red-500"><X className="w-3 h-3" /></button>
                 </Badge>
               ))}
               <div className="flex items-center gap-2">
-                <Input placeholder="Nuevo..." value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} className="bg-white/5 border-white/10 h-8 w-32 rounded-lg text-[8px] font-black uppercase" />
+                <Input placeholder="Nuevo..." value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} className="bg-white/5 border-white/10 h-8 w-32 rounded-lg text-[11px] font-black uppercase" />
                 <Button size="icon" onClick={handleAddColumn} className="h-8 w-8 rounded-lg bg-primary text-black"><Plus className="w-3 h-3" /></Button>
               </div>
             </div>
@@ -399,7 +373,7 @@ function Column({ status, tasks, onDelete, onEdit }: { status: string, tasks: Ta
       <div className="flex items-center gap-3 px-2">
         <div className={cn("w-1.5 h-1.5 rounded-full", status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20')} />
         <h3 className="font-black uppercase tracking-[0.2em] text-[9px] text-white/60">{status}</h3>
-        <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded-full border border-white/10 text-muted-foreground/50">{tasks.length}</span>
+        <span className="text-[11px] font-black bg-white/5 px-2 py-0.5 rounded-full border border-white/10 text-muted-foreground/50">{tasks.length}</span>
       </div>
 
       <div className="flex-1 glass rounded-[2rem] p-3 md:p-5 bg-white/[0.01] border-white/5 border-dashed min-h-[400px] relative">
@@ -413,7 +387,7 @@ function Column({ status, tasks, onDelete, onEdit }: { status: string, tasks: Ta
         {tasks.length === 0 && (
           <div className="flex flex-col items-center justify-center py-32 opacity-5">
             <AlertCircle className="w-12 h-12 mb-2" />
-            <p className="text-[9px] font-black uppercase tracking-[0.5em]">Vacío</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.5em]">VacÃ­o</p>
           </div>
         )}
       </div>
@@ -442,7 +416,7 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
 
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Badge className={cn("text-[7px] font-black px-2 py-0.5 rounded-full uppercase border tracking-widest", task.priority === 'alta' ? 'border-red-500/30 text-red-500 bg-red-500/5' : task.priority === 'media' ? 'border-primary/30 text-primary bg-primary/5' : 'border-white/10 text-muted-foreground bg-white/5')}>
+          <Badge className={cn("text-[10px] font-black px-2 py-0.5 rounded-full uppercase border tracking-widest", task.priority === 'alta' ? 'border-red-500/30 text-red-500 bg-red-500/5' : task.priority === 'media' ? 'border-primary/30 text-primary bg-primary/5' : 'border-white/10 text-muted-foreground bg-white/5')}>
             {task.priority}
           </Badge>
           <div {...attributes} {...listeners} className="p-1.5 hover:bg-white/5 rounded-lg cursor-grab active:cursor-grabbing ml-auto opacity-20 group-hover:opacity-100">
@@ -456,7 +430,7 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
         </div>
 
         <div className="pt-3 flex items-center justify-between border-t border-white/5">
-          <div className="flex items-center gap-1.5 text-[7px] font-black text-white/20 uppercase tracking-widest">
+          <div className="flex items-center gap-1.5 text-[10px] font-black text-white/20 uppercase tracking-widest">
             <Tag className="w-2.5 h-2.5" /> NODE_{task.id.slice(0, 4)}
           </div>
           {task.status === "Hecho" && <CheckCircle2 className="w-3 h-3 text-primary" />}

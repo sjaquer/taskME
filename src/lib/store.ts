@@ -18,6 +18,8 @@ interface AppState {
   // Preferencias de UI
   highPerformanceMode: boolean;
   setHighPerformanceMode: (enabled: boolean) => void;
+  kanbanColumns: string[];
+  setKanbanColumns: (columns: string[]) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -39,6 +41,8 @@ export const useAppContextStore = create<AppState>()(
       })),
       highPerformanceMode: false,
       setHighPerformanceMode: (enabled) => set({ highPerformanceMode: enabled }),
+      kanbanColumns: ['Pendiente', 'Haciendo', 'Hecho'],
+      setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
     }),
     {
       name: 'taskme-app-state-v2',

@@ -9,7 +9,7 @@ export function Header() {
   const { context, setContext } = useAppContextStore();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass h-16 px-4 flex items-center justify-between border-b border-white/5 md:px-8">
+    <header className="fixed top-0 left-0 right-0 z-50 glass-blur h-16 px-4 flex items-center justify-between border-b border-white/5 md:px-8">
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center neon-glow">
           <span className="text-primary-foreground font-black text-xs">TM</span>

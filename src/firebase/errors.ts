@@ -4,7 +4,7 @@ import { getAuth, type User } from 'firebase/auth';
 type SecurityRuleContext = {
   path: string;
   operation: 'get' | 'list' | 'create' | 'update' | 'delete' | 'write';
-  requestResourceData?: any;
+  requestResourceData?: Record<string, unknown>;
 };
 
 interface FirebaseAuthToken {

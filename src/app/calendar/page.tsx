@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
@@ -38,16 +38,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface CalendarTask {
-  id: string; title: string; status: string; priority: 'baja' | 'media' | 'alta';
-  context: string; userId: string; dueDate: string; location?: string;
-  category?: string; isRecurring?: boolean; recurrenceType?: 'none' | 'weekly' | 'monthly';
-  recurringDays?: number[];
-}
+import { Task } from "@/types/task";
 
 const CATEGORIES = [
-  { label: "Personal", color: "bg-blue-500" }, { label: "Académico", color: "bg-purple-500" },
+  { label: "Personal", color: "bg-blue-500" }, { label: "AcadÃ©mico", color: "bg-purple-500" },
   { label: "Laboral", color: "bg-orange-500" }, { label: "Especial", color: "bg-pink-500" },
 ];
 
@@ -60,7 +54,7 @@ export default function CalendarPage() {
   const [mounted, setMounted] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<CalendarTask | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -72,14 +66,27 @@ export default function CalendarPage() {
     status: "Pendiente", location: "", category: "Personal", recurrenceType: "none" as 'none' | 'weekly' | 'monthly'
   });
 
+  useEffect(() => {
+    setFormData({ title: "", time: "09:00", priority: "media", status: "Pendiente", location: "", category: "Personal", recurrenceType: "none" });
+    setEditingTask(null);
+    setIsDialogOpen(false);
+  }, [context]);
+
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return collection(firestore, "users", user.uid, "tasks");
-  }, [firestore, user]);
+    return query(
+      collection(firestore, "users", user.uid, "tasks"),
+      where("context", "==", context)
+    );
+  }, [firestore, user, context]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<CalendarTask>(tasksQuery);
+  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
-  if (!mounted || isUserLoading) return (
+  useEffect(() => {
+    if (!isUserLoading && !user) router.push("/login");
+  }, [user, isUserLoading, router]);
+
+  if (!mounted || isUserLoading || !user) return (
     <div className="max-w-7xl mx-auto space-y-8 p-4">
       <Skeleton className="h-16 w-1/2 bg-white/5 rounded-2xl" />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -88,11 +95,6 @@ export default function CalendarPage() {
       </div>
     </div>
   );
-
-  if (!user) {
-    router.push("/login");
-    return null;
-  }
 
   const selectedDayTasks = tasks?.filter(task => {
     if (!task.dueDate || !date) return false;
@@ -134,7 +136,7 @@ export default function CalendarPage() {
     setEditingTask(null);
   };
 
-  const openEditDialog = (task: CalendarTask) => {
+  const openEditDialog = (task: Task) => {
     setEditingTask(task);
     setFormData({
       title: task.title, time: format(parseISO(task.dueDate), "HH:mm"),
@@ -151,7 +153,7 @@ export default function CalendarPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">Calendario <span className="text-primary italic glow-text">{context}</span></h2>
-            <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[8px]">
+            <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px]">
               {tasks?.length || 0} TOTAL
             </Badge>
           </div>
@@ -175,7 +177,7 @@ export default function CalendarPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black">Categoría</Label>
+                  <Label className="text-[9px] uppercase font-black">CategorÃ­a</Label>
                   <Select value={formData.category} onValueChange={(v) => setFormData({...formData, category: v})}>
                     <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-lg"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
@@ -184,8 +186,8 @@ export default function CalendarPage() {
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black">Repetición</Label>
-                  <Select value={formData.recurrenceType} onValueChange={(v: any) => setFormData({...formData, recurrenceType: v})}>
+                  <Label className="text-[9px] uppercase font-black">RepeticiÃ³n</Label>
+                  <Select value={formData.recurrenceType} onValueChange={(v: string) => setFormData({...formData, recurrenceType: v as 'none' | 'weekly' | 'monthly'})}>
                     <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-lg"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
                       <SelectItem value="none">Ninguna</SelectItem>
@@ -202,7 +204,7 @@ export default function CalendarPage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black">Prioridad</Label>
-                  <Select value={formData.priority} onValueChange={(v: any) => setFormData({...formData, priority: v})}>
+                  <Select value={formData.priority} onValueChange={(v: string) => setFormData({...formData, priority: v as 'baja' | 'media' | 'alta'})}>
                     <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-lg"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
                       <SelectItem value="baja">Baja</SelectItem>
@@ -235,7 +237,7 @@ export default function CalendarPage() {
             </div>
           </Card>
           <div className="glass p-4 rounded-2xl border-white/5 flex items-center justify-between">
-            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Integridad</span>
+            <span className="text-[11px] font-black text-white/30 uppercase tracking-widest">Integridad</span>
             <LayoutGrid className="w-4 h-4 text-primary/40" />
           </div>
         </div>
@@ -246,7 +248,7 @@ export default function CalendarPage() {
               <Clock className="w-3.5 h-3.5 text-primary" />
               {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : "Fecha"}
             </h3>
-            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 h-6 font-black text-[8px]">
+            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 h-6 font-black text-[11px]">
               {selectedDayTasks.length} EVENTOS
             </Badge>
           </div>
@@ -260,23 +262,23 @@ export default function CalendarPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="space-y-3">
                         <div className="flex items-center gap-2">
-                          <span className={cn("text-[7px] font-black px-2 py-0.5 rounded-full uppercase border", task.priority === 'alta' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-white/5 text-muted-foreground')}>
+                          <span className={cn("text-[10px] font-black px-2 py-0.5 rounded-full uppercase border", task.priority === 'alta' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-white/5 text-muted-foreground')}>
                             {task.priority}
                           </span>
-                          {task.category && <Badge className="bg-white/5 text-white/40 border-white/10 text-[7px] px-1.5">{task.category}</Badge>}
+                          {task.category && <Badge className="bg-white/5 text-white/40 border-white/10 text-[10px] px-1.5">{task.category}</Badge>}
                         </div>
                         <h4 className="font-black text-lg md:text-xl leading-tight pr-10">{task.title}</h4>
-                        {task.location && <p className="text-[8px] font-black text-muted-foreground uppercase flex items-center gap-2"><MapPin className="w-3 h-3" /> {task.location}</p>}
+                        {task.location && <p className="text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2"><MapPin className="w-3 h-3" /> {task.location}</p>}
                       </div>
                       <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                         <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-9 w-9 rounded-lg bg-black/40"><Edit3 className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id))} className="h-9 w-9 rounded-lg hover:text-red-500 bg-black/40"><Trash2 className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { if(confirm("Â¿Eliminar este evento?")) deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id)); }} className="h-9 w-9 rounded-lg hover:text-red-500 bg-black/40"><Trash2 className="w-4 h-4" /></Button>
                       </div>
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 opacity-5"><Inbox className="w-12 h-12 mb-2" /><p className="text-[8px] font-black uppercase tracking-[0.4em]">Sin Eventos</p></div>
+                <div className="flex flex-col items-center justify-center py-24 opacity-5"><Inbox className="w-12 h-12 mb-2" /><p className="text-[11px] font-black uppercase tracking-[0.4em]">Sin Eventos</p></div>
               )}
             </AnimatePresence>
           </div>

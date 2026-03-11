@@ -20,7 +20,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/5 px-6 pt-3 pb-safe-bottom md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-blur border-t border-white/5 px-6 pt-3 pb-safe-bottom md:hidden">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.filter(item => item.visible).map((item) => {
           const isActive = pathname === item.href;
@@ -29,7 +29,7 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 transition-colors duration-200",
+                "flex flex-col items-center justify-center gap-1 min-w-[44px] min-h-[44px] py-2 px-3 transition-colors duration-200",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )}
             >

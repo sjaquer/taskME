@@ -29,16 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-
-interface Task {
-  id: string;
-  title: string;
-  description?: string;
-  status: string;
-  priority: 'baja' | 'media' | 'alta';
-  context: string;
-  dueDate: string;
-}
+import { Task } from "@/types/task";
 
 export default function Home() {
   const { context } = useAppContextStore();
@@ -52,6 +43,12 @@ export default function Home() {
     setMounted(true);
     setToday(startOfToday());
   }, []);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isUserLoading, router]);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -88,11 +85,11 @@ export default function Home() {
     updateDocumentNonBlocking(docRef, { status: "Hecho", updatedAt: serverTimestamp() });
     toast({ 
       title: "Nodo Finalizado", 
-      description: "Operación de datos completada con éxito.",
+      description: "OperaciÃ³n de datos completada con Ã©xito.",
     });
   };
 
-  if (!mounted || isUserLoading) return (
+  if (!mounted || isUserLoading || !user) return (
     <div className="space-y-8 pb-24 px-4">
       <Skeleton className="h-20 w-full md:w-2/3 bg-white/5" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -100,11 +97,6 @@ export default function Home() {
       </div>
     </div>
   );
-
-  if (!user) {
-    router.push("/login");
-    return null;
-  }
 
   return (
     <motion.div
@@ -117,18 +109,18 @@ export default function Home() {
         <div className="space-y-4 max-w-2xl">
           <div className="flex flex-wrap items-center gap-3">
             <div className="bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md">
-              <span className="text-primary text-[8px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
+              <span className="text-primary text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
                 <Terminal className="w-3 h-3" /> System Terminal
               </span>
             </div>
             <div className="flex items-center gap-3">
                <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(57,255,20,0.8)]" />
-                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Active</span>
+                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">Active</span>
               </div>
               <div className="flex items-center gap-1.5 border-l border-white/10 pl-3">
                 <ShieldCheck className="w-3 h-3 text-blue-500" />
-                <span className="text-[8px] font-black text-white/40 uppercase tracking-widest">Secure</span>
+                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">Secure</span>
               </div>
             </div>
           </div>
@@ -143,7 +135,7 @@ export default function Home() {
               ) : (
                 <p className="text-white/40 text-[10px] md:text-xs font-black uppercase tracking-widest">
                   {metrics.pendingTasksCount > 0 
-                    ? `Análisis: ${metrics.pendingTasksCount} nodos pendientes detectados en el ciclo.` 
+                    ? `AnÃ¡lisis: ${metrics.pendingTasksCount} nodos pendientes detectados en el ciclo.` 
                     : "Estado: Nominal. Todos los procesos finalizados."}
                 </p>
               )}
@@ -156,7 +148,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="space-y-0.5">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] relative z-10 block text-primary">Acceso</span>
-              <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-white/40 relative z-10">Tablero de Procesos</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/40 relative z-10">Tablero de Procesos</span>
             </div>
             <ArrowUpRight className="w-6 h-6 text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform relative z-10" />
           </div>
@@ -187,7 +179,7 @@ export default function Home() {
               label="Alertas" 
               value={metrics.highPriorityTasks.length.toString()} 
               icon={<AlertTriangle className="w-5 h-5 text-red-500" />} 
-              subValue="Intervención Crítica"
+              subValue="IntervenciÃ³n CrÃ­tica"
               color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : "text-white/20"}
             />
             <MetricCard 
@@ -207,11 +199,11 @@ export default function Home() {
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-4">
               <Layers className="w-5 h-5 text-primary" />
-              Prioridades de Ejecución
+              Prioridades de EjecuciÃ³n
             </h3>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em] hidden sm:inline">Live Monitor</span>
+              <span className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hidden sm:inline">Live Monitor</span>
             </div>
           </div>
           
@@ -234,8 +226,8 @@ export default function Home() {
                       <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 transition-colors">
                         <Activity className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
                       </div>
-                      <span className="text-[8px] font-black text-red-500 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20">
-                        CRÍTICO
+                      <span className="text-[11px] font-black text-red-500 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20">
+                        CRÃTICO
                       </span>
                     </div>
 
@@ -257,7 +249,7 @@ export default function Home() {
                        >
                          <Check className="w-3.5 h-3.5 mr-2" /> Finalizar
                        </Button>
-                       <span className="text-[8px] font-black text-white/10 tracking-widest uppercase">NODE_{task.id.slice(0, 4)}</span>
+                       <span className="text-[11px] font-black text-white/10 tracking-widest uppercase">NODE_{task.id.slice(0, 4)}</span>
                     </div>
                   </motion.div>
                 ))
@@ -283,12 +275,12 @@ export default function Home() {
 
              <div className="space-y-4">
                 <SystemFeature label="Contexto" value={context} icon={<Target className="w-4 h-4" />} />
-                <SystemFeature label="Módulos" value="4/4" icon={<Layers className="w-4 h-4" />} />
+                <SystemFeature label="MÃ³dulos" value="4/4" icon={<Layers className="w-4 h-4" />} />
                 <SystemFeature label="Seguridad" value="Active" icon={<ShieldCheck className="w-4 h-4" />} />
              </div>
 
              <div className="pt-6 border-t border-white/5 space-y-3">
-                <p className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em]">System Logs</p>
+                <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">System Logs</p>
                 <div className="bg-black/40 rounded-xl p-4 border border-white/5 font-code text-[9px] text-primary/60 space-y-1">
                    <p>{'>'} Booting System...</p>
                    <p>{'>'} Auth: OK</p>
@@ -320,7 +312,7 @@ function MetricCard({ label, value, icon, subValue, color }: { label: string, va
         <div className={cn("text-3xl md:text-5xl font-black tracking-tighter leading-none italic", color)}>
           {value}
         </div>
-        <p className="text-[8px] text-white/30 font-black uppercase tracking-[0.2em] pt-2 border-t border-white/5">
+        <p className="text-[11px] text-white/30 font-black uppercase tracking-[0.2em] pt-2 border-t border-white/5">
           {subValue}
         </p>
       </CardContent>

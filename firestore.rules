@@ -31,7 +31,8 @@ service cloud.firestore {
                       && request.resource.data.context in ['Trabajo', 'Estudio'];
         
         allow update: if isOwner(userId) 
-                      && request.resource.data.userId == userId;
+                      && request.resource.data.userId == userId
+                      && request.resource.data.context in ['Trabajo', 'Estudio'];
         
         allow delete: if isOwner(userId);
       }
