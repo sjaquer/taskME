@@ -7,18 +7,18 @@ import { Home, Calendar, LayoutGrid, Clock, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { icon: Home, label: "Home", href: "/" },
-  { icon: LayoutGrid, label: "Board", href: "/kanban" },
-  { icon: Clock, label: "Schedule", href: "/schedule" },
-  { icon: Calendar, label: "Events", href: "/calendar" },
-  { icon: Settings, label: "Profile", href: "/settings" },
+  { icon: Home, label: "Inicio", href: "/" },
+  { icon: LayoutGrid, label: "Tablero", href: "/kanban" },
+  { icon: Clock, label: "Horario", href: "/schedule" },
+  { icon: Calendar, label: "Eventos", href: "/calendar" },
+  { icon: Settings, label: "Perfil", href: "/settings" },
 ];
 
 export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/5 px-6 pt-3 pb-safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/5 px-6 pt-3 pb-safe-bottom md:hidden">
       <div className="flex justify-between items-center max-w-md mx-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href;

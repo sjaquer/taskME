@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-type AppContext = 'Work' | 'Study';
+type AppContext = 'Trabajo' | 'Estudio';
 
 interface AppState {
   context: AppContext;
@@ -12,7 +12,7 @@ interface AppState {
 export const useAppContextStore = create<AppState>()(
   persist(
     (set) => ({
-      context: 'Work',
+      context: 'Trabajo',
       setContext: (context) => set({ context }),
     }),
     {

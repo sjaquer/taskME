@@ -10,63 +10,63 @@ import { Switch } from "@/components/ui/switch";
 export default function SettingsPage() {
   const sections = [
     {
-      title: "Account",
+      title: "Cuenta",
       items: [
-        { icon: User, label: "Profile Information", detail: "Alex Rivera" },
-        { icon: Shield, label: "Privacy & Security", detail: "Active" },
-        { icon: Bell, label: "Notifications", detail: "Manage alerts" },
+        { icon: User, label: "Información de Perfil", detail: "Alex Rivera" },
+        { icon: Shield, label: "Privacidad y Seguridad", detail: "Activo" },
+        { icon: Bell, label: "Notificaciones", detail: "Gestionar alertas" },
       ]
     },
     {
-      title: "Experience",
+      title: "Experiencia",
       items: [
-        { icon: Moon, label: "Dark Mode", type: "switch", value: true },
-        { icon: Zap, label: "High Performance Mode", type: "switch", value: false },
-        { icon: Lock, label: "Biometric Unlock", type: "switch", value: true },
+        { icon: Moon, label: "Modo Oscuro", type: "switch", value: true },
+        { icon: Zap, label: "Modo Alto Rendimiento", type: "switch", value: false },
+        { icon: Lock, label: "Desbloqueo Biométrico", type: "switch", value: true },
       ]
     }
   ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col items-center text-center space-y-4 pt-4">
-        <div className="relative">
-          <Avatar className="w-24 h-24 border-2 border-primary neon-glow">
+    <div className="space-y-10 max-w-2xl mx-auto py-4">
+      <div className="flex flex-col items-center text-center space-y-6">
+        <div className="relative group">
+          <Avatar className="w-32 h-32 border-4 border-primary neon-glow transition-transform group-hover:scale-105">
             <AvatarImage src="https://picsum.photos/seed/taskme/200" />
             <AvatarFallback>AR</AvatarFallback>
           </Avatar>
-          <div className="absolute bottom-0 right-0 bg-primary p-1.5 rounded-full border-2 border-background neon-glow">
-            <Zap className="w-3 h-3 text-primary-foreground" />
+          <div className="absolute bottom-1 right-1 bg-primary p-2 rounded-2xl border-4 border-background neon-glow">
+            <Zap className="w-4 h-4 text-primary-foreground" />
           </div>
         </div>
         <div>
-          <h2 className="text-xl font-black">Alex Rivera</h2>
-          <p className="text-xs text-muted-foreground">Product Architect • Pro Plan</p>
+          <h2 className="text-3xl font-black tracking-tighter">Alex Rivera</h2>
+          <p className="text-xs text-muted-foreground font-bold uppercase tracking-[0.2em] mt-1">Arquitecto de Producto • Plan Pro</p>
         </div>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {sections.map((section, idx) => (
-          <div key={idx} className="space-y-3">
-            <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.2em] ml-2">
+          <div key={idx} className="space-y-4">
+            <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] ml-4">
               {section.title}
             </h3>
-            <div className="glass rounded-3xl overflow-hidden divide-y divide-white/5">
+            <div className="glass rounded-[2.5rem] overflow-hidden divide-y divide-white/5 border border-white/5">
               {section.items.map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
-                      <item.icon className="w-4 h-4 text-muted-foreground" />
+                <div key={i} className="flex items-center justify-between p-6 hover:bg-white/[0.02] transition-all cursor-pointer group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                      <item.icon className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
-                    <span className="text-sm font-medium">{item.label}</span>
+                    <span className="text-sm font-bold tracking-tight">{item.label}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     {item.type === 'switch' ? (
                       <Switch checked={item.value} />
                     ) : (
                       <>
-                        <span className="text-xs text-muted-foreground">{item.detail}</span>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
+                        <span className="text-xs text-muted-foreground font-medium">{item.detail}</span>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground/20" />
                       </>
                     )}
                   </div>
@@ -77,9 +77,9 @@ export default function SettingsPage() {
         ))}
       </div>
 
-      <Button variant="destructive" className="w-full h-12 rounded-2xl font-bold gap-2">
-        <LogOut className="w-4 h-4" />
-        Sign Out System
+      <Button variant="destructive" className="w-full h-16 rounded-[2rem] font-black uppercase tracking-widest text-xs gap-3 shadow-2xl hover:shadow-destructive/20 transition-all">
+        <LogOut className="w-5 h-5" />
+        Desconectar del Sistema
       </Button>
     </div>
   );
