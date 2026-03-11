@@ -155,7 +155,7 @@ export default function Home() {
         </div>
 
         <Link href="/kanban" className="group w-full md:w-auto">
-          <div className="glass px-10 py-6 rounded-[2.5rem] flex items-center justify-between md:justify-start gap-5 border-white/5 group-hover:border-primary/40 group-hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xl relative overflow-hidden">
+          <div className="glass px-6 md:px-10 py-6 rounded-[2.5rem] flex items-center justify-between md:justify-start gap-5 border-white/5 group-hover:border-primary/40 group-hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="space-y-1">
               <span className="text-[11px] font-black uppercase tracking-[0.3em] relative z-10 block text-primary">Inyectar Proceso</span>
@@ -230,7 +230,7 @@ export default function Home() {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1, type: "spring", stiffness: 100 }}
-                    className="glass-card p-8 md:p-10 flex flex-col gap-8 hover:scale-[1.02] active:scale-95 group relative shadow-2xl border-white/5 hover:border-primary/30"
+                    className="glass-card p-6 md:p-10 flex flex-col gap-8 hover:scale-[1.02] active:scale-95 group relative shadow-2xl border-white/5 hover:border-primary/30"
                   >
                     <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/15 transition-colors duration-500" />
                     
@@ -341,7 +341,7 @@ function MetricCard({ label, value, icon, subValue, color }: { label: string, va
         </CardTitle>
       </CardHeader>
       <CardContent className="relative px-6 md:px-8 pb-8 md:pb-10 space-y-2 md:space-y-3">
-        <div className={cn("text-5xl md:text-7xl font-black tracking-tighter leading-none italic", color)}>
+        <div className={cn("text-4xl md:text-7xl font-black tracking-tighter leading-none italic", color)}>
           {value}
         </div>
         <p className="text-[10px] text-white/30 font-black uppercase tracking-[0.2em] pt-2 border-t border-white/5">

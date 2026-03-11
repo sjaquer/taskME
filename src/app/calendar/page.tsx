@@ -180,8 +180,8 @@ export default function CalendarPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 md:space-y-12 pb-24 lg:pb-10 px-2 md:px-0">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2 px-2">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2 md:px-0">
+        <div className="space-y-2">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">Calendario</h2>
           <p className="text-[10px] text-primary font-black uppercase tracking-[0.4em] flex items-center gap-2">
             <span className="w-8 h-px bg-primary/40" /> Control {context}
@@ -194,7 +194,7 @@ export default function CalendarPage() {
               <Plus className="w-5 h-5 mr-2" /> Agendar Evento
             </Button>
           </DialogTrigger>
-          <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[500px] p-6 md:p-8">
+          <DialogContent className="glass-card border-white/10 bg-black/95 w-[95vw] sm:max-w-[500px] p-6 md:p-8 mx-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
                 {editingTask ? 'Modificar' : 'Agendar'}
@@ -260,21 +260,23 @@ export default function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-5 space-y-6">
-          <Card className="glass-card border-white/5 bg-black/40 p-4 md:p-8 relative overflow-hidden group shadow-2xl">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={setDate}
-              locale={es}
-              className="rounded-3xl border-none mx-auto scale-95 sm:scale-105 lg:scale-110"
-              classNames={{
-                day_today: "bg-primary/10 text-primary border border-primary/20 font-black",
-                day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary hover:text-primary-foreground font-black scale-105",
-                day: "h-9 w-9 sm:h-11 sm:w-11 p-0 font-bold transition-all hover:bg-white/10 rounded-xl relative",
-              }}
-              modifiers={{ hasTask: daysWithTasks }}
-              modifiersClassNames={{ hasTask: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
-            />
+          <Card className="glass-card border-white/5 bg-black/40 p-4 md:p-8 relative overflow-hidden group shadow-2xl flex justify-center">
+            <div className="scale-95 sm:scale-105 lg:scale-110 w-full overflow-hidden flex justify-center">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                locale={es}
+                className="rounded-3xl border-none p-0"
+                classNames={{
+                  day_today: "bg-primary/10 text-primary border border-primary/20 font-black",
+                  day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary hover:text-primary-foreground font-black scale-105",
+                  day: "h-9 w-9 sm:h-11 sm:w-11 p-0 font-bold transition-all hover:bg-white/10 rounded-xl relative",
+                }}
+                modifiers={{ hasTask: daysWithTasks }}
+                modifiersClassNames={{ hasTask: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
+              />
+            </div>
           </Card>
 
           <div className="glass p-6 md:p-8 rounded-[2rem] border-white/5 flex items-center justify-between group">
@@ -297,7 +299,7 @@ export default function CalendarPage() {
             </Badge>
           </div>
 
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide px-2">
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-hide px-2">
             <AnimatePresence mode="popLayout">
               {selectedDayTasks.length > 0 ? (
                 selectedDayTasks.map((task, idx) => (
@@ -307,7 +309,7 @@ export default function CalendarPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="glass p-6 rounded-[2rem] border border-white/5 hover:border-primary/40 transition-all group relative overflow-hidden"
+                    className="glass p-5 md:p-6 rounded-[2rem] border border-white/5 hover:border-primary/40 transition-all group relative overflow-hidden"
                   >
                     <div className={cn(
                       "absolute top-0 left-0 w-1.5 h-full transition-all duration-500",
@@ -333,7 +335,7 @@ export default function CalendarPage() {
                         </div>
 
                         <div className="space-y-1">
-                          <h4 className="font-black text-xl md:text-2xl leading-none">{task.title}</h4>
+                          <h4 className="font-black text-xl md:text-2xl leading-none pr-10">{task.title}</h4>
                           {task.location && (
                             <p className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-2 mt-2">
                               <MapPin className="w-3.5 h-3.5" /> {task.location}

@@ -115,7 +115,7 @@ export default function SchedulePage() {
     if (task.context !== context) return false;
     if (task.isRecurring && task.recurringDays?.includes(getDay(selectedDate))) return true;
     return task.scheduledStartTime && isSameDay(parseISO(task.scheduledStartTime), selectedDate);
-  }).sort((a, b) => a.scheduledStartTime.compare(b.scheduledStartTime)) || [];
+  }).sort((a, b) => a.scheduledStartTime.localeCompare(b.scheduledStartTime)) || [];
 
   const handleSaveTask = () => {
     const result = ScheduleTaskSchema.safeParse(formData);
@@ -196,7 +196,7 @@ export default function SchedulePage() {
 
   return (
     <div className="space-y-8 md:space-y-12 max-w-5xl mx-auto pb-24 px-1 md:px-0">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2 md:px-0">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 md:px-0">
         <div className="space-y-2">
           <h2 className="text-4xl md:text-7xl font-black tracking-tighter leading-none">Mi Horario</h2>
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.4em] mt-2 flex items-center gap-2">
@@ -210,7 +210,7 @@ export default function SchedulePage() {
               <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" /> Programar Actividad
             </Button>
           </DialogTrigger>
-          <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[480px] p-6 md:p-8">
+          <DialogContent className="glass-card border-white/10 bg-black/95 w-[95vw] sm:max-w-[480px] p-6 md:p-8 mx-auto">
             <DialogHeader>
               <DialogTitle className="text-2xl md:text-4xl font-black tracking-tighter uppercase text-white">
                 {editingTask ? 'Modificar' : 'Nuevo Bloque'}
@@ -287,7 +287,7 @@ export default function SchedulePage() {
               key={day.toString()}
               onClick={() => setSelectedDate(day)}
               className={cn(
-                "flex-shrink-0 w-20 md:w-24 py-5 md:py-6 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center gap-2 transition-all border outline-none",
+                "flex-shrink-0 w-20 md:w-24 py-5 md:py-6 rounded-[2rem] md:rounded-[2.5rem] flex flex-col items-center gap-2 transition-all border outline-none relative",
                 isSelected ? "bg-primary text-black border-primary scale-105 md:scale-110 z-10 shadow-xl" : "glass border-white/5"
               )}
             >
@@ -331,10 +331,10 @@ export default function SchedulePage() {
                       </div>
 
                       <div className={cn(
-                        "flex-1 glass p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] flex flex-col gap-5 border-l-[6px] transition-all relative overflow-hidden",
+                        "flex-1 glass p-5 md:p-10 rounded-[2rem] md:rounded-[3.5rem] flex flex-col gap-5 border-l-[6px] transition-all relative overflow-hidden group",
                         task.priority === 'alta' ? 'border-l-red-500' : (isActive ? 'border-l-primary' : 'border-l-white/20')
                       )}>
-                        <div className="absolute top-0 right-0 p-4 md:p-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                        <div className="absolute top-0 right-0 p-4 md:p-8 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-black/40"><Edit3 className="w-4 h-4 md:w-5 md:h-5" /></Button>
                            <Button variant="ghost" size="icon" onClick={() => { if(confirm("¿Eliminar?")) deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id)); }} className="h-10 w-10 md:h-12 md:w-12 rounded-2xl bg-black/40"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></Button>
                         </div>
@@ -350,7 +350,7 @@ export default function SchedulePage() {
                                 </Badge>
                               )}
                             </div>
-                            <h4 className="text-xl md:text-4xl font-black tracking-tighter leading-none text-white">
+                            <h4 className="text-xl md:text-4xl font-black tracking-tighter leading-none text-white pr-16">
                               {task.title}
                             </h4>
                         </div>

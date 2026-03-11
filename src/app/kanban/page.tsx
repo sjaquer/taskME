@@ -256,7 +256,7 @@ export default function KanbanPage() {
 
   return (
     <div className="space-y-8 md:space-y-12 pb-24 px-1 md:px-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8 px-2 md:px-0">
         <div className="space-y-2">
           <h2 className="text-4xl md:text-7xl font-black tracking-tighter">
             Tablero <span className="text-primary glow-text italic">{context}</span>
@@ -282,7 +282,7 @@ export default function KanbanPage() {
                 <Plus className="w-4 h-4 mr-2" /> Inyectar Tarea
               </Button>
             </DialogTrigger>
-            <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[550px] p-6 md:p-10">
+            <DialogContent className="glass-card border-white/10 bg-black/95 w-[95vw] sm:max-w-[550px] p-6 md:p-10 mx-auto">
               <DialogHeader>
                 <DialogTitle className="text-2xl md:text-4xl font-black tracking-tighter uppercase flex items-center gap-4">
                   <Layers className="w-6 h-6 md:w-8 md:h-8 text-primary" />
@@ -417,7 +417,6 @@ export default function KanbanPage() {
                 />
               ))
             )}
-            {/* Sutil indicador de más columnas en móvil */}
             <div className="md:hidden flex-shrink-0 w-12 flex items-center justify-center text-white/10">
               <ChevronRight className="w-8 h-8" />
             </div>
@@ -437,7 +436,7 @@ export default function KanbanPage() {
 
 function Column({ status, tasks, onDelete, onEdit }: { status: string, tasks: Task[], onDelete: (id: string) => void, onEdit: (task: Task) => void }) {
   return (
-    <div className="flex-shrink-0 w-80 md:w-96 flex flex-col gap-5" id={status}>
+    <div className="flex-shrink-0 w-[80vw] sm:w-80 md:w-96 flex flex-col gap-5" id={status}>
       <div className="flex items-center justify-between px-3 md:px-4">
         <div className="flex items-center gap-3 md:gap-4">
           <div className={cn(
@@ -500,7 +499,7 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
       whileHover={{ y: -2 }}
       className="group relative bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[1.8rem] md:rounded-[2.5rem] p-5 md:p-8 hover:border-primary/40 transition-all shadow-xl"
     >
-      <div className="absolute top-0 right-0 p-3 md:p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+      <div className="absolute top-0 right-0 p-3 md:p-4 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
         <button 
           onClick={(e) => { e.stopPropagation(); onEdit(task); }}
           className="p-2 hover:bg-primary/20 rounded-xl text-primary/40 bg-black/40"
@@ -526,7 +525,7 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
         </div>
 
         <div className="space-y-1.5" onClick={() => onEdit(task)}>
-          <h4 className="text-xs md:text-base font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
+          <h4 className="text-xs md:text-base font-black leading-tight tracking-tight group-hover:text-primary transition-colors pr-10">
             {task.title}
           </h4>
           {task.description && (
