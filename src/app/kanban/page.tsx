@@ -213,7 +213,7 @@ export default function KanbanPage() {
     <div className="space-y-6 md:space-y-10 pb-20">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h2 className="text-4xl md:text-5xl font-black tracking-tighter flex items-center gap-4">
+          <h2 className="text-3xl md:text-5xl font-black tracking-tighter flex items-center gap-4">
             Sistema <span className="text-primary">{context}</span>
           </h2>
           <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.4em] mt-2 flex items-center gap-2">
