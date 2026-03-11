@@ -1,0 +1,21 @@
+{
+  "name": "TaskMe — Gestión de Tareas",
+  "short_name": "TaskMe",
+  "description": "Organiza tus tareas de trabajo y estudio con un sistema visual de alto rendimiento.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#39FF14",
+  "icons": [
+    {
+      "src": "/favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

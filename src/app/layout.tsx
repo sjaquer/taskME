@@ -6,6 +6,18 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'TaskMe — Gestión de Tareas',
   description: 'Organiza tus tareas de trabajo y estudio con un sistema visual de alto rendimiento.',
+  icons: {
+    icon: [
+      { url: '/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', rel: 'shortcut icon' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
+  manifest: '/site.webmanifest',
+  appleWebApp: {
+    title: 'TaskMe',
+  },
 };
 
 export const viewport: Viewport = {
