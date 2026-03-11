@@ -94,8 +94,8 @@ export default function Home() {
 
   if (!mounted || isUserLoading) return (
     <div className="space-y-12 pb-24 px-4">
-      <Skeleton className="h-32 w-2/3 bg-white/5" />
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <Skeleton className="h-32 w-full md:w-2/3 bg-white/5" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-44 rounded-[2.5rem] bg-white/5" />)}
       </div>
     </div>
@@ -110,7 +110,7 @@ export default function Home() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-12 pb-24"
+      className="space-y-10 md:space-y-16 pb-24"
     >
       {/* Hero Section - Terminal Style */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-10 px-2">
@@ -137,15 +137,15 @@ export default function Home() {
             </div>
           </motion.div>
           
-          <h2 className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.85] text-white">
+          <h2 className="text-4xl sm:text-6xl md:text-8xl font-black tracking-tighter leading-[0.85] text-white">
             Protocolo <span className="text-primary italic glow-text">{context}</span>
           </h2>
           
           <div className="flex items-center gap-4">
             {isTasksLoading ? (
-              <Skeleton className="h-6 w-80 bg-white/5 rounded-full" />
+              <Skeleton className="h-6 w-full md:w-80 bg-white/5 rounded-full" />
             ) : (
-              <p className="text-white/60 text-lg font-medium tracking-tight max-w-xl">
+              <p className="text-white/60 text-sm md:text-lg font-medium tracking-tight max-w-xl">
                 {metrics.pendingTasksCount > 0 
                   ? `Análisis de sistema: Detectados ${metrics.pendingTasksCount} nodos pendientes en el ciclo actual de ${context}. Se recomienda intervención inmediata.` 
                   : "Estado del sistema: Nominal. Todos los procesos del ciclo actual han sido finalizados con éxito."}
@@ -154,8 +154,8 @@ export default function Home() {
           </div>
         </div>
 
-        <Link href="/kanban" className="group">
-          <div className="glass px-10 py-6 rounded-[2.5rem] flex items-center gap-5 border-white/5 group-hover:border-primary/40 group-hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xl relative overflow-hidden">
+        <Link href="/kanban" className="group w-full md:w-auto">
+          <div className="glass px-10 py-6 rounded-[2.5rem] flex items-center justify-between md:justify-start gap-5 border-white/5 group-hover:border-primary/40 group-hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-2xl relative overflow-hidden">
             <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="space-y-1">
               <span className="text-[11px] font-black uppercase tracking-[0.3em] relative z-10 block text-primary">Inyectar Proceso</span>
@@ -169,7 +169,7 @@ export default function Home() {
       {/* Primary Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-2">
         {isTasksLoading ? (
-          [...Array(4)].map((_, i) => <Skeleton className="h-44 rounded-[2.5rem] bg-white/5" />)
+          [...Array(4)].map((_, i) => <Skeleton key={i} className="h-44 rounded-[2.5rem] bg-white/5" />)
         ) : (
           <>
             <MetricCard 
@@ -215,14 +215,14 @@ export default function Home() {
             </h3>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary animate-ping" />
-              <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">Live Monitor</span>
+              <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em] hidden sm:inline">Live Monitor</span>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
             <AnimatePresence mode="popLayout">
               {isTasksLoading ? (
-                 [...Array(2)].map((_, i) => <Skeleton className="h-72 rounded-[3rem] bg-white/5" />)
+                 [...Array(2)].map((_, i) => <Skeleton key={i} className="h-72 rounded-[3rem] bg-white/5" />)
               ) : metrics.highPriorityTasks.length > 0 ? (
                 metrics.highPriorityTasks.map((task, i) => (
                   <motion.div
@@ -230,23 +230,23 @@ export default function Home() {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1, type: "spring", stiffness: 100 }}
-                    className="glass-card p-10 flex flex-col gap-8 hover:scale-[1.02] active:scale-95 group relative shadow-2xl border-white/5 hover:border-primary/30"
+                    className="glass-card p-8 md:p-10 flex flex-col gap-8 hover:scale-[1.02] active:scale-95 group relative shadow-2xl border-white/5 hover:border-primary/30"
                   >
                     <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full -mr-20 -mt-20 blur-[80px] group-hover:bg-primary/15 transition-colors duration-500" />
                     
                     <div className="flex items-center justify-between relative">
-                      <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 transition-colors shadow-2xl">
-                        <Activity className="w-8 h-8 text-primary group-hover:scale-110 transition-transform" />
+                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-primary/10 transition-colors shadow-2xl">
+                        <Activity className="w-6 h-6 md:w-8 md:h-8 text-primary group-hover:scale-110 transition-transform" />
                       </div>
                       <div className="flex flex-col items-end gap-1">
-                        <span className="text-[10px] font-black text-red-500 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-                          PRIORIDAD CRÍTICA
+                        <span className="text-[9px] font-black text-red-500 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+                          CRÍTICO
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-4 relative">
-                      <h4 className="font-black text-3xl tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">
+                      <h4 className="font-black text-2xl md:text-3xl tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">
                         {task.title}
                       </h4>
                       <p className="text-[11px] text-white/40 uppercase font-black tracking-widest flex items-center gap-3">
@@ -261,7 +261,7 @@ export default function Home() {
                          onClick={() => handleQuickComplete(task.id)}
                          className="text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5 h-10 px-4 rounded-xl"
                        >
-                         <Check className="w-4 h-4 mr-2" /> Finalizar Nodo
+                         <Check className="w-4 h-4 mr-2" /> Finalizar
                        </Button>
                        <span className="text-[9px] font-black text-white/10 tracking-widest uppercase">ID: {task.id.slice(0, 8)}</span>
                     </div>
@@ -271,11 +271,10 @@ export default function Home() {
                 <motion.div 
                   initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }}
-                  className="col-span-full py-24 glass rounded-[4rem] border-dashed border-white/10 flex flex-col items-center justify-center text-white/5"
+                  className="col-span-full py-16 md:py-24 glass rounded-[3rem] md:rounded-[4rem] border-dashed border-white/10 flex flex-col items-center justify-center text-white/5"
                 >
-                  <CheckCircle2 className="w-24 h-24 mb-6 stroke-[0.5] text-primary/30 animate-float" />
-                  <p className="text-xl font-black uppercase tracking-[0.5em] text-center text-white/20">Protocolos Sincronizados</p>
-                  <p className="text-[10px] mt-4 font-bold uppercase tracking-[0.3em] text-white/10">No hay alertas críticas en el sector actual</p>
+                  <CheckCircle2 className="w-16 h-16 md:w-24 md:h-24 mb-6 stroke-[0.5] text-primary/30 animate-float" />
+                  <p className="text-lg md:text-xl font-black uppercase tracking-[0.5em] text-center text-white/20">Protocolos OK</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -284,41 +283,41 @@ export default function Home() {
 
         {/* System Summary Column */}
         <div className="lg:col-span-4 space-y-8">
-          <div className="glass p-8 rounded-[3rem] border-white/5 space-y-8 h-full bg-black/20">
+          <div className="glass p-6 md:p-8 rounded-[2.5rem] md:rounded-[3rem] border-white/5 space-y-8 h-full bg-black/20">
              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-4 flex items-center gap-3">
                <Zap className="w-4 h-4 text-yellow-500" /> Resumen Operativo
              </h3>
 
              <div className="space-y-6">
                 <SystemFeature 
-                  label="Contexto de Ejecución" 
+                  label="Contexto" 
                   value={context} 
                   icon={<Target className="w-4 h-4" />} 
                 />
                 <SystemFeature 
-                  label="Módulos Activos" 
-                  value="4/4 Estables" 
+                  label="Módulos" 
+                  value="4/4" 
                   icon={<Layers className="w-4 h-4" />} 
                 />
                 <SystemFeature 
-                  label="Conexión Firebase" 
-                  value="Latencia 12ms" 
+                  label="Latencia" 
+                  value="12ms" 
                   icon={<Cpu className="w-4 h-4" />} 
                 />
                 <SystemFeature 
-                  label="Seguridad de Datos" 
-                  value="Cifrado TLS 1.3" 
+                  label="Seguridad" 
+                  value="TLS 1.3" 
                   icon={<ShieldCheck className="w-4 h-4" />} 
                 />
              </div>
 
              <div className="pt-8 border-t border-white/5 space-y-4">
-                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Registro de Sesión</p>
+                <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">System Logs</p>
                 <div className="bg-black/40 rounded-2xl p-4 border border-white/5 font-code text-[10px] text-primary/60 space-y-1">
                    <p>{'>'} Booting System...</p>
-                   <p>{'>'} User authenticated: {user.email?.slice(0, 5)}***</p>
-                   <p>{'>'} Syncing Firestore nodes...</p>
-                   <p>{'>'} {metrics.todayTasks.length} activities mapped for today.</p>
+                   <p>{'>'} User: {user.email?.split('@')[0]}***</p>
+                   <p>{'>'} Syncing nodes...</p>
+                   <p>{'>'} {metrics.todayTasks.length} mapped.</p>
                    <p className="text-white/40 animate-pulse">{'>'} Ready.</p>
                 </div>
              </div>
@@ -333,7 +332,7 @@ function MetricCard({ label, value, icon, subValue, color }: { label: string, va
   return (
     <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-1 shadow-2xl transition-all duration-500">
       <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-[60px] group-hover:bg-primary/10 transition-colors duration-700" />
-      <CardHeader className="pb-6 relative px-8 pt-8">
+      <CardHeader className="pb-4 md:pb-6 relative px-6 md:px-8 pt-6 md:pt-8">
         <CardTitle className="text-[10px] text-white/40 flex items-center gap-4 uppercase tracking-[0.4em] font-black">
           <div className="p-2 bg-white/5 rounded-xl border border-white/10 group-hover:bg-primary/10 transition-colors">
             {icon}
@@ -341,7 +340,7 @@ function MetricCard({ label, value, icon, subValue, color }: { label: string, va
           {label}
         </CardTitle>
       </CardHeader>
-      <CardContent className="relative px-8 pb-10 space-y-3">
+      <CardContent className="relative px-6 md:px-8 pb-8 md:pb-10 space-y-2 md:space-y-3">
         <div className={cn("text-5xl md:text-7xl font-black tracking-tighter leading-none italic", color)}>
           {value}
         </div>

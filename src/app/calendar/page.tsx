@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -80,7 +79,6 @@ export default function CalendarPage() {
     setDate(new Date());
   }, []);
 
-  // Form State
   const [formData, setFormData] = useState({
     title: "",
     time: "09:00",
@@ -100,10 +98,10 @@ export default function CalendarPage() {
 
   if (!mounted || isUserLoading) return (
     <div className="max-w-7xl mx-auto space-y-8 p-4">
-      <Skeleton className="h-16 w-1/3 bg-white/5" />
+      <Skeleton className="h-16 w-2/3 md:w-1/3 bg-white/5" />
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <Skeleton className="lg:col-span-5 h-[500px] bg-white/5 rounded-[3rem]" />
-        <Skeleton className="lg:col-span-7 h-[500px] bg-white/5 rounded-[3rem]" />
+        <Skeleton className="lg:col-span-5 h-[400px] md:h-[500px] bg-white/5 rounded-[2.5rem]" />
+        <Skeleton className="lg:col-span-7 h-[400px] md:h-[500px] bg-white/5 rounded-[2.5rem]" />
       </div>
     </div>
   );
@@ -118,16 +116,9 @@ export default function CalendarPage() {
     if (task.context !== context) return false;
 
     const taskDate = parseISO(task.dueDate);
-    
-    // 1. Direct match
     if (isSameDay(taskDate, date)) return true;
-
-    // 2. Weekly match
     if (task.recurrenceType === 'weekly' && task.recurringDays?.includes(getDay(date))) return true;
-
-    // 3. Monthly match
     if (task.recurrenceType === 'monthly' && getDate(taskDate) === getDate(date)) return true;
-
     return false;
   }).sort((a, b) => a.dueDate.localeCompare(b.dueDate)) || [];
 
@@ -165,19 +156,11 @@ export default function CalendarPage() {
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingTask ? "Evento actualizado" : "Evento agendado", description: "Sincronizado con la nube." });
+    toast({ title: editingTask ? "Actualizado" : "Agendado" });
   };
 
   const resetForm = () => {
-    setFormData({ 
-      title: "", 
-      time: "09:00", 
-      priority: "media", 
-      status: "Pendiente",
-      location: "",
-      category: "Personal",
-      recurrenceType: "none"
-    });
+    setFormData({ title: "", time: "09:00", priority: "media", status: "Pendiente", location: "", category: "Personal", recurrenceType: "none" });
     setEditingTask(null);
   };
 
@@ -195,19 +178,13 @@ export default function CalendarPage() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
-    deleteDocumentNonBlocking(docRef);
-    toast({ variant: "destructive", title: "Evento purgado" });
-  };
-
   return (
-    <div className="max-w-7xl mx-auto space-y-8 md:space-y-12 pb-24 lg:pb-10 px-4 md:px-0">
+    <div className="max-w-7xl mx-auto space-y-8 md:space-y-12 pb-24 lg:pb-10 px-2 md:px-0">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2">
+        <div className="space-y-2 px-2">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">Calendario</h2>
           <p className="text-[10px] text-primary font-black uppercase tracking-[0.4em] flex items-center gap-2">
-            <span className="w-8 h-px bg-primary/40" /> Control de Eventos {context}
+            <span className="w-8 h-px bg-primary/40" /> Control {context}
           </p>
         </div>
         
@@ -219,28 +196,21 @@ export default function CalendarPage() {
           </DialogTrigger>
           <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[500px] p-6 md:p-8">
             <DialogHeader>
-              <DialogTitle className="text-3xl font-black tracking-tighter uppercase">
-                {editingTask ? 'Modificar Evento' : 'Inyectar Evento'}
+              <DialogTitle className="text-2xl md:text-3xl font-black tracking-tighter uppercase">
+                {editingTask ? 'Modificar' : 'Agendar'}
               </DialogTitle>
             </DialogHeader>
-            <div className="space-y-5 py-4">
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-black text-primary">Nombre del Evento</Label>
-                <Input 
-                  placeholder="Ej: Lanzamiento de Módulo..."
-                  value={formData.title} 
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="bg-white/5 border-white/10 h-12 rounded-xl" 
-                />
+                <Label className="text-[10px] uppercase font-black text-primary">Nombre</Label>
+                <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} className="bg-white/5 border-white/10 h-11 rounded-xl" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black">Categoría</Label>
                   <Select value={formData.category} onValueChange={(v) => setFormData({...formData, category: v})}>
-                    <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
                       {CATEGORIES.map(cat => (
                         <SelectItem key={cat.label} value={cat.label}>{cat.label}</SelectItem>
@@ -251,9 +221,7 @@ export default function CalendarPage() {
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black">Repetición</Label>
                   <Select value={formData.recurrenceType} onValueChange={(v: any) => setFormData({...formData, recurrenceType: v})}>
-                    <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
                       <SelectItem value="none">Ninguna</SelectItem>
                       <SelectItem value="weekly">Semanal</SelectItem>
@@ -263,35 +231,15 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-black text-white/50">Lugar</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
-                  <Input 
-                    placeholder="Sede Central, Sala 4..."
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    className="pl-10 bg-white/5 border-white/10 h-12 rounded-xl" 
-                  />
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black">Hora</Label>
-                  <Input 
-                    type="time"
-                    value={formData.time}
-                    onChange={(e) => setFormData({...formData, time: e.target.value})}
-                    className="bg-white/5 border-white/10 h-12 rounded-xl"
-                  />
+                  <Input type="time" value={formData.time} onChange={(e) => setFormData({...formData, time: e.target.value})} className="bg-white/5 border-white/10 h-11 rounded-xl" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black">Prioridad</Label>
                   <Select value={formData.priority} onValueChange={(v: any) => setFormData({...formData, priority: v})}>
-                    <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="bg-white/5 border-white/10 h-11 rounded-xl"><SelectValue /></SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-white/10">
                       <SelectItem value="baja">Baja</SelectItem>
                       <SelectItem value="media">Media</SelectItem>
@@ -302,8 +250,8 @@ export default function CalendarPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleSaveEvent} className="w-full neon-glow font-black uppercase text-xs h-16 rounded-2xl">
-                {editingTask ? 'Actualizar Evento' : 'Sincronizar Evento'}
+              <Button onClick={handleSaveEvent} className="w-full neon-glow font-black uppercase text-xs h-14 md:h-16 rounded-2xl">
+                {editingTask ? 'Actualizar' : 'Agendar'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -312,47 +260,44 @@ export default function CalendarPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-5 space-y-6">
-          <Card className="glass-card border-white/5 bg-black/40 p-6 md:p-8 relative overflow-hidden group shadow-2xl">
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] group-hover:bg-primary/20 transition-all" />
+          <Card className="glass-card border-white/5 bg-black/40 p-4 md:p-8 relative overflow-hidden group shadow-2xl">
             <Calendar
               mode="single"
               selected={date}
               onSelect={setDate}
               locale={es}
-              className="rounded-3xl border-none mx-auto scale-100 sm:scale-110 lg:scale-110 xl:scale-125 my-8"
+              className="rounded-3xl border-none mx-auto scale-95 sm:scale-105 lg:scale-110"
               classNames={{
                 day_today: "bg-primary/10 text-primary border border-primary/20 font-black",
-                day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary hover:text-primary-foreground font-black scale-110",
-                day: "h-10 w-10 sm:h-12 sm:w-12 p-0 font-bold transition-all hover:bg-white/10 rounded-xl relative",
+                day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary hover:text-primary-foreground font-black scale-105",
+                day: "h-9 w-9 sm:h-11 sm:w-11 p-0 font-bold transition-all hover:bg-white/10 rounded-xl relative",
               }}
               modifiers={{ hasTask: daysWithTasks }}
-              modifiersClassNames={{ hasTask: "after:content-[''] after:absolute after:bottom-1.5 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full after:neon-glow" }}
+              modifiersClassNames={{ hasTask: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
             />
           </Card>
 
-          <div className="glass p-8 rounded-[2.5rem] border-white/5 flex items-center justify-between group">
+          <div className="glass p-6 md:p-8 rounded-[2rem] border-white/5 flex items-center justify-between group">
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Resumen del Contexto</p>
-              <p className="text-3xl font-black">{tasks?.filter(t => t.context === context).length || 0} Nodos Totales</p>
+              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Nodos Totales</p>
+              <p className="text-2xl md:text-3xl font-black">{tasks?.filter(t => t.context === context).length || 0}</p>
             </div>
-            <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:scale-110 transition-transform">
-              <LayoutGrid className="w-8 h-8 text-primary" />
-            </div>
+            <LayoutGrid className="w-8 h-8 text-primary/40 group-hover:text-primary transition-colors" />
           </div>
         </div>
 
         <div className="lg:col-span-7 space-y-6">
           <div className="flex items-center justify-between px-4">
-            <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3">
-              <CalendarIcon className="w-5 h-5 text-primary" />
-              {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : "Selecciona una fecha"}
+            <h3 className="text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-3">
+              <CalendarIcon className="w-4 h-4 text-primary" />
+              {date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : "Fecha"}
             </h3>
-            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-5 h-10 font-black text-xs">
+            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-4 h-8 font-black text-[9px]">
               {selectedDayTasks.length} EVENTOS
             </Badge>
           </div>
 
-          <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2 scrollbar-hide">
+          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide px-2">
             <AnimatePresence mode="popLayout">
               {selectedDayTasks.length > 0 ? (
                 selectedDayTasks.map((task, idx) => (
@@ -362,67 +307,60 @@ export default function CalendarPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="glass p-6 md:p-8 rounded-[2.5rem] border border-white/5 hover:border-primary/40 transition-all group relative overflow-hidden"
+                    className="glass p-6 rounded-[2rem] border border-white/5 hover:border-primary/40 transition-all group relative overflow-hidden"
                   >
                     <div className={cn(
-                      "absolute top-0 left-0 w-2 h-full transition-all duration-500",
-                      task.priority === 'alta' ? 'bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 
-                      task.priority === 'media' ? 'bg-primary shadow-[0_0_20px_rgba(57,255,20,0.5)]' : 'bg-white/10'
+                      "absolute top-0 left-0 w-1.5 h-full transition-all duration-500",
+                      task.priority === 'alta' ? 'bg-red-500' : task.priority === 'media' ? 'bg-primary' : 'bg-white/10'
                     )} />
                     
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                       <div className="space-y-4">
-                        <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={cn(
-                            "text-[9px] font-black px-3 py-1 rounded-full uppercase border",
+                            "text-[8px] font-black px-2 py-0.5 rounded-full uppercase border",
                             task.priority === 'alta' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
                             task.priority === 'media' ? 'bg-primary/10 text-primary border-primary/20' : 
-                            'bg-white/5 text-muted-foreground border-white/10'
+                            'bg-white/5 text-muted-foreground'
                           )}>
                             {task.priority}
                           </span>
                           {task.category && (
-                            <Badge className="bg-white/5 text-white/60 border-white/10 text-[9px] font-black px-3">
-                              <Tag className="w-3 h-3 mr-2" /> {task.category}
-                            </Badge>
-                          )}
-                          {task.isRecurring && (
-                            <Badge className="bg-primary/5 text-primary border-primary/20 text-[9px] font-black">
-                              <RefreshCcw className="w-3 h-3 mr-2" /> {task.recurrenceType}
+                            <Badge className="bg-white/5 text-white/50 border-white/10 text-[8px] font-black px-2">
+                              {task.category}
                             </Badge>
                           )}
                         </div>
 
                         <div className="space-y-1">
-                          <h4 className="font-black text-2xl md:text-3xl leading-none group-hover:text-primary transition-colors">{task.title}</h4>
+                          <h4 className="font-black text-xl md:text-2xl leading-none">{task.title}</h4>
                           {task.location && (
-                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2 mt-2">
-                              <MapPin className="w-4 h-4 text-primary/40" /> {task.location}
+                            <p className="text-[9px] font-black text-muted-foreground uppercase flex items-center gap-2 mt-2">
+                              <MapPin className="w-3.5 h-3.5" /> {task.location}
                             </p>
                           )}
                         </div>
 
-                        <div className="flex items-center gap-8 text-[11px] text-muted-foreground font-black uppercase tracking-widest">
-                          <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-primary" /> {format(parseISO(task.dueDate), "HH:mm")}</span>
-                          <span className="text-primary/20">NODE ID: {task.id.slice(0, 8)}</span>
+                        <div className="flex items-center gap-6 text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                          <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-primary" /> {format(parseISO(task.dueDate), "HH:mm")}</span>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
-                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-12 w-12 rounded-2xl hover:bg-primary/10 hover:text-primary">
-                          <Edit3 className="w-6 h-6" />
+                      <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-10 w-10 rounded-xl hover:bg-primary/10">
+                          <Edit3 className="w-5 h-5" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} className="h-12 w-12 rounded-2xl hover:bg-red-500/10 hover:text-red-500">
-                          <Trash2 className="w-6 h-6" />
+                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id))} className="h-10 w-10 rounded-xl hover:bg-red-500/10 hover:text-red-500">
+                          <Trash2 className="w-5 h-5" />
                         </Button>
                       </div>
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center py-32 glass rounded-[3.5rem] border-dashed border-white/5 text-muted-foreground/10">
-                  <Inbox className="w-24 h-24 mb-6 stroke-[0.5]" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.5em] text-center">Espacio Vacío</p>
+                <div className="flex flex-col items-center justify-center py-24 glass rounded-[3rem] border-dashed border-white/5 opacity-5">
+                  <Inbox className="w-16 h-16 mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.5em]">Vacío</p>
                 </div>
               )}
             </AnimatePresence>
