@@ -4,12 +4,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
-  User, 
   Bell, 
-  Lock, 
   Shield, 
   LogOut, 
-  Moon, 
   Zap, 
   Layout, 
   Check, 
@@ -48,21 +45,16 @@ export default function SettingsPage() {
   const [passwords, setPasswords] = useState({ new: "", confirm: "" });
   const [showPass, setShowPass] = useState(false);
 
-  // Sync settings with Firestore for professional persistence
+  useEffect(() => {
+    if (user?.displayName) setNewName(user.displayName);
+  }, [user]);
+
   const settingsRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return doc(firestore, "users", user.uid, "settings", "app");
   }, [firestore, user]);
 
   const { data: cloudSettings } = useDoc(settingsRef);
-
-  // Effect to sync local store with cloud settings when they load
-  useEffect(() => {
-    if (cloudSettings) {
-      // In a real app, we would update the store here
-      // This ensures the user's setup follows them across devices
-    }
-  }, [cloudSettings]);
 
   const saveSettingsToCloud = (updates: any) => {
     if (!settingsRef) return;
@@ -73,7 +65,7 @@ export default function SettingsPage() {
       setDoc(settingsRef, {
         ...updates,
         updatedAt: serverTimestamp()
-      });
+      }, { merge: true });
     });
   };
 
@@ -82,8 +74,10 @@ export default function SettingsPage() {
     setIsUpdatingName(true);
     try {
       await updateProfile(user, { displayName: newName });
-      const userRef = doc(firestore, "users", user.uid);
-      await updateDoc(userRef, { displayName: newName });
+      if (firestore) {
+        const userRef = doc(firestore, "users", user.uid);
+        await setDoc(userRef, { displayName: newName, updatedAt: serverTimestamp() }, { merge: true });
+      }
       toast({ title: "Perfil actualizado", description: "Tu nombre ha sido cambiado con éxito." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message });
@@ -102,7 +96,7 @@ export default function SettingsPage() {
       toast({ title: "Seguridad actualizada", description: "Contraseña cambiada correctamente." });
       setPasswords({ new: "", confirm: "" });
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error crítico", description: "Por seguridad, vuelve a iniciar sesión antes de cambiar la contraseña." });
+      toast({ variant: "destructive", title: "Re-autenticación requerida", description: "Por seguridad, vuelve a iniciar sesión antes de cambiar la contraseña." });
     }
   };
 
@@ -116,22 +110,15 @@ export default function SettingsPage() {
     saveSettingsToCloud({ activeModules: { ...activeModules, [module]: !activeModules[module] } });
   };
 
-  const handleTogglePerformance = (enabled: boolean) => {
-    setHighPerformanceMode(enabled);
-    saveSettingsToCloud({ highPerformanceMode: enabled });
-  };
-
   return (
     <div className="space-y-10 max-w-4xl mx-auto py-4 px-2 md:px-0">
       <div className="flex flex-col md:flex-row items-center md:items-start gap-8 md:gap-12">
         <div className="relative group">
           <Avatar className="w-32 h-32 md:w-40 md:h-40 border-4 border-primary neon-glow transition-transform group-hover:scale-105">
             <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/400`} />
-            <AvatarFallback className="text-4xl font-black">
-              {user?.displayName?.slice(0, 2).toUpperCase() || "US"}
-            </AvatarFallback>
+            <AvatarFallback className="text-4xl font-black">{user?.displayName?.slice(0, 2).toUpperCase() || "OP"}</AvatarFallback>
           </Avatar>
-          <div className="absolute bottom-2 right-2 bg-primary p-2.5 rounded-2xl border-4 border-background neon-glow">
+          <div className="absolute bottom-2 right-2 bg-primary p-2.5 rounded-2xl border-4 border-background">
             <Zap className="w-5 h-5 text-primary-foreground" />
           </div>
         </div>
@@ -148,22 +135,14 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label className="text-[10px] uppercase font-black tracking-widest text-primary">Nombre en Red</Label>
               <div className="flex gap-2">
-                <Input 
-                  value={newName} 
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="bg-white/5 border-white/10 h-12 rounded-xl"
-                />
-                <Button 
-                  onClick={handleUpdateName} 
-                  disabled={isUpdatingName}
-                  className="h-12 w-12 rounded-xl bg-primary/20 text-primary border border-primary/20 hover:bg-primary hover:text-black transition-all"
-                >
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-white/5 border-white/10 h-12 rounded-xl" />
+                <Button onClick={handleUpdateName} disabled={isUpdatingName} className="h-12 w-12 rounded-xl bg-primary/20 text-primary border border-primary/20">
                   {isUpdatingName ? <RefreshCcw className="w-4 h-4 animate-spin" /> : <Check className="w-5 h-5" />}
                 </Button>
               </div>
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase font-black tracking-widest text-white/40">Nodo de Enlace (Email)</Label>
+              <Label className="text-[10px] uppercase font-black text-white/40">Email de Enlace</Label>
               <Input value={user?.email || "Anon"} disabled className="bg-white/5 border-white/10 h-12 rounded-xl opacity-50" />
             </div>
           </div>
@@ -171,108 +150,55 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-              <Layout className="w-4 h-4 text-primary" /> Módulos de Ejecución
-            </h3>
-            <div className="glass rounded-[2.5rem] p-6 space-y-6 border-white/5 bg-black/40">
-              <ModuleToggle label="Terminal Principal" active={activeModules.dashboard} onToggle={() => handleToggleModule('dashboard')} />
-              <ModuleToggle label="Tablero de Procesos" active={activeModules.kanban} onToggle={() => handleToggleModule('kanban')} />
-              <ModuleToggle label="Agenda Semanal" active={activeModules.schedule} onToggle={() => handleToggleModule('schedule')} />
-              <ModuleToggle label="Control de Eventos" active={activeModules.calendar} onToggle={() => handleToggleModule('calendar')} />
-            </div>
-          </section>
+        <section className="space-y-4">
+          <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+            <Layout className="w-4 h-4 text-primary" /> Módulos de Ejecución
+          </h3>
+          <div className="glass rounded-[2.5rem] p-6 space-y-6 border-white/5 bg-black/40">
+            <ModuleToggle label="Terminal Principal" active={activeModules.dashboard} onToggle={() => handleToggleModule('dashboard')} />
+            <ModuleToggle label="Tablero de Procesos" active={activeModules.kanban} onToggle={() => handleToggleModule('kanban')} />
+            <ModuleToggle label="Agenda Semanal" active={activeModules.schedule} onToggle={() => handleToggleModule('schedule')} />
+            <ModuleToggle label="Control de Eventos" active={activeModules.calendar} onToggle={() => handleToggleModule('calendar')} />
+          </div>
+        </section>
 
-          <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" /> Parámetros Visuales
-            </h3>
-            <div className="glass rounded-[2.5rem] p-6 space-y-6 border-white/5 bg-black/40">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-bold">Aceleración de Renderizado</p>
-                  <p className="text-[10px] text-muted-foreground uppercase">Optimiza refresco de UI</p>
-                </div>
-                <Switch checked={highPerformanceMode} onCheckedChange={handleTogglePerformance} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm font-bold">Protección OLED</p>
-                  <p className="text-[10px] text-muted-foreground uppercase">Fuerza negros puros #000</p>
-                </div>
-                <Switch checked={true} disabled />
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="space-y-8">
-          <section className="space-y-4">
-            <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-              <Shield className="w-4 h-4 text-primary" /> Protocolos de Seguridad
-            </h3>
-            <div className="glass rounded-[2.5rem] p-6 space-y-6 border-white/5 bg-black/40">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full h-14 rounded-2xl border-white/5 bg-white/5 hover:bg-white/10 gap-3">
-                    <KeyRound className="w-5 h-5 text-primary" /> Re-encriptar Acceso
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="glass-card border-white/10 bg-black/95">
-                  <DialogHeader>
-                    <DialogTitle className="text-2xl font-black uppercase tracking-tighter">Inyección de Nueva Clave</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-black">Nueva Contraseña</Label>
-                      <div className="relative">
-                        <Input 
-                          type={showPass ? "text" : "password"} 
-                          value={passwords.new} 
-                          onChange={(e) => setPasswords({...passwords, new: e.target.value})}
-                          className="bg-white/5 border-white/10 h-12 pr-12 rounded-xl"
-                        />
-                        <button onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20">
-                          {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-black">Validar Contraseña</Label>
-                      <Input 
-                        type="password" 
-                        value={passwords.confirm} 
-                        onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
-                        className="bg-white/5 border-white/10 h-12 rounded-xl"
-                      />
+        <section className="space-y-4">
+          <h3 className="text-[10px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+            <Shield className="w-4 h-4 text-primary" /> Seguridad
+          </h3>
+          <div className="glass rounded-[2.5rem] p-6 space-y-6 border-white/5 bg-black/40">
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full h-14 rounded-2xl border-white/5 bg-white/5 gap-3">
+                  <KeyRound className="w-5 h-5 text-primary" /> Cambiar Contraseña
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="glass-card border-white/10 bg-black/95">
+                <DialogHeader><DialogTitle className="text-2xl font-black uppercase">Nueva Clave</DialogTitle></DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black">Nueva Contraseña</Label>
+                    <div className="relative">
+                      <Input type={showPass ? "text" : "password"} value={passwords.new} onChange={(e) => setPasswords({...passwords, new: e.target.value})} className="bg-white/5 border-white/10 h-12 pr-12 rounded-xl" />
+                      <button onClick={() => setShowPass(!showPass)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20">
+                        {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
-                  <DialogFooter>
-                    <Button onClick={handleChangePassword} className="w-full neon-glow h-14 rounded-2xl font-black uppercase text-xs">Confirmar Cambios</Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                <div className="flex items-center gap-3">
-                  <Bell className="w-5 h-5 text-muted-foreground" />
-                  <span className="text-sm font-bold">Alertas de Sistema</span>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] uppercase font-black">Validar</Label>
+                    <Input type="password" value={passwords.confirm} onChange={(e) => setPasswords({...passwords, confirm: e.target.value})} className="bg-white/5 border-white/10 h-12 rounded-xl" />
+                  </div>
                 </div>
-                <Switch checked={true} />
-              </div>
-            </div>
-          </section>
+                <DialogFooter><Button onClick={handleChangePassword} className="w-full neon-glow h-14 rounded-2xl font-black uppercase text-xs">Confirmar</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
 
-          <Button 
-            onClick={handleLogout}
-            variant="destructive" 
-            className="w-full h-16 md:h-20 rounded-[2rem] font-black uppercase tracking-widest text-xs gap-3 shadow-2xl hover:shadow-destructive/20 transition-all"
-          >
-            <LogOut className="w-6 h-6" />
-            Terminar Sesión de Operador
-          </Button>
-        </div>
+            <Button onClick={handleLogout} variant="destructive" className="w-full h-16 rounded-2xl font-black uppercase text-xs gap-3">
+              <LogOut className="w-5 h-5" /> Terminar Sesión
+            </Button>
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -283,7 +209,7 @@ function ModuleToggle({ label, active, onToggle }: { label: string, active: bool
     <div className="flex items-center justify-between group">
       <div className="space-y-1">
         <p className="text-sm font-bold group-hover:text-primary transition-colors">{label}</p>
-        <p className="text-[9px] text-muted-foreground uppercase tracking-widest">{active ? "Módulo en Ejecución" : "Módulo en Hibernación"}</p>
+        <p className="text-[9px] text-muted-foreground uppercase">{active ? "Activo" : "Inactivo"}</p>
       </div>
       <Switch checked={active} onCheckedChange={onToggle} />
     </div>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { collection, doc, serverTimestamp } from "firebase/firestore";
@@ -20,8 +20,6 @@ import {
   MapPin,
   RefreshCcw,
   Tag,
-  Share2,
-  ExternalLink,
   Inbox
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CalendarTask {
   id: string;
@@ -71,9 +70,15 @@ export default function CalendarPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  const [date, setDate] = useState<Date | undefined>(new Date());
+  const [mounted, setMounted] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<CalendarTask | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    setDate(new Date());
+  }, []);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -93,7 +98,16 @@ export default function CalendarPage() {
 
   const { data: tasks, isLoading: isTasksLoading } = useCollection<CalendarTask>(tasksQuery);
 
-  if (isUserLoading) return null;
+  if (!mounted || isUserLoading) return (
+    <div className="max-w-7xl mx-auto space-y-8 p-4">
+      <Skeleton className="h-16 w-1/3 bg-white/5" />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <Skeleton className="lg:col-span-5 h-[500px] bg-white/5 rounded-[3rem]" />
+        <Skeleton className="lg:col-span-7 h-[500px] bg-white/5 rounded-[3rem]" />
+      </div>
+    </div>
+  );
+
   if (!user) {
     router.push("/login");
     return null;
@@ -151,7 +165,7 @@ export default function CalendarPage() {
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingTask ? "Evento actualizado" : "Evento agendado", description: "La base de datos ha sido sincronizada." });
+    toast({ title: editingTask ? "Evento actualizado" : "Evento agendado", description: "Sincronizado con la nube." });
   };
 
   const resetForm = () => {
@@ -184,35 +198,17 @@ export default function CalendarPage() {
   const handleDeleteTask = (taskId: string) => {
     const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
     deleteDocumentNonBlocking(docRef);
-  };
-
-  const handleGoogleSync = () => {
-    toast({
-      title: "Sincronización Iniciada",
-      description: "Conectando con Google Calendar API...",
-    });
-    // In a production app, we would use window.location.href to trigger OAuth
+    toast({ variant: "destructive", title: "Evento purgado" });
   };
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 md:space-y-12 pb-24 lg:pb-10 px-4 md:px-0">
-      {/* Header Adaptativo */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter leading-none">Calendario</h2>
-          <div className="flex items-center gap-3">
-            <p className="text-[10px] text-primary font-black uppercase tracking-[0.4em] flex items-center gap-2">
-              <span className="w-8 h-px bg-primary/40" /> Control de Eventos {context}
-            </p>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleGoogleSync}
-              className="h-8 rounded-full border border-white/5 bg-white/5 hover:bg-primary/20 hover:text-primary transition-all text-[9px] font-black uppercase tracking-widest px-4"
-            >
-              <RefreshCcw className="w-3 h-3 mr-2" /> Google Sync
-            </Button>
-          </div>
+          <p className="text-[10px] text-primary font-black uppercase tracking-[0.4em] flex items-center gap-2">
+            <span className="w-8 h-px bg-primary/40" /> Control de Eventos {context}
+          </p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); setIsDialogOpen(open); }}>
@@ -268,7 +264,7 @@ export default function CalendarPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase font-black text-white/50">Localización / Lugar</Label>
+                <Label className="text-[10px] uppercase font-black text-white/50">Lugar</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
                   <Input 
@@ -315,7 +311,6 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Calendar Column */}
         <div className="lg:col-span-5 space-y-6">
           <Card className="glass-card border-white/5 bg-black/40 p-6 md:p-8 relative overflow-hidden group shadow-2xl">
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[100px] group-hover:bg-primary/20 transition-all" />
@@ -346,7 +341,6 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Task List Column */}
         <div className="lg:col-span-7 space-y-6">
           <div className="flex items-center justify-between px-4">
             <h3 className="text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3">
@@ -385,9 +379,8 @@ export default function CalendarPage() {
                             task.priority === 'media' ? 'bg-primary/10 text-primary border-primary/20' : 
                             'bg-white/5 text-muted-foreground border-white/10'
                           )}>
-                            {task.priority || 'media'}
+                            {task.priority}
                           </span>
-                          <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">{task.status}</span>
                           {task.category && (
                             <Badge className="bg-white/5 text-white/60 border-white/10 text-[9px] font-black px-3">
                               <Tag className="w-3 h-3 mr-2" /> {task.category}
@@ -395,8 +388,7 @@ export default function CalendarPage() {
                           )}
                           {task.isRecurring && (
                             <Badge className="bg-primary/5 text-primary border-primary/20 text-[9px] font-black">
-                              <RefreshCcw className="w-3 h-3 mr-2" /> 
-                              {task.recurrenceType === 'monthly' ? 'Mensual' : 'Semanal'}
+                              <RefreshCcw className="w-3 h-3 mr-2" /> {task.recurrenceType}
                             </Badge>
                           )}
                         </div>
@@ -416,21 +408,11 @@ export default function CalendarPage() {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all scale-90 group-hover:scale-100">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => openEditDialog(task)}
-                          className="h-12 w-12 md:h-14 md:w-14 rounded-2xl hover:bg-primary/10 hover:text-primary transition-all"
-                        >
+                      <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all">
+                        <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-12 w-12 rounded-2xl hover:bg-primary/10 hover:text-primary">
                           <Edit3 className="w-6 h-6" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="h-12 w-12 md:h-14 md:w-14 rounded-2xl hover:bg-red-500/10 hover:text-red-500 transition-all"
-                        >
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteTask(task.id)} className="h-12 w-12 rounded-2xl hover:bg-red-500/10 hover:text-red-500">
                           <Trash2 className="w-6 h-6" />
                         </Button>
                       </div>
@@ -438,15 +420,10 @@ export default function CalendarPage() {
                   </motion.div>
                 ))
               ) : (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
-                  animate={{ opacity: 1 }}
-                  className="flex flex-col items-center justify-center py-32 glass rounded-[3.5rem] border-dashed border-white/5 text-muted-foreground/10"
-                >
+                <div className="flex flex-col items-center justify-center py-32 glass rounded-[3.5rem] border-dashed border-white/5 text-muted-foreground/10">
                   <Inbox className="w-24 h-24 mb-6 stroke-[0.5]" />
                   <p className="text-[11px] font-black uppercase tracking-[0.5em] text-center">Espacio Vacío</p>
-                  <p className="text-[9px] mt-3 font-bold uppercase tracking-widest">Sincroniza un proceso para este día</p>
-                </motion.div>
+                </div>
               )}
             </AnimatePresence>
           </div>
@@ -455,4 +432,3 @@ export default function CalendarPage() {
     </div>
   );
 }
-

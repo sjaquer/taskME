@@ -6,7 +6,6 @@ import { useAppContextStore } from "@/lib/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   CheckCircle2, 
-  Circle, 
   Clock, 
   TrendingUp, 
   Zap, 
@@ -15,8 +14,7 @@ import {
   Target,
   Terminal,
   Activity,
-  Check,
-  ZapOff
+  Check
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -89,11 +87,18 @@ export default function Home() {
     toast({ 
       title: "Nodo Finalizado", 
       description: "Operación de datos completada con éxito.",
-      variant: "default"
     });
   };
 
-  if (!mounted || isUserLoading) return null;
+  if (!mounted || isUserLoading) return (
+    <div className="space-y-12 pb-24 px-4">
+      <Skeleton className="h-32 w-2/3 bg-white/5" />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-44 rounded-[2.5rem] bg-white/5" />)}
+      </div>
+    </div>
+  );
+
   if (!user) {
     router.push("/login");
     return null;
