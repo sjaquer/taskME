@@ -1,21 +1,19 @@
-
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { AppContext } from '@/types/task';
 
-type AppContext = 'Trabajo' | 'Estudio';
+interface ModuleFlags {
+  dashboard: boolean;
+  kanban: boolean;
+  schedule: boolean;
+  calendar: boolean;
+}
 
 interface AppState {
   context: AppContext;
   setContext: (context: AppContext) => void;
-  // Feature Flags para módulos
-  activeModules: {
-    dashboard: boolean;
-    kanban: boolean;
-    schedule: boolean;
-    calendar: boolean;
-  };
-  toggleModule: (module: keyof AppState['activeModules']) => void;
-  // Preferencias de UI
+  activeModules: ModuleFlags;
+  toggleModule: (module: keyof ModuleFlags) => void;
   highPerformanceMode: boolean;
   setHighPerformanceMode: (enabled: boolean) => void;
   kanbanColumns: string[];

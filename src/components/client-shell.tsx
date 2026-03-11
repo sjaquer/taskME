@@ -19,7 +19,7 @@ import Link from 'next/link';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { cn } from '@/lib/utils';
 
-const desktopItems = [
+const DESKTOP_NAV = [
   { icon: Home, label: "Inicio", href: "/" },
   { icon: LayoutGrid, label: "Tablero", href: "/kanban" },
   { icon: Clock, label: "Horario", href: "/schedule" },
@@ -34,15 +34,15 @@ export function ClientShell({ children }: { children: ReactNode }) {
     <>
       <FirebaseClientProvider>
         <SidebarProvider defaultOpen={true}>
-          <div className="flex min-h-screen w-full relative">
-            {/* Decorative Background Elements */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-20">
-              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/10 blur-[100px] rounded-full" />
+          <div className="flex min-h-screen w-full relative bg-[#050505]">
+            {/* Subtle ambient glow — GPU composited */}
+            <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-15 gpu-blur">
+              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/15 blur-[120px] rounded-full" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full" />
             </div>
 
             {/* Desktop Sidebar */}
-            <Sidebar className="hidden md:flex border-r border-white/5 bg-black/40 backdrop-blur-3xl z-40">
+            <Sidebar className="hidden md:flex border-r border-white/[0.06] bg-[#050505]/80 backdrop-blur-2xl z-40">
               <SidebarHeader className="p-8">
                 <div className="flex items-center gap-4 group cursor-pointer">
                   <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center neon-glow group-hover:scale-110 transition-transform duration-500">
@@ -50,13 +50,13 @@ export function ClientShell({ children }: { children: ReactNode }) {
                   </div>
                   <div className="flex flex-col">
                     <span className="text-2xl font-black tracking-tighter leading-none glow-text">TaskMe</span>
-                    <span className="text-[9px] font-black tracking-[0.3em] text-primary uppercase mt-1">v2.0 Beta</span>
+                    <span className="text-[9px] font-black tracking-[0.3em] text-primary uppercase mt-1 font-data">v2.0</span>
                   </div>
                 </div>
               </SidebarHeader>
               <SidebarContent className="px-6 py-8">
                 <SidebarMenu className="gap-3">
-                  {desktopItems.map((item) => {
+                  {DESKTOP_NAV.map((item) => {
                     const isActive = pathname === item.href;
                     return (
                       <SidebarMenuItem key={item.href}>
@@ -66,12 +66,12 @@ export function ClientShell({ children }: { children: ReactNode }) {
                           className={cn(
                             "rounded-2xl py-8 px-6 transition-all duration-500 active:scale-95 group",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_25px_rgba(57,255,20,0.15)]"
-                              : "hover:bg-white/5 text-muted-foreground hover:text-white border border-transparent"
+                              ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(57,255,20,0.1)]"
+                              : "hover:bg-white/[0.03] text-muted-foreground hover:text-white border border-transparent"
                           )}
                         >
                           <Link href={item.href} className="flex items-center gap-5">
-                            <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && "neon-glow")} />
+                            <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && "drop-shadow-[0_0_6px_rgba(57,255,20,0.4)]")} />
                             <span className="font-black uppercase tracking-[0.2em] text-[10px]">{item.label}</span>
                           </Link>
                         </SidebarMenuButton>

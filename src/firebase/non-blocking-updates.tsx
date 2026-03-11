@@ -8,6 +8,7 @@ import {
   CollectionReference,
   DocumentReference,
   SetOptions,
+  FieldValue,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
@@ -57,7 +58,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: Record
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: Record<string, unknown>) {
-  updateDoc(docRef, data)
+  updateDoc(docRef, data as Record<string, FieldValue | Partial<unknown> | undefined>)
     .catch(error => {
       errorEmitter.emit(
         'permission-error',

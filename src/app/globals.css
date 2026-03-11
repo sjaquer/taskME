@@ -3,28 +3,36 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════
+   CYBER-FOCUS TACTICAL — Design System Tokens
+   Background: OLED Deep Black #050505
+   Accent: Neon Systems #39FF14
+   ═══════════════════════════════════════════════ */
+
 @layer base {
   :root {
+    /* OLED Deep Black — strict #050505 */
     --background: 0 0% 2%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 4%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3%;
-    --popover-foreground: 0 0% 98%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 2.5%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 2%;
+    --popover-foreground: 0 0% 96%;
+    /* Neon Systems #39FF14 = hsl(111, 100%, 54%) */
     --primary: 111 100% 54%;
-    --primary-foreground: 0 0% 5%;
-    --secondary: 0 0% 8%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
+    --primary-foreground: 0 0% 2%;
+    --secondary: 0 0% 5%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 8%;
+    --muted-foreground: 0 0% 55%;
     --accent: 111 100% 54%;
-    --accent-foreground: 0 0% 5%;
-    --destructive: 0 84.2% 60.2%;
+    --accent-foreground: 0 0% 2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 12%;
-    --input: 0 0% 12%;
+    --border: 0 0% 8%;
+    --input: 0 0% 8%;
     --ring: 111 100% 54%;
-    --radius: 1.5rem;
+    --radius: 1rem;
   }
 }
 
@@ -33,54 +41,85 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground selection:bg-primary/30 antialiased;
+    @apply bg-[#050505] text-foreground selection:bg-primary/20 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
-    background-image: 
-      radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.08), transparent 50%),
-      linear-gradient(to bottom, transparent, hsl(var(--background))),
-      url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.02' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+    background-image:
+      radial-gradient(ellipse 60% 40% at 50% -5%, rgba(57,255,20,0.04), transparent),
+      url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.015' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
 
+/* ═══════════════════════════════════════
+   Tactical Glass — Glassmorphism System
+   ═══════════════════════════════════════ */
 @layer utilities {
   .glass {
-    @apply bg-black/60 border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.8)];
+    @apply bg-white/[0.03] border border-white/[0.06] shadow-[0_8px_32px_0_rgba(0,0,0,0.9)];
   }
   .glass-blur {
     @apply glass backdrop-blur-xl;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    will-change: transform;
+    transform: translateZ(0);
   }
   .glass-card {
-    @apply glass rounded-[2rem] overflow-hidden transition-all duration-300;
+    @apply bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-300;
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+  .glass-card-elevated {
+    @apply glass-card backdrop-blur-xl;
+    border-top-color: rgba(255, 255, 255, 0.12);
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
   }
   .neon-glow {
-    @apply shadow-[0_0_20px_rgba(57,255,20,0.3)] hover:shadow-[0_0_30px_rgba(57,255,20,0.5)] transition-shadow duration-300;
+    @apply shadow-[0_0_12px_rgba(57,255,20,0.25)] hover:shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-shadow duration-300;
+  }
+  .neon-border {
+    @apply border border-primary/30;
+    box-shadow: 0 0 8px rgba(57, 255, 20, 0.1), inset 0 0 8px rgba(57, 255, 20, 0.03);
   }
   .glow-text {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5);
+    text-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
+  /* Monospace for variable data (hours, counters, IDs, dates) */
+  .font-data {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* Scrollbar Estilizada */
-::-webkit-scrollbar {
-  width: 5px;
-}
-::-webkit-scrollbar-track {
-  @apply bg-black/20;
-}
+/* ═══════════════════════════════
+   Scrollbar — Minimal Tactical
+   ═══════════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  @apply bg-white/5 rounded-full hover:bg-primary/40 transition-colors;
+  @apply bg-white/[0.06] rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/30;
 }
 
-/* Animaciones suaves */
+/* ═══════════════════════════════
+   Animations
+   ═══════════════════════════════ */
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }
-
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+/* GPU-accelerated blur for mobile */
+.gpu-blur {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
