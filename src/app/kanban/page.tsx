@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp, query, where } from "firebase/firestore";
 import { addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -98,10 +98,14 @@ export default function KanbanPage() {
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
+  // OPTIMIZACIÓN: Solo leemos tareas que coinciden con el contexto actual (reducción de costos de lectura)
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return collection(firestore, "users", user.uid, "tasks");
-  }, [firestore, user]);
+    return query(
+      collection(firestore, "users", user.uid, "tasks"),
+      where("context", "==", context)
+    );
+  }, [firestore, user, context]);
 
   const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
@@ -385,7 +389,7 @@ export default function KanbanPage() {
               <Column 
                 key={status} 
                 status={status} 
-                tasks={tasks?.filter(t => t.status === status && t.context === context) || []}
+                tasks={tasks?.filter(t => t.status === status) || []}
                 onDelete={handleDeleteTask}
               />
             ))

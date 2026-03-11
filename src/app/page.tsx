@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import { isSameDay, parseISO, startOfToday } from "date-fns";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -48,18 +48,23 @@ export default function Home() {
     setToday(startOfToday());
   }, []);
 
+  // OPTIMIZACIÓN: Filtramos por contexto directamente en Firestore para reducir lecturas (Cost Savings)
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return collection(firestore, "users", user.uid, "tasks");
-  }, [firestore, user]);
+    return query(
+      collection(firestore, "users", user.uid, "tasks"),
+      where("context", "==", context)
+    );
+  }, [firestore, user, context]);
 
   const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
   const metrics = useMemo(() => {
     if (!tasks || !today) return { todayTasks: [], completedToday: 0, progressPercent: 0, highPriorityTasks: [], pendingTasksCount: 0 };
 
+    // El filtro de contexto ya viene desde Firestore, aquí solo filtramos por fecha
     const todayTasks = tasks.filter(t => 
-      t.context === context && t.dueDate && isSameDay(parseISO(t.dueDate), today)
+      t.dueDate && isSameDay(parseISO(t.dueDate), today)
     );
 
     const completedToday = todayTasks.filter(t => t.status === "Hecho").length;
@@ -72,7 +77,7 @@ export default function Home() {
     const pendingTasksCount = todayTasks.filter(t => t.status !== "Hecho").length;
 
     return { todayTasks, completedToday, progressPercent, highPriorityTasks, pendingTasksCount };
-  }, [tasks, context, today]);
+  }, [tasks, today]);
 
   if (!mounted || isUserLoading) return null;
   if (!user) {
