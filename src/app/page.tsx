@@ -1,4 +1,3 @@
-
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +13,7 @@ import {
   ArrowUpRight,
   Target
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { collection } from "firebase/firestore";
 import { isSameDay, parseISO, startOfToday } from "date-fns";
@@ -38,9 +37,11 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => {
     setMounted(true);
+    setToday(startOfToday());
   }, []);
 
   const tasksQuery = useMemoFirebase(() => {
@@ -48,7 +49,27 @@ export default function Home() {
     return collection(firestore, "users", user.uid, "tasks");
   }, [firestore, user]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const { data: tasks } = useCollection<Task>(tasksQuery);
+
+  // Memoizar métricas para evitar re-cálculos innecesarios
+  const metrics = useMemo(() => {
+    if (!tasks || !today) return { todayTasks: [], completedToday: 0, progressPercent: 0, highPriorityTasks: [], pendingTasksCount: 0 };
+
+    const todayTasks = tasks.filter(t => 
+      t.context === context && t.dueDate && isSameDay(parseISO(t.dueDate), today)
+    );
+
+    const completedToday = todayTasks.filter(t => t.status === "Hecho").length;
+    const progressPercent = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
+    
+    const highPriorityTasks = todayTasks
+      .filter(t => t.priority === 'alta' && t.status !== "Hecho")
+      .slice(0, 3);
+
+    const pendingTasksCount = todayTasks.filter(t => t.status !== "Hecho").length;
+
+    return { todayTasks, completedToday, progressPercent, highPriorityTasks, pendingTasksCount };
+  }, [tasks, context, today]);
 
   if (!mounted || isUserLoading) return null;
   if (!user) {
@@ -56,27 +77,12 @@ export default function Home() {
     return null;
   }
 
-  // Lógica de métricas reales
-  const todayTasks = tasks?.filter(t => 
-    t.context === context && t.dueDate && isSameDay(parseISO(t.dueDate), startOfToday())
-  ) || [];
-
-  const completedToday = todayTasks.filter(t => t.status === "Hecho").length;
-  const progressPercent = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
-  
-  const highPriorityTasks = todayTasks
-    .filter(t => t.priority === 'alta' && t.status !== "Hecho")
-    .slice(0, 3);
-
-  const pendingTasksCount = todayTasks.filter(t => t.status !== "Hecho").length;
-
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-8 md:space-y-12 pb-20"
     >
-      {/* Header Seccion */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
         <div className="space-y-3">
           <motion.div 
@@ -91,8 +97,8 @@ export default function Home() {
           </h2>
           <p className="text-muted-foreground text-xs md:text-sm font-medium flex items-center gap-2">
             <Zap className="w-4 h-4 text-primary animate-pulse" />
-            {pendingTasksCount > 0 
-              ? `Tienes ${pendingTasksCount} tareas críticas pendientes para hoy.` 
+            {metrics.pendingTasksCount > 0 
+              ? `Tienes ${metrics.pendingTasksCount} tareas críticas pendientes para hoy.` 
               : "Todo bajo control. No hay tareas pendientes para hoy."}
           </p>
         </div>
@@ -105,27 +111,26 @@ export default function Home() {
         </Link>
       </div>
 
-      {/* Grid de Metricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-2">
         <MetricCard 
           label="Progreso Diario" 
-          value={`${progressPercent}%`} 
+          value={`${metrics.progressPercent}%`} 
           icon={<Target className="w-4 h-4 text-primary" />} 
-          subValue={`${completedToday}/${todayTasks.length} Tareas`}
+          subValue={`${metrics.completedToday}/${metrics.todayTasks.length} Tareas`}
           color="text-primary"
         />
         <MetricCard 
           label="Pendientes Hoy" 
-          value={pendingTasksCount.toString()} 
+          value={metrics.pendingTasksCount.toString()} 
           icon={<Clock className="w-4 h-4" />} 
           subValue="Nodos activos"
         />
         <MetricCard 
           label="Prioridad Alta" 
-          value={highPriorityTasks.length.toString()} 
+          value={metrics.highPriorityTasks.length.toString()} 
           icon={<AlertTriangle className="w-4 h-4 text-red-500" />} 
           subValue="Requiere atención"
-          color={highPriorityTasks.length > 0 ? "text-red-500" : ""}
+          color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : ""}
         />
         <MetricCard 
           label="Eficiencia" 
@@ -135,7 +140,6 @@ export default function Home() {
         />
       </div>
 
-      {/* Pipeline de Prioridades */}
       <div className="space-y-6 px-2">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-black uppercase tracking-[0.4em] text-muted-foreground flex items-center gap-3">
@@ -147,8 +151,8 @@ export default function Home() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           <AnimatePresence mode="popLayout">
-            {highPriorityTasks.length > 0 ? (
-              highPriorityTasks.map((task, i) => (
+            {metrics.highPriorityTasks.length > 0 ? (
+              metrics.highPriorityTasks.map((task, i) => (
                 <motion.div
                   key={task.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -188,7 +192,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* CTA Footer para Movil */}
       <div className="md:hidden pt-4 px-2">
         <Link href="/kanban">
           <button className="w-full h-14 bg-primary text-black font-black uppercase tracking-widest text-xs rounded-2xl neon-glow">

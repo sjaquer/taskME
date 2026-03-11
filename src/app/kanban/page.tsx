@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -11,8 +10,7 @@ import {
   Tag, 
   AlertCircle, 
   Settings2,
-  X,
-  Check
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { z } from "zod";
 
 // Drag and Drop Imports
 import {
@@ -42,13 +41,23 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
+// Esquema de validación para tareas
+const TaskSchema = z.object({
+  title: z.string().min(1, "El título es requerido").max(100),
+  description: z.string().optional(),
+  priority: z.enum(['baja', 'media', 'alta']),
+  status: z.string().min(1),
+  tags: z.array(z.string()),
+  context: z.string(),
+  userId: z.string(),
+});
 
 type Priority = 'baja' | 'media' | 'alta';
 
@@ -70,12 +79,10 @@ export default function KanbanPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // States / Columns Management
   const [columns, setColumns] = useState<string[]>(['Pendiente', 'Haciendo', 'Hecho']);
   const [newColumnName, setNewColumnName] = useState("");
   const [isManagingColumns, setIsManagingColumns] = useState(false);
 
-  // Task Creation State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "",
@@ -85,7 +92,6 @@ export default function KanbanPage() {
     tags: ""
   });
 
-  // Drag State
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
   const tasksQuery = useMemoFirebase(() => {
@@ -93,19 +99,12 @@ export default function KanbanPage() {
     return collection(firestore, "users", user.uid, "tasks");
   }, [firestore, user]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const { data: tasks } = useCollection<Task>(tasksQuery);
 
-  // Sensors configuration for Desktop and Mobile
   const sensors = useSensors(
-    useSensor(PointerSensor, { 
-      activationConstraint: { distance: 8 } 
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 250, tolerance: 5 }
-    }),
-    useSensor(KeyboardSensor, { 
-      coordinateGetter: sortableKeyboardCoordinates 
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   useEffect(() => {
@@ -121,9 +120,7 @@ export default function KanbanPage() {
   }
 
   const handleAddTask = () => {
-    if (!newTask.title.trim()) return;
-
-    const taskData = {
+    const rawData = {
       title: newTask.title,
       description: newTask.description,
       priority: newTask.priority,
@@ -131,6 +128,13 @@ export default function KanbanPage() {
       tags: newTask.tags.split(',').map(t => t.trim()).filter(t => t !== ""),
       context,
       userId: user.uid,
+    };
+
+    const result = TaskSchema.safeParse(rawData);
+    if (!result.success) return;
+
+    const taskData = {
+      ...result.data,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       dueDate: new Date().toISOString(),
@@ -158,7 +162,6 @@ export default function KanbanPage() {
     setColumns(columns.filter(c => c !== col));
   };
 
-  // Drag and Drop Handlers
   function handleDragStart(event: DragStartEvent) {
     const { active } = event;
     const task = tasks?.find(t => t.id === active.id);
@@ -200,7 +203,7 @@ export default function KanbanPage() {
       ? (overId as string) 
       : tasks?.find(t => t.id === overId)?.status;
 
-    if (overStatus && active.data.current?.status !== overStatus) {
+    if (overStatus && active.data.current?.task.status !== overStatus) {
       const docRef = doc(firestore, "users", user.uid, "tasks", activeId as string);
       updateDocumentNonBlocking(docRef, { 
         status: overStatus,
@@ -261,7 +264,7 @@ export default function KanbanPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black">Nivel de Prioridad</Label>
+                    <Label className="text-[10px] uppercase font-black">Prioridad</Label>
                     <Select value={newTask.priority} onValueChange={(v: Priority) => setNewTask({...newTask, priority: v})}>
                       <SelectTrigger className="bg-white/5 border-white/10 h-10 md:h-12 rounded-xl">
                         <SelectValue />
@@ -288,7 +291,7 @@ export default function KanbanPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase font-black">Etiquetas (separadas por coma)</Label>
+                  <Label className="text-[10px] uppercase font-black">Etiquetas</Label>
                   <Input 
                     placeholder="UI, UX, Backend..."
                     value={newTask.tags} 
@@ -364,7 +367,7 @@ export default function KanbanPage() {
         <DragOverlay>
           {activeTask ? (
             <div className="w-[280px] md:w-[300px] rotate-3 scale-105 pointer-events-none opacity-90 shadow-2xl">
-               <TaskCard task={activeTask} onDelete={() => {}} />
+               <TaskCard task={activeTask} onDelete={() => {}} isOverlay />
             </div>
           ) : null}
         </DragOverlay>
@@ -409,7 +412,7 @@ function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], on
   );
 }
 
-function TaskCard({ task, onDelete }: { task: Task, onDelete: (id: string) => void }) {
+function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: string) => void, isOverlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { 
@@ -421,7 +424,7 @@ function TaskCard({ task, onDelete }: { task: Task, onDelete: (id: string) => vo
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging && !isOverlay ? 0.4 : 1,
   };
 
   const priorityColors = {
