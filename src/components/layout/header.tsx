@@ -5,6 +5,7 @@ import { useAppContextStore } from "@/lib/store";
 import { Briefcase, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppContext } from "@/types/task";
+import Image from "next/image";
 
 const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] = [
   { value: 'Trabajo', icon: Briefcase, label: 'Trabajo' },
@@ -17,8 +18,8 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-blur gpu-blur h-16 px-4 flex items-center justify-between border-b border-white/[0.06] md:px-8">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center neon-glow">
-          <span className="text-primary-foreground font-black text-xs">TM</span>
+        <div className="w-8 h-8 rounded-lg overflow-hidden neon-glow shrink-0">
+          <Image src="/isotipo.svg" alt="TaskMe" width={32} height={32} className="w-full h-full object-contain" />
         </div>
         <h1 className="text-xl font-headline font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent hidden sm:block">
           TaskMe

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Home, LayoutGrid, Clock, Calendar, Settings } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { cn } from '@/lib/utils';
 
@@ -45,8 +46,8 @@ export function ClientShell({ children }: { children: ReactNode }) {
             <Sidebar className="hidden md:flex border-r border-white/[0.06] bg-[#050505]/80 backdrop-blur-2xl z-40">
               <SidebarHeader className="p-8">
                 <div className="flex items-center gap-4 group cursor-pointer">
-                  <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center neon-glow group-hover:scale-110 transition-transform duration-500">
-                    <span className="text-primary-foreground font-black text-xl italic">T</span>
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden neon-glow group-hover:scale-110 transition-transform duration-500 shrink-0">
+                    <Image src="/isotipo.svg" alt="TaskMe" width={48} height={48} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex flex-col">
                     <span className="text-2xl font-black tracking-tighter leading-none glow-text">TaskMe</span>
