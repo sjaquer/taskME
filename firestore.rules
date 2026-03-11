@@ -1,13 +1,7 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * FILOSOFÍA DE SEGURIDAD REFORZADA
-     * 
-     * Se implementa un modelo de 'Denegación por Defecto'.
-     * Cada escritura valida que el userId del documento coincida estrictamente con el UID del solicitante.
-     */
 
     function isSignedIn() {
       return request.auth != null;
@@ -17,40 +11,29 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    // --- Reglas de Perfil de Usuario ---
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false; // Los perfiles no deben listarse
-      
       allow create: if isOwner(userId) 
-                    && request.resource.data.id == userId
-                    && request.resource.data.email == request.auth.token.email;
-      
-      allow update: if isExistingOwner(userId) 
-                    && request.resource.data.id == resource.data.id;
-      
-      allow delete: if isExistingOwner(userId);
+                    && request.resource.data.id == userId;
+      allow update: if isOwner(userId);
+      allow delete: if isOwner(userId);
 
-      // --- Reglas de Tareas y Eventos ---
+      match /settings/{settingId} {
+        allow read, write: if isOwner(userId);
+      }
+
       match /tasks/{taskId} {
-        allow get, list: if isOwner(userId);
-
-        // Validación de integridad de datos en creación
+        allow read: if isOwner(userId);
+        
         allow create: if isOwner(userId) 
                       && request.resource.data.userId == userId
                       && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && request.resource.data.title.size() < 100;
+                      && request.resource.data.context in ['Trabajo', 'Estudio'];
         
-        // Impedir que se cambie el dueño de la tarea en actualización
-        allow update: if isExistingOwner(userId) 
-                      && request.resource.data.userId == resource.data.userId;
+        allow update: if isOwner(userId) 
+                      && request.resource.data.userId == userId;
         
-        allow delete: if isExistingOwner(userId);
+        allow delete: if isOwner(userId);
       }
     }
 

@@ -2,168 +2,78 @@
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
+      "description": "Perfil de usuario maestro vinculado a Firebase Auth.",
       "type": "object",
-      "description": "Represents a user's profile information, linked to an external authentication system (e.g., Firebase Auth). This entity stores user-specific preferences and identifies the owner of tasks and schedules.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity. This typically corresponds to the user's ID from the external authentication system (e.g., Firebase Auth UID)."
-        },
-        "email": {
-          "type": "string",
-          "description": "The email address associated with the user's account, primarily for display and identification. (From external authentication system)",
-          "format": "email"
-        },
-        "displayName": {
-          "type": "string",
-          "description": "The user's preferred display name or full name. (From external authentication system)"
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the user profile was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "displayName",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "email", "displayName", "createdAt", "updatedAt"]
     },
-    "Task": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Task",
+    "UserConfig": {
+      "title": "UserConfig",
+      "description": "Preferencias y configuración de la aplicación persistentes en la nube.",
       "type": "object",
-      "description": "Represents a single task managed by the user, appearing on the Kanban board and potentially scheduled in the calendar view.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Task entity."
-        },
-        "userId": {
-          "type": "string",
-          "description": "Reference to the UserProfile entity that owns this task. (Relationship: UserProfile 1:N Task)"
-        },
-        "title": {
-          "type": "string",
-          "description": "A concise title or name for the task."
-        },
-        "description": {
-          "type": "string",
-          "description": "A more detailed explanation or additional notes for the task."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current state or progress of the task, corresponding to Kanban board columns."
-        },
-        "context": {
-          "type": "string",
-          "description": "The context (e.g., 'Trabajo' or 'Estudio') to which this task belongs, used for filtering across the application."
-        },
-        "dueDate": {
-          "type": "string",
-          "description": "Optional date and time when the task is due, used for reminders and notifications.",
-          "format": "date-time"
-        },
-        "location": {
-          "type": "string",
-          "description": "Physical or virtual location associated with the task/event."
-        },
-        "category": {
-          "type": "string",
-          "description": "Categorization of the event (e.g., 'Personal', 'Académico')."
-        },
-        "isRecurring": {
-          "type": "boolean",
-          "description": "Whether the task is a recurring routine."
-        },
-        "recurrenceType": {
-          "type": "string",
-          "enum": ["none", "weekly", "monthly"],
-          "description": "Type of recurrence for the task."
-        },
-        "recurringDays": {
-          "type": "array",
-          "description": "Array of numbers representing days of the week (0-6) for weekly recurrence.",
-          "items": {
-            "type": "integer"
+        "activeModules": {
+          "type": "object",
+          "properties": {
+            "dashboard": { "type": "boolean" },
+            "kanban": { "type": "boolean" },
+            "schedule": { "type": "boolean" },
+            "calendar": { "type": "boolean" }
           }
         },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the task was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp indicating when the task was last updated.",
-          "format": "date-time"
-        }
+        "highPerformanceMode": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Entidad unificada para gestión de Kanban, Schedule y Calendar.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string", "enum": ["baja", "media", "alta"] },
+        "context": { "type": "string", "enum": ["Trabajo", "Estudio"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "scheduledStartTime": { "type": "string", "format": "date-time" },
+        "scheduledEndTime": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isRecurring": { "type": "boolean" },
+        "recurrenceType": { "type": "string", "enum": ["none", "weekly", "monthly"] },
+        "recurringDays": { "type": "array", "items": { "type": "integer" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "userId",
-        "title",
-        "status",
-        "context",
-        "createdAt",
-        "updatedAt"
-      ]
+      "required": ["id", "userId", "title", "status", "context", "createdAt", "updatedAt"]
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores individual user profiles. The document ID (`userId`) must match the Firebase Authentication UID of the user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user (Firebase Auth UID) who owns this profile."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/users/{userId}/tasks/{taskId}",
-        "definition": {
-          "entityName": "Task",
-          "schema": {
-            "$ref": "#/backend/entities/Task"
-          },
-          "description": "Stores tasks specific to a user. Each task document includes a denormalized `userId` field that MUST match the parent `userId` in the path.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique ID of the user (Firebase Auth UID) who owns these tasks."
-            },
-            {
-              "name": "taskId",
-              "description": "The unique ID of the task."
-            }
-          ]
-        }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Documento de perfil de usuario."
+    },
+    "/users/{userId}/settings/app": {
+      "schema": { "$ref": "#/entities/UserConfig" },
+      "description": "Configuraciones globales de la aplicación del usuario."
+    },
+    "/users/{userId}/tasks/{taskId}": {
+      "schema": { "$ref": "#/entities/Task" },
+      "description": "Colección centralizada de tareas y eventos."
+    }
   }
 }
