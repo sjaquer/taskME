@@ -1,0 +1,161 @@
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user's profile information, linked to an external authentication system (e.g., Firebase Auth). This entity stores user-specific preferences and identifies the owner of tasks and schedules.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity. This typically corresponds to the user's ID from the external authentication system (e.g., Firebase Auth UID)."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address associated with the user's account, primarily for display and identification. (From external authentication system)",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's preferred display name or full name. (From external authentication system)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user profile was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a single task managed by the user, appearing on the Kanban board and potentially scheduled in the calendar view.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Task entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile entity that owns this task. (Relationship: UserProfile 1:N Task)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title or name for the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A more detailed explanation or additional notes for the task."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current state or progress of the task, corresponding to Kanban board columns.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context": {
+          "type": "string",
+          "description": "The context (e.g., 'Work' or 'Study') to which this task belongs, used for filtering across the application.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Optional date and time when the task is due, used for reminders and notifications.",
+          "format": "date-time"
+        },
+        "scheduledStartTime": {
+          "type": "string",
+          "description": "Optional start date and time if the task is explicitly scheduled in the weekly calendar view.",
+          "format": "date-time"
+        },
+        "scheduledEndTime": {
+          "type": "string",
+          "description": "Optional end date and time if the task is explicitly scheduled in the weekly calendar view.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the task was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "title",
+        "status",
+        "context",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profiles. The document ID (`userId`) must match the Firebase Authentication UID of the user. This path enforces owner-only access, ensuring `request.auth.uid` matches `{userId}`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user (Firebase Auth UID) who owns this profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores tasks specific to a user. Each task document includes a denormalized `userId` field that MUST match the parent `userId` in the path and the authenticated user's ID. This ensures authorization independence for all read/write operations by allowing simple `request.auth.uid == userId && resource.data.userId == userId` checks.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique ID of the user (Firebase Auth UID) who owns these tasks."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique ID of the task."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed following a user-centric, hierarchical model to maximize security, scalability, and debuggability, adhering strictly to the provided design principles. \n\n**Authorization Independence (CRITICAL):** Authorization independence is achieved by embedding the `userId` directly into the path of all user-specific data. For instance, user profiles are stored at `/users/{userId}`, and tasks are stored at `/users/{userId}/tasks/{taskId}`. Crucially, each `Task` document also includes a denormalized `userId` field. This allows Firestore Security Rules to perform simple, efficient checks like `request.auth.uid == userId` for the `/users/{userId}` collection and `request.auth.uid == userId && resource.data.userId == userId` for the `/users/{userId}/tasks/{taskId}` subcollection. This strategy completely eliminates the need for expensive and complex `get()` calls in security rules, which break atomic operations and are difficult to debug. It ensures that ownership is explicit and verifiable directly from the document's path and its internal fields.\n\n**QAPs (Queries as Authorization Primitives):** The structural segregation enables secure `list` operations. A user can only 'list' tasks within their own `/users/{userId}/tasks` subcollection. The security rules will only permit reads if `request.auth.uid` matches the `{userId}` wildcard in the path. This means that any client-side query for tasks implicitly operates within the authenticated user's data scope, making `list` operations inherently secure. Filtering by task `status` ('Pending', 'Doing', 'Done') or `context` ('Work', 'Study') is then applied on the client-side or as additional `where` clauses within the already secured user's task subcollection, without requiring complex security rule logic to filter data.\n\n**Structural Segregation:** Each collection and subcollection (`/users` and `/users/{userId}/tasks`) contains documents with a homogeneous security posture. The `/users` collection stores individual `UserProfile` documents, each accessible only by its owner. The `/users/{userId}/tasks` subcollection stores `Task` documents, all of which are owned by the parent `userId` and are therefore also only accessible by that user. This avoids mixing data with different access requirements, simplifying security rules significantly.\n\n**Access Modeling & Consistency:** The design consistently uses path-based ownership (`/users/{userId}`) for private data and continues this hierarchy (`/users/{userId}/tasks/{taskId}`) for user-owned entities (Tasks). This pattern makes authorization highly predictable and easy to reason about. Wildcards like `{userId}` and `{taskId}` are descriptive, and fields like `userId` are consistently used for ownership tracking. The `Task` entity's `status` field explicitly models its state, avoiding ambiguous boolean flags.\n\nThis architecture minimizes rule complexity, maximizes security, and provides a clear, scalable foundation for the TaskMe application."
+  }
+}
