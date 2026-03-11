@@ -14,16 +14,20 @@ import {
   ArrowUpRight,
   Target,
   Terminal,
-  Activity
+  Activity,
+  Check
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc, serverTimestamp } from "firebase/firestore";
 import { isSameDay, parseISO, startOfToday } from "date-fns";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/hooks/use-toast";
 
 interface Task {
   id: string;
@@ -48,7 +52,6 @@ export default function Home() {
     setToday(startOfToday());
   }, []);
 
-  // OPTIMIZACIÓN: Filtramos por contexto directamente en Firestore para reducir lecturas (Cost Savings)
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -62,7 +65,6 @@ export default function Home() {
   const metrics = useMemo(() => {
     if (!tasks || !today) return { todayTasks: [], completedToday: 0, progressPercent: 0, highPriorityTasks: [], pendingTasksCount: 0 };
 
-    // El filtro de contexto ya viene desde Firestore, aquí solo filtramos por fecha
     const todayTasks = tasks.filter(t => 
       t.dueDate && isSameDay(parseISO(t.dueDate), today)
     );
@@ -78,6 +80,13 @@ export default function Home() {
 
     return { todayTasks, completedToday, progressPercent, highPriorityTasks, pendingTasksCount };
   }, [tasks, today]);
+
+  const handleQuickComplete = (taskId: string) => {
+    if (!user || !firestore) return;
+    const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
+    updateDocumentNonBlocking(docRef, { status: "Hecho", updatedAt: serverTimestamp() });
+    toast({ title: "Nodo Finalizado", description: "El proceso se ha marcado como completado." });
+  };
 
   if (!mounted || isUserLoading) return null;
   if (!user) {
@@ -207,7 +216,6 @@ export default function Home() {
                       <span className="text-[10px] font-black text-red-500 px-4 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
                         PRIORIDAD ALTA
                       </span>
-                      <span className="text-[8px] font-mono text-white/20 mt-1">NODE: {task.id.slice(0, 12)}</span>
                     </div>
                   </div>
 
@@ -221,7 +229,14 @@ export default function Home() {
                   </div>
                   
                   <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
-                     <span className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">{context} UNIT</span>
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       onClick={() => handleQuickComplete(task.id)}
+                       className="text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5"
+                     >
+                       <Check className="w-4 h-4 mr-2" /> Finalizar Nodo
+                     </Button>
                      <ArrowUpRight className="w-5 h-5 text-white/10 group-hover:text-primary transition-colors" />
                   </div>
                 </motion.div>

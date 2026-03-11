@@ -12,7 +12,9 @@ import {
   AlertCircle, 
   Settings2,
   X,
-  Loader2
+  Loader2,
+  Edit3,
+  CheckCircle2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -28,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { z } from "zod";
+import { toast } from "@/hooks/use-toast";
 
 // Drag and Drop Imports
 import {
@@ -88,7 +91,9 @@ export default function KanbanPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [newTask, setNewTask] = useState({
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  
+  const [taskForm, setTaskForm] = useState({
     title: "",
     description: "",
     priority: "media" as Priority,
@@ -98,7 +103,6 @@ export default function KanbanPage() {
 
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
-  // OPTIMIZACIÓN: Solo leemos tareas que coinciden con el contexto actual (reducción de costos de lectura)
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
     return query(
@@ -116,8 +120,8 @@ export default function KanbanPage() {
   );
 
   useEffect(() => {
-    if (columns.length > 0 && !newTask.status) {
-      setNewTask(prev => ({ ...prev, status: columns[0] }));
+    if (columns.length > 0 && !taskForm.status) {
+      setTaskForm(prev => ({ ...prev, status: columns[0] }));
     }
   }, [columns]);
 
@@ -127,44 +131,71 @@ export default function KanbanPage() {
     return null;
   }
 
-  const handleAddTask = () => {
+  const handleSaveTask = () => {
     setIsSaving(true);
     const rawData = {
-      title: newTask.title,
-      description: newTask.description,
-      priority: newTask.priority,
-      status: newTask.status || columns[0],
-      tags: newTask.tags.split(',').map(t => t.trim()).filter(t => t !== ""),
+      title: taskForm.title,
+      description: taskForm.description,
+      priority: taskForm.priority,
+      status: taskForm.status || columns[0],
+      tags: taskForm.tags.split(',').map(t => t.trim()).filter(t => t !== ""),
       context,
       userId: user.uid,
     };
 
     const result = TaskSchema.safeParse(rawData);
     if (!result.success) {
+      toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       setIsSaving(false);
       return;
     }
 
     const taskData = {
       ...result.data,
-      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      dueDate: new Date().toISOString(),
+      dueDate: editingTask?.dueDate || new Date().toISOString(),
     };
 
-    const colRef = collection(firestore, "users", user.uid, "tasks");
-    addDocumentNonBlocking(colRef, taskData);
+    if (editingTask) {
+      const docRef = doc(firestore, "users", user.uid, "tasks", editingTask.id);
+      updateDocumentNonBlocking(docRef, taskData);
+      toast({ title: "Nodo Actualizado", description: "Los cambios se han inyectado con éxito." });
+    } else {
+      const colRef = collection(firestore, "users", user.uid, "tasks");
+      addDocumentNonBlocking(colRef, { ...taskData, createdAt: serverTimestamp() });
+      toast({ title: "Nodo Creado", description: "Nuevo proceso añadido al sistema." });
+    }
     
     setTimeout(() => {
-      setNewTask({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+      resetForm();
       setIsDialogOpen(false);
       setIsSaving(false);
     }, 400);
   };
 
+  const resetForm = () => {
+    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+    setEditingTask(null);
+  };
+
+  const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setTaskForm({
+      title: task.title,
+      description: task.description || "",
+      priority: task.priority,
+      status: task.status,
+      tags: task.tags?.join(', ') || ""
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleDeleteTask = (taskId: string) => {
-    const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
-    deleteDocumentNonBlocking(docRef);
+    if(confirm("¿Confirmar eliminación permanente de este nodo?")) {
+      const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
+      deleteDocumentNonBlocking(docRef);
+      toast({ title: "Nodo Eliminado", variant: "destructive" });
+    }
   };
 
   const handleAddColumn = () => {
@@ -175,6 +206,10 @@ export default function KanbanPage() {
   };
 
   const handleRemoveColumn = (col: string) => {
+    if (tasks?.some(t => t.status === col)) {
+      toast({ variant: "destructive", title: "Error", description: "No puedes eliminar un estado con tareas activas." });
+      return;
+    }
     setColumns(columns.filter(c => c !== col));
   };
 
@@ -187,10 +222,8 @@ export default function KanbanPage() {
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
     if (!over) return;
-
     const activeId = active.id;
     const overId = over.id;
-
     if (activeId === overId) return;
 
     const isActiveATask = active.data.current?.type === "Task";
@@ -209,9 +242,7 @@ export default function KanbanPage() {
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveTask(null);
-
     if (!over) return;
-
     const activeId = active.id;
     const overId = over.id;
 
@@ -221,10 +252,7 @@ export default function KanbanPage() {
 
     if (overStatus && active.data.current?.task.status !== overStatus) {
       const docRef = doc(firestore, "users", user.uid, "tasks", activeId as string);
-      updateDocumentNonBlocking(docRef, { 
-        status: overStatus,
-        updatedAt: serverTimestamp()
-      });
+      updateDocumentNonBlocking(docRef, { status: overStatus, updatedAt: serverTimestamp() });
     }
   }
 
@@ -249,7 +277,7 @@ export default function KanbanPage() {
             <Settings2 className="w-5 h-5 mr-3" /> <span className="text-[10px] font-black uppercase">Estados</span>
           </Button>
 
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); setIsDialogOpen(open); }}>
             <DialogTrigger asChild>
               <Button className="flex-1 md:flex-none rounded-2xl h-14 md:h-16 px-8 md:px-12 font-black uppercase tracking-widest text-[10px] md:text-xs neon-glow transition-all hover:scale-105 active:scale-95">
                 <Plus className="w-5 h-5 mr-3" /> Inyectar Tarea
@@ -257,15 +285,17 @@ export default function KanbanPage() {
             </DialogTrigger>
             <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[550px] p-8 md:p-10">
               <DialogHeader>
-                <DialogTitle className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-white">Inyectar Tarea</DialogTitle>
+                <DialogTitle className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-white">
+                  {editingTask ? "Modificar Nodo" : "Inyectar Tarea"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-6 py-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] uppercase font-black text-primary tracking-widest">Nombre del Proceso</Label>
                   <Input 
                     placeholder="Ej: Análisis de Datos Alpha..."
-                    value={newTask.title} 
-                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                    value={taskForm.title} 
+                    onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
                     className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary/40 text-white" 
                   />
                 </div>
@@ -273,15 +303,15 @@ export default function KanbanPage() {
                   <Label className="text-[10px] uppercase font-black text-white/40 tracking-widest">Descripción Técnica</Label>
                   <Textarea 
                     placeholder="Detalla los requisitos del nodo..."
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                    value={taskForm.description}
+                    onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
                     className="bg-white/5 border-white/10 min-h-[120px] rounded-xl text-white" 
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label className="text-[10px] uppercase font-black tracking-widest">Prioridad</Label>
-                    <Select value={newTask.priority} onValueChange={(v: Priority) => setNewTask({...newTask, priority: v})}>
+                    <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({...taskForm, priority: v})}>
                       <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl text-white">
                         <SelectValue />
                       </SelectTrigger>
@@ -293,8 +323,8 @@ export default function KanbanPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] uppercase font-black tracking-widest">Estado Inicial</Label>
-                    <Select value={newTask.status} onValueChange={(v) => setNewTask({...newTask, status: v})}>
+                    <Label className="text-[10px] uppercase font-black tracking-widest">Estado</Label>
+                    <Select value={taskForm.status} onValueChange={(v) => setTaskForm({...taskForm, status: v})}>
                       <SelectTrigger className="bg-white/5 border-white/10 h-12 rounded-xl text-white">
                         <SelectValue />
                       </SelectTrigger>
@@ -310,19 +340,19 @@ export default function KanbanPage() {
                   <Label className="text-[10px] uppercase font-black text-white/40 tracking-widest">Etiquetas (separadas por coma)</Label>
                   <Input 
                     placeholder="UI, Backend, Dev..."
-                    value={newTask.tags} 
-                    onChange={(e) => setNewTask({...newTask, tags: e.target.value})}
+                    value={taskForm.tags} 
+                    onChange={(e) => setTaskForm({...taskForm, tags: e.target.value})}
                     className="bg-white/5 border-white/10 h-12 rounded-xl text-white" 
                   />
                 </div>
               </div>
               <DialogFooter>
                 <Button 
-                  onClick={handleAddTask} 
+                  onClick={handleSaveTask} 
                   disabled={isSaving}
                   className="w-full neon-glow font-black uppercase text-xs h-16 rounded-2xl flex items-center justify-center gap-3"
                 >
-                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirmar Inyección de Datos"}
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : "Confirmar Operación de Datos"}
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -391,6 +421,7 @@ export default function KanbanPage() {
                 status={status} 
                 tasks={tasks?.filter(t => t.status === status) || []}
                 onDelete={handleDeleteTask}
+                onEdit={openEditDialog}
               />
             ))
           )}
@@ -398,7 +429,7 @@ export default function KanbanPage() {
         <DragOverlay>
           {activeTask ? (
             <div className="w-[300px] rotate-3 scale-105 pointer-events-none opacity-90 shadow-[0_0_50px_rgba(0,0,0,0.5)]">
-               <TaskCard task={activeTask} onDelete={() => {}} isOverlay />
+               <TaskCard task={activeTask} onDelete={() => {}} onEdit={() => {}} isOverlay />
             </div>
           ) : null}
         </DragOverlay>
@@ -407,9 +438,9 @@ export default function KanbanPage() {
   );
 }
 
-function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], onDelete: (id: string) => void }) {
+function Column({ status, tasks, onDelete, onEdit }: { status: string, tasks: Task[], onDelete: (id: string) => void, onEdit: (task: Task) => void }) {
   return (
-    <div className="flex-shrink-0 w-80 md:w-96 flex flex-col gap-6">
+    <div className="flex-shrink-0 w-80 md:w-96 flex flex-col gap-6" id={status}>
       <div className="flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <div className={cn(
@@ -427,7 +458,7 @@ function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], on
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-4">
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} onDelete={onDelete} />
+              <TaskCard key={task.id} task={task} onDelete={onDelete} onEdit={onEdit} />
             ))}
           </div>
         </SortableContext>
@@ -443,7 +474,7 @@ function Column({ status, tasks, onDelete }: { status: string, tasks: Task[], on
   );
 }
 
-function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: string) => void, isOverlay?: boolean }) {
+function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete: (id: string) => void, onEdit: (task: Task) => void, isOverlay?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { 
@@ -471,7 +502,13 @@ function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: st
       layoutId={task.id}
       className="group relative bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden shadow-xl"
     >
-      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+        <button 
+          onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+          className="p-2 hover:bg-primary/20 rounded-xl text-primary/40 hover:text-primary transition-all"
+        >
+          <Edit3 className="w-4 h-4" />
+        </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
           className="p-2 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
@@ -490,7 +527,7 @@ function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: st
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2" onClick={() => onEdit(task)}>
           <h4 className="text-sm md:text-base font-black leading-tight tracking-tight group-hover:text-primary transition-colors">
             {task.title}
           </h4>
@@ -515,9 +552,9 @@ function TaskCard({ task, onDelete, isOverlay }: { task: Task, onDelete: (id: st
           <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase tracking-widest">
             <Tag className="w-3.5 h-3.5 text-primary/50" /> {task.context}
           </div>
-          <div className="text-[8px] font-black text-muted-foreground/20 uppercase">
-            {task.id.slice(0, 8)}
-          </div>
+          {task.status === "Hecho" && (
+            <CheckCircle2 className="w-4 h-4 text-primary animate-pulse" />
+          )}
         </div>
       </div>
     </motion.div>
