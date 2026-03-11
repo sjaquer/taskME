@@ -15,7 +15,8 @@ import {
   Target,
   Terminal,
   Activity,
-  Check
+  Check,
+  ZapOff
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -85,7 +86,11 @@ export default function Home() {
     if (!user || !firestore) return;
     const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
     updateDocumentNonBlocking(docRef, { status: "Hecho", updatedAt: serverTimestamp() });
-    toast({ title: "Nodo Finalizado", description: "El proceso se ha marcado como completado." });
+    toast({ 
+      title: "Nodo Finalizado", 
+      description: "Operación de datos completada con éxito.",
+      variant: "default"
+    });
   };
 
   if (!mounted || isUserLoading) return null;
@@ -233,7 +238,7 @@ export default function Home() {
                        variant="ghost" 
                        size="sm" 
                        onClick={() => handleQuickComplete(task.id)}
-                       className="text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5"
+                       className="text-[10px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5 h-10 px-4 rounded-xl"
                      >
                        <Check className="w-4 h-4 mr-2" /> Finalizar Nodo
                      </Button>
@@ -261,7 +266,7 @@ export default function Home() {
 
 function MetricCard({ label, value, icon, subValue, color }: { label: string, value: string, icon: React.ReactNode, subValue: string, color?: string }) {
   return (
-    <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-1">
+    <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-1 shadow-2xl transition-all duration-500">
       <div className="absolute -right-8 -top-8 w-32 h-32 bg-primary/5 rounded-full blur-[60px] group-hover:bg-primary/10 transition-colors duration-700" />
       <CardHeader className="pb-6 relative px-8 pt-8">
         <CardTitle className="text-[10px] text-white/40 flex items-center gap-4 uppercase tracking-[0.4em] font-black">

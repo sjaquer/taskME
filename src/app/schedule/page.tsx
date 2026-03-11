@@ -3,19 +3,18 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, addDays, startOfWeek, isSameDay, parseISO, setHours, setMinutes, getDay, isAfter, isBefore, startOfYear, endOfYear, differenceInMinutes } from "date-fns";
+import { format, addDays, startOfWeek, isSameDay, parseISO, setHours, setMinutes, getDay, isAfter, isBefore, differenceInMinutes } from "date-fns";
 import { es } from "date-fns/locale";
 import { 
-  Calendar as CalendarIcon, 
   Clock, 
   Plus, 
   Trash2, 
   Edit3, 
   Inbox,
   RotateCcw,
-  CheckCircle2,
   Activity,
-  Timer
+  Timer,
+  Layout
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppContextStore } from "@/lib/store";
@@ -93,7 +92,7 @@ export default function SchedulePage() {
   });
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -122,7 +121,7 @@ export default function SchedulePage() {
   const handleSaveTask = () => {
     const result = ScheduleTaskSchema.safeParse(formData);
     if (!result.success) {
-      toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
+      toast({ variant: "destructive", title: "Configuración Inválida", description: result.error.errors[0].message });
       return;
     }
 
@@ -150,14 +149,15 @@ export default function SchedulePage() {
     if (editingTask) {
       const docRef = doc(firestore, "users", user.uid, "tasks", editingTask.id);
       updateDocumentNonBlocking(docRef, taskData);
+      toast({ title: "Rutina Actualizada", description: `Los parámetros de "${title}" han sido reconfigurados.` });
     } else {
       const colRef = collection(firestore, "users", user.uid, "tasks");
       addDocumentNonBlocking(colRef, { ...taskData, createdAt: serverTimestamp() });
+      toast({ title: "Agenda Sincronizada", description: `Bloque "${title}" añadido al sistema.` });
     }
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingTask ? "Rutina actualizada" : "Bloque sincronizado" });
   };
 
   const resetForm = () => {
@@ -183,7 +183,6 @@ export default function SchedulePage() {
     const start = parseISO(task.scheduledStartTime);
     const end = parseISO(task.scheduledEndTime);
     
-    // Ajustar fechas al día actual para comparación de tiempo si es recurrente
     const now = currentTime;
     const currentStart = setMinutes(setHours(now, start.getHours()), start.getMinutes());
     const currentEnd = setMinutes(setHours(now, end.getHours()), end.getMinutes());
@@ -199,8 +198,8 @@ export default function SchedulePage() {
   return (
     <div className="space-y-8 md:space-y-12 max-w-5xl mx-auto pb-24">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2 md:px-0">
-        <div>
-          <h2 className="text-3xl md:text-6xl font-black tracking-tighter leading-none">Mi Horario</h2>
+        <div className="space-y-2">
+          <h2 className="text-4xl md:text-7xl font-black tracking-tighter leading-none">Mi Horario</h2>
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.4em] mt-3 flex items-center gap-2">
             <span className="w-8 h-px bg-primary/40" /> Monitoreo de Rutinas de {context}
           </p>
@@ -214,7 +213,8 @@ export default function SchedulePage() {
           </DialogTrigger>
           <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[480px] p-6 md:p-8">
             <DialogHeader>
-              <DialogTitle className="text-2xl md:text-4xl font-black tracking-tighter uppercase text-white">
+              <DialogTitle className="text-2xl md:text-4xl font-black tracking-tighter uppercase text-white flex items-center gap-4">
+                <Timer className="w-8 h-8 text-primary" />
                 {editingTask ? 'Modificar Rutina' : 'Nuevo Bloque Temporal'}
               </DialogTitle>
             </DialogHeader>
@@ -301,7 +301,7 @@ export default function SchedulePage() {
               key={day.toString()}
               onClick={() => setSelectedDate(day)}
               className={cn(
-                "flex-shrink-0 w-20 md:w-24 py-5 rounded-[2.5rem] flex flex-col items-center gap-2 transition-all border outline-none group relative",
+                "flex-shrink-0 w-20 md:w-24 py-6 rounded-[2.5rem] flex flex-col items-center gap-2 transition-all border outline-none group relative",
                 isSelected ? "bg-primary text-black border-primary scale-110 z-10 shadow-[0_0_30px_rgba(57,255,20,0.2)]" : "glass hover:border-white/20 border-white/5"
               )}
             >
@@ -309,7 +309,7 @@ export default function SchedulePage() {
                 {format(day, 'EEE', { locale: es })}
               </span>
               <span className="text-2xl md:text-3xl font-black">{format(day, 'd')}</span>
-              {isToday && !isSelected && <div className="absolute top-2 right-4 w-1.5 h-1.5 rounded-full bg-primary neon-glow" />}
+              {isToday && !isSelected && <div className="absolute top-2 right-4 w-2 h-2 rounded-full bg-primary neon-glow" />}
             </button>
           );
         })}
@@ -333,61 +333,60 @@ export default function SchedulePage() {
                     className="relative group"
                   >
                     <div className={cn(
-                      "absolute left-[-26px] md:left-[-54px] top-6 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all",
+                      "absolute left-[-26px] md:left-[-54px] top-6 w-3 h-3 md:w-4 md:h-4 rounded-full border-2 transition-all z-20",
                       isActive ? "bg-primary border-primary animate-pulse shadow-[0_0_15px_rgba(57,255,20,0.5)]" : (task.priority === 'alta' ? 'bg-red-500 border-red-200' : 'bg-white/20 border-white/40')
                     )} />
                     
                     <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-16">
                       <div className="w-20 pt-1 md:pt-6">
-                        <span className={cn("text-xs md:text-lg font-black uppercase tracking-widest transition-colors", isActive ? "text-primary" : "text-white/40")}>
+                        <span className={cn("text-xs md:text-xl font-black uppercase tracking-widest transition-colors", isActive ? "text-primary glow-text" : "text-white/40")}>
                           {format(parseISO(task.scheduledStartTime), "HH:mm")}
                         </span>
                       </div>
 
                       <div className={cn(
-                        "flex-1 glass p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] flex flex-col gap-6 border-l-[6px] transition-all group-hover:border-primary/60",
-                        task.priority === 'alta' ? 'border-l-red-500' : (isActive ? 'border-l-primary shadow-[0_0_30px_rgba(57,255,20,0.1)]' : 'border-l-white/20')
+                        "flex-1 glass p-6 md:p-10 rounded-[2.5rem] md:rounded-[3.5rem] flex flex-col gap-6 border-l-[6px] transition-all hover:scale-[1.01] shadow-2xl relative overflow-hidden",
+                        task.priority === 'alta' ? 'border-l-red-500 shadow-red-500/5' : (isActive ? 'border-l-primary shadow-primary/10' : 'border-l-white/20')
                       )}>
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-4">
+                        <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                           <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-12 w-12 rounded-2xl bg-black/40 hover:bg-primary/20 hover:text-primary"><Edit3 className="w-5 h-5" /></Button>
+                           <Button variant="ghost" size="icon" onClick={() => { if(confirm("¿Eliminar bloque del sistema?")) deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id)); }} className="h-12 w-12 rounded-2xl bg-black/40 hover:bg-red-500/20 hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
+                        </div>
+
+                        <div className="flex flex-col gap-4">
                             <div className="flex flex-wrap items-center gap-3">
-                              <Badge variant="outline" className="text-[8px] md:text-[9px] font-black uppercase px-3 py-0.5">
+                              <Badge variant="outline" className="text-[8px] md:text-[10px] font-black uppercase px-3 py-1 border-white/10">
                                 {task.priority || 'media'}
                               </Badge>
                               {task.isRecurring && (
-                                <Badge className="bg-primary/20 text-primary border-primary/20 text-[8px] md:text-[9px] font-black flex items-center gap-1.5 px-3 py-0.5">
-                                  <RotateCcw className="w-3 h-3" /> RUTINA
+                                <Badge className="bg-primary/20 text-primary border-primary/20 text-[8px] md:text-[10px] font-black flex items-center gap-1.5 px-3 py-1">
+                                  <RotateCcw className="w-3 h-3" /> RUTINA SEMANAL
                                 </Badge>
                               )}
                               {isActive && (
-                                <Badge className="bg-primary text-black font-black text-[8px] uppercase px-3 py-0.5 animate-pulse">
-                                  ACTIVO AHORA
+                                <Badge className="bg-primary text-black font-black text-[8px] md:text-[10px] uppercase px-3 py-1 animate-pulse shadow-[0_0_15px_rgba(57,255,20,0.4)]">
+                                  SISTEMA ACTIVO
                                 </Badge>
                               )}
                             </div>
-                            <h4 className="text-xl md:text-3xl font-black tracking-tight leading-none text-white group-hover:text-primary transition-colors">
+                            <h4 className="text-2xl md:text-4xl font-black tracking-tighter leading-none text-white group-hover:text-primary transition-colors">
                               {task.title}
                             </h4>
-                          </div>
-
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(task)} className="h-12 w-12 rounded-2xl hover:bg-primary/10 hover:text-primary"><Edit3 className="w-5 h-5" /></Button>
-                            <Button variant="ghost" size="icon" onClick={() => { if(confirm("¿Eliminar bloque?")) deleteDocumentNonBlocking(doc(firestore, "users", user.uid, "tasks", task.id)); }} className="h-12 w-12 rounded-2xl hover:bg-red-500/10 hover:text-red-500"><Trash2 className="w-5 h-5" /></Button>
-                          </div>
                         </div>
 
                         {isActive && (
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[10px] font-black text-primary uppercase">
-                              <span className="flex items-center gap-2"><Activity className="w-3 h-3" /> Progreso de Sesión</span>
+                          <div className="space-y-3 bg-white/5 p-6 rounded-3xl border border-white/5">
+                            <div className="flex justify-between text-[10px] font-black text-primary uppercase tracking-widest">
+                              <span className="flex items-center gap-2"><Activity className="w-3 h-3" /> Progreso de Sesión en Vivo</span>
                               <span>{progress}%</span>
                             </div>
-                            <Progress value={progress} className="h-1.5 bg-white/5" />
+                            <Progress value={progress} className="h-2 bg-white/5 rounded-full" />
                           </div>
                         )}
 
-                        <div className="flex items-center gap-8 text-[11px] md:text-xs text-muted-foreground uppercase font-black tracking-[0.2em]">
+                        <div className="flex items-center gap-8 text-[11px] md:text-xs text-white/40 uppercase font-black tracking-[0.3em]">
                           <span className="flex items-center gap-3"><Clock className="w-4 h-4 text-primary" /> {format(parseISO(task.scheduledStartTime), "HH:mm")} - {task.scheduledEndTime ? format(parseISO(task.scheduledEndTime), "HH:mm") : '...'}</span>
+                          <span className="hidden md:block">NODE ID: {task.id.slice(0, 8)}</span>
                         </div>
                       </div>
                     </div>
@@ -395,7 +394,10 @@ export default function SchedulePage() {
                 );
               })
             ) : (
-              <div className="flex flex-col items-center justify-center py-24 glass rounded-[3.5rem] border-dashed border-white/5 opacity-10"><Inbox className="w-20 h-20 mb-8" /><p className="text-[11px] font-black uppercase tracking-[0.6em]">Sin Actividades</p></div>
+              <div className="flex flex-col items-center justify-center py-24 glass rounded-[3.5rem] border-dashed border-white/5 opacity-10">
+                <Inbox className="w-20 h-20 mb-8" />
+                <p className="text-[11px] font-black uppercase tracking-[0.6em]">Sin Actividades Programadas</p>
+              </div>
             )}
           </AnimatePresence>
         </div>

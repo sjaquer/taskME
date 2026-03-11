@@ -14,7 +14,8 @@ import {
   X,
   Loader2,
   Edit3,
-  CheckCircle2
+  CheckCircle2,
+  Layers
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Esquema de validación para tareas
 const TaskSchema = z.object({
   title: z.string().min(1, "El título es requerido").max(100),
   description: z.string().optional(),
@@ -145,7 +145,7 @@ export default function KanbanPage() {
 
     const result = TaskSchema.safeParse(rawData);
     if (!result.success) {
-      toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
+      toast({ variant: "destructive", title: "Protocolo Fallido", description: result.error.errors[0].message });
       setIsSaving(false);
       return;
     }
@@ -159,11 +159,11 @@ export default function KanbanPage() {
     if (editingTask) {
       const docRef = doc(firestore, "users", user.uid, "tasks", editingTask.id);
       updateDocumentNonBlocking(docRef, taskData);
-      toast({ title: "Nodo Actualizado", description: "Los cambios se han inyectado con éxito." });
+      toast({ title: "Sincronización Exitosa", description: `El nodo ${editingTask.id.slice(0, 5)} ha sido actualizado.` });
     } else {
       const colRef = collection(firestore, "users", user.uid, "tasks");
       addDocumentNonBlocking(colRef, { ...taskData, createdAt: serverTimestamp() });
-      toast({ title: "Nodo Creado", description: "Nuevo proceso añadido al sistema." });
+      toast({ title: "Nodo Inyectado", description: "Nueva tarea añadida al pipeline de ejecución." });
     }
     
     setTimeout(() => {
@@ -191,26 +191,26 @@ export default function KanbanPage() {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    if(confirm("¿Confirmar eliminación permanente de este nodo?")) {
-      const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
-      deleteDocumentNonBlocking(docRef);
-      toast({ title: "Nodo Eliminado", variant: "destructive" });
-    }
+    const docRef = doc(firestore, "users", user.uid, "tasks", taskId);
+    deleteDocumentNonBlocking(docRef);
+    toast({ title: "Nodo Purmado", variant: "destructive", description: "La tarea ha sido eliminada del sistema." });
   };
 
   const handleAddColumn = () => {
     if (newColumnName.trim() && !columns.includes(newColumnName.trim())) {
       setColumns([...columns, newColumnName.trim()]);
       setNewColumnName("");
+      toast({ title: "Estado Añadido", description: `Nueva columna "${newColumnName}" habilitada.` });
     }
   };
 
   const handleRemoveColumn = (col: string) => {
     if (tasks?.some(t => t.status === col)) {
-      toast({ variant: "destructive", title: "Error", description: "No puedes eliminar un estado con tareas activas." });
+      toast({ variant: "destructive", title: "Error de Dependencia", description: "No puedes eliminar un estado que contiene nodos activos." });
       return;
     }
     setColumns(columns.filter(c => c !== col));
+    toast({ title: "Estado Eliminado", description: `Columna "${col}" deshabilitada.` });
   };
 
   function handleDragStart(event: DragStartEvent) {
@@ -253,18 +253,21 @@ export default function KanbanPage() {
     if (overStatus && active.data.current?.task.status !== overStatus) {
       const docRef = doc(firestore, "users", user.uid, "tasks", activeId as string);
       updateDocumentNonBlocking(docRef, { status: overStatus, updatedAt: serverTimestamp() });
+      toast({ title: "Estado Transmutado", description: `Nodo movido a ${overStatus}.` });
     }
   }
 
   return (
-    <div className="space-y-8 md:space-y-12 pb-24 px-2">
+    <div className="space-y-8 md:space-y-12 pb-24 px-2 md:px-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-        <div>
-          <h2 className="text-4xl md:text-6xl font-black tracking-tighter flex items-center gap-6">
-            Tablero <span className="text-primary glow-text">{context}</span>
-          </h2>
-          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] mt-3 flex items-center gap-3">
-            <span className="w-12 h-px bg-primary/30" /> Orquestación de Procesos
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-4xl md:text-7xl font-black tracking-tighter flex items-center gap-6">
+              Tablero <span className="text-primary glow-text italic">{context}</span>
+            </h2>
+          </div>
+          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.5em] flex items-center gap-3">
+            <span className="w-12 h-px bg-primary/30" /> Orquestación de Procesos Activos
           </p>
         </div>
         
@@ -272,9 +275,10 @@ export default function KanbanPage() {
           <Button 
             variant="outline" 
             onClick={() => setIsManagingColumns(!isManagingColumns)}
-            className="flex-1 md:flex-none rounded-2xl h-14 md:h-16 px-6 border-white/5 bg-white/5 hover:bg-white/10 transition-all"
+            className="flex-1 md:flex-none rounded-2xl h-14 md:h-16 px-6 border-white/5 bg-white/5 hover:bg-white/10 transition-all group"
           >
-            <Settings2 className="w-5 h-5 mr-3" /> <span className="text-[10px] font-black uppercase">Estados</span>
+            <Settings2 className="w-5 h-5 mr-3 text-primary/40 group-hover:text-primary transition-colors" /> 
+            <span className="text-[10px] font-black uppercase tracking-widest">Estados</span>
           </Button>
 
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) resetForm(); setIsDialogOpen(open); }}>
@@ -285,7 +289,8 @@ export default function KanbanPage() {
             </DialogTrigger>
             <DialogContent className="glass-card border-white/10 bg-black/95 sm:max-w-[550px] p-8 md:p-10">
               <DialogHeader>
-                <DialogTitle className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-white">
+                <DialogTitle className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-white flex items-center gap-4">
+                  <Layers className="w-8 h-8 text-primary" />
                   {editingTask ? "Modificar Nodo" : "Inyectar Tarea"}
                 </DialogTitle>
               </DialogHeader>
@@ -363,10 +368,10 @@ export default function KanbanPage() {
       <AnimatePresence>
         {isManagingColumns && (
           <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="glass p-6 md:p-8 rounded-[3rem] border-white/10 space-y-6 overflow-hidden bg-black/40"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="glass p-6 md:p-8 rounded-[3rem] border-white/10 space-y-6 overflow-hidden bg-black/40 shadow-2xl"
           >
             <div className="flex items-center justify-between">
               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Configuración de Estados</h3>
@@ -376,7 +381,7 @@ export default function KanbanPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               {columns.map(col => (
-                <Badge key={col} variant="secondary" className="pl-5 pr-3 py-2.5 rounded-2xl bg-white/5 border-white/10 gap-3 hover:border-primary/40 transition-all">
+                <Badge key={col} variant="secondary" className="pl-5 pr-3 py-2.5 rounded-2xl bg-white/5 border-white/10 gap-3 hover:border-primary/40 transition-all group">
                   <span className="font-black uppercase tracking-widest text-[10px]">{col}</span>
                   <button onClick={() => handleRemoveColumn(col)} className="text-muted-foreground hover:text-red-500 transition-colors">
                     <X className="w-4 h-4" />
@@ -390,7 +395,7 @@ export default function KanbanPage() {
                   onChange={(e) => setNewColumnName(e.target.value)}
                   className="bg-white/5 border-white/10 h-10 w-40 md:w-56 rounded-xl text-[10px] font-black uppercase tracking-widest"
                 />
-                <Button size="icon" onClick={handleAddColumn} className="h-10 w-10 rounded-xl bg-primary text-black hover:scale-110 transition-transform">
+                <Button size="icon" onClick={handleAddColumn} className="h-10 w-10 rounded-xl bg-primary text-black hover:scale-110 transition-transform shadow-[0_0_15px_rgba(57,255,20,0.4)]">
                   <Plus className="w-5 h-5" />
                 </Button>
               </div>
@@ -454,9 +459,10 @@ function Column({ status, tasks, onDelete, onEdit }: { status: string, tasks: Ta
         </div>
       </div>
 
-      <div className="flex-1 glass rounded-[3.5rem] md:rounded-[4rem] p-4 md:p-6 bg-white/[0.01] border-white/5 border-dashed min-h-[500px] hover:bg-white/[0.02] transition-colors">
+      <div className="flex-1 glass rounded-[3.5rem] md:rounded-[4rem] p-4 md:p-6 bg-white/[0.01] border-white/5 border-dashed min-h-[500px] hover:bg-white/[0.02] transition-colors relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] to-transparent pointer-events-none rounded-[inherit]" />
         <SortableContext items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-4">
+          <div className="space-y-4 relative z-10">
             {tasks.map((task) => (
               <TaskCard key={task.id} task={task} onDelete={onDelete} onEdit={onEdit} />
             ))}
@@ -500,18 +506,19 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
       ref={setNodeRef}
       style={style}
       layoutId={task.id}
+      whileHover={{ y: -4 }}
       className="group relative bg-black/60 backdrop-blur-3xl border border-white/5 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 hover:border-primary/40 transition-all cursor-default select-none overflow-hidden shadow-xl"
     >
       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
         <button 
           onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          className="p-2 hover:bg-primary/20 rounded-xl text-primary/40 hover:text-primary transition-all"
+          className="p-2 hover:bg-primary/20 rounded-xl text-primary/40 hover:text-primary transition-all bg-black/40"
         >
           <Edit3 className="w-4 h-4" />
         </button>
         <button 
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="p-2 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all"
+          className="p-2 hover:bg-red-500/20 rounded-xl text-red-500/40 hover:text-red-500 transition-all bg-black/40"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -551,6 +558,9 @@ function TaskCard({ task, onDelete, onEdit, isOverlay }: { task: Task, onDelete:
         <div className="pt-4 flex items-center justify-between border-t border-white/5">
           <div className="flex items-center gap-2 text-[8px] font-black text-muted-foreground uppercase tracking-widest">
             <Tag className="w-3.5 h-3.5 text-primary/50" /> {task.context}
+          </div>
+          <div className="text-[8px] font-black text-white/10 uppercase tracking-[0.2em]">
+            ID: {task.id.slice(0, 8)}
           </div>
           {task.status === "Hecho" && (
             <CheckCircle2 className="w-4 h-4 text-primary animate-pulse" />
