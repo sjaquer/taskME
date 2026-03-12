@@ -186,12 +186,12 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-24 px-0">
+    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pb-24 px-4 sm:px-6">
       {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-4 mt-2 mb-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
               Eventos <span className="text-primary italic glow-text">{context}</span>
             </h2>
             <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px] font-data">
@@ -233,83 +233,88 @@ export default function CalendarPage() {
                   {editingEvent ? "Editar Evento" : "Nuevo Evento"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-2">
+              <div className="space-y-6 py-2">
                 {/* Title — large like GCal */}
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 focus-within:ring-0">
                   <Input
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Agregar título"
-                    className="bg-transparent border-0 border-b border-white/[0.08] rounded-none h-12 text-lg font-bold px-0 focus-visible:ring-0 focus-visible:border-primary placeholder:text-white/20"
+                    className="bg-transparent border-0 border-b-2 border-white/[0.08] rounded-none h-14 text-2xl md:text-3xl font-black px-1 focus-visible:ring-0 focus-visible:border-primary placeholder:text-white/20 transition-all font-sans"
                   />
                 </div>
 
                 {/* All Day toggle */}
-                <div className="flex items-center justify-between">
-                  <Label className="text-[11px] uppercase font-black tracking-widest flex items-center gap-2">
-                    <Clock className="w-3.5 h-3.5 text-primary/60" /> Todo el día
+                <div className="flex items-center justify-between glass-card border-white/[0.04] p-4 rounded-2xl">
+                  <Label className="text-[11px] uppercase font-black tracking-widest flex items-center gap-2 text-white/80">
+                    <Clock className="w-4 h-4 text-primary" /> Todo el día
                   </Label>
                   <Switch checked={formData.allDay} onCheckedChange={(val) => setFormData({ ...formData, allDay: val })} />
                 </div>
 
                 {/* Date & Time — GCal style */}
-                <div className="space-y-3 p-3 glass-card border-white/[0.06] rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black text-primary uppercase w-12">Inicio</span>
-                    <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data flex-1" />
-                    {!formData.allDay && (
-                      <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                        className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data w-28" />
-                    )}
+                <div className="space-y-4 p-4 glass-card border-white/[0.08] bg-white/[0.01] rounded-2xl shadow-inner">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <span className="text-[10px] font-black text-primary uppercase w-12 shrink-0">Inicio</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                        className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl font-data flex-1 px-3" />
+                      {!formData.allDay && (
+                        <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                          className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl font-data w-28 px-3 shrink-0" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[9px] font-black text-white/40 uppercase w-12">Fin</span>
-                    <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data flex-1" />
-                    {!formData.allDay && (
-                      <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                        className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data w-28" />
-                    )}
+                  <div className="w-full h-px bg-white/[0.05]" />
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <span className="text-[10px] font-black text-white/40 uppercase w-12 shrink-0">Fin</span>
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                        className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl font-data flex-1 px-3" />
+                      {!formData.allDay && (
+                        <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                          className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl font-data w-28 px-3 shrink-0" />
+                      )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Location */}
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3 text-primary/60" /> Ubicación
+                <div className="space-y-2 pt-2">
+                  <Label className="text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 text-white/70">
+                    <MapPin className="w-4 h-4 text-primary" /> Ubicación
                   </Label>
                   <Input
                     placeholder="Agregar ubicación"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg"
+                    className="bg-white/[0.03] border-white/[0.08] h-12 rounded-xl focus-visible:ring-1 focus-visible:ring-primary/50 px-4"
                   />
                 </div>
 
                 {/* Description */}
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5">
-                    <AlignLeft className="w-3 h-3 text-primary/60" /> Descripción
+                <div className="space-y-2">
+                  <Label className="text-[10px] uppercase font-black tracking-widest flex items-center gap-1.5 text-white/70">
+                    <AlignLeft className="w-4 h-4 text-primary" /> Descripción
                   </Label>
                   <Textarea
                     placeholder="Agregar descripción o notas"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] min-h-[60px] rounded-lg resize-none"
+                    className="bg-white/[0.03] border-white/[0.08] min-h-[100px] rounded-xl resize-none focus-visible:ring-1 focus-visible:ring-primary/50 p-4"
                   />
                 </div>
 
                 {/* Color picker — GCal style dots */}
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest">Color</Label>
-                  <div className="flex gap-2 flex-wrap">
+                <div className="space-y-3 pt-2">
+                  <Label className="text-[10px] uppercase font-black tracking-widest text-white/70">Color Hex</Label>
+                  <div className="flex gap-3 flex-wrap">
                     {EVENT_COLORS.map((c) => (
                       <button key={c.value} onClick={() => setFormData({ ...formData, color: c.value })}
                         className={cn(
-                          "w-6 h-6 rounded-full transition-all border-2",
+                          "w-8 h-8 rounded-full transition-all border-2",
                           c.bg,
-                          formData.color === c.value ? "border-white scale-125 ring-2 ring-white/20" : "border-transparent opacity-60 hover:opacity-100"
+                          formData.color === c.value ? "border-white scale-110 shadow-[0_0_15px_rgba(255,255,255,0.3)]" : "border-transparent opacity-50 hover:opacity-100 hover:scale-105"
                         )}
                         title={c.label}
                       />
@@ -327,22 +332,23 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
         <div className="lg:col-span-5 space-y-4">
-          <Card className="glass-card bg-[#050505]/40 p-4 md:p-6 flex justify-center">
+          <Card className="glass-card bg-[#0a0a0a]/60 p-2 sm:p-4 flex justify-center border-white/[0.08] shadow-2xl">
             <Calendar
-                mode="single" selected={date} onSelect={setDate} locale={es} className="rounded-2xl border-none p-0 w-full max-w-xs"
+                mode="single" selected={date} onSelect={setDate} locale={es} 
+                className="rounded-2xl border-none p-2 w-full max-w-sm"
                 classNames={{
-                  day_today: "bg-primary/10 text-primary border border-primary/20 font-black",
+                  day: "h-11 w-full p-0 font-bold transition-all hover:bg-white/[0.05] rounded-xl relative font-data",
+                  day_today: "bg-primary/10 text-primary border border-primary/30 font-black",
                   day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary font-black",
-                  day: "h-9 w-9 p-0 font-bold transition-all hover:bg-white/[0.03] rounded-lg relative font-data",
                 }}
                 modifiers={{ hasEvent: daysWithEvents }}
-                modifiersClassNames={{ hasEvent: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
+                modifiersClassNames={{ hasEvent: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full after:shadow-[0_0_5px_rgba(57,255,20,0.8)]" }}
               />
           </Card>
           {/* Google Calendar status */}
-          <div className="glass-card p-4 flex items-center justify-between gap-3">
+          <div className="glass-card p-4 flex items-center justify-between gap-3 border-white/[0.08] shadow-lg">
             {gcalConnected ? (
               <>
                 <div className="flex items-center gap-2 min-w-0">
@@ -373,17 +379,17 @@ export default function CalendarPage() {
         </div>
 
         <div className="lg:col-span-7 space-y-6">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-[9px] font-black uppercase tracking-[0.3em] flex items-center gap-3">
-              <Clock className="w-3.5 h-3.5 text-primary" />
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3">
+              <Clock className="w-4 h-4 text-primary" />
               <span className="font-data">{date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : "Fecha"}</span>
             </h3>
-            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 h-6 font-black text-[11px] font-data">
+            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 h-6 font-black text-[11px] font-data px-3">
               {totalEventsCount} EVENTOS
             </Badge>
           </div>
 
-          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-hide px-2">
+          <div className="space-y-4 max-h-[650px] lg:max-h-[800px] overflow-y-auto pr-2 scrollbar-hide px-1">
             <AnimatePresence mode="popLayout">
               {(selectedDayEvents.length > 0 || selectedDayGoogleEvents.length > 0) ? (
                 <>
