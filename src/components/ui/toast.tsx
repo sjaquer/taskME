@@ -16,12 +16,14 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      // Mobile: bottom full-width, above bottom-nav (pb for safe area)
-      "fixed bottom-0 z-[100] flex max-h-screen w-full flex-col p-4 pb-20",
-      // Desktop: bottom-right corner
-      "sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col sm:pb-4 md:max-w-[420px]",
+      // Mobile: fixed bottom, full-width — no depende de dvh/vw (WebView-safe)
+      // pb-20 = espacio para bottom-nav; left-0 right-0 bottom-0 explícito
+      "fixed left-0 right-0 bottom-0 z-[100] flex w-full flex-col gap-2 p-3 pb-20",
+      // Desktop (sm+): esquina inferior derecha, ancho limitado
+      "sm:left-auto sm:right-0 sm:bottom-0 sm:w-auto sm:max-w-[420px] sm:p-4 sm:pb-4",
       className
     )}
+    style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
     {...props}
   />
 ))
@@ -29,9 +31,13 @@ ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
   [
-    "group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border p-4 pr-10 shadow-2xl backdrop-blur-xl transition-all",
-    // Swipe & animations
-    "data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none",
+    // Base: full-width card fijada al bottom — WebView-safe (no translate centering)
+    "group pointer-events-auto relative flex w-full items-center gap-3 overflow-hidden border shadow-2xl backdrop-blur-xl transition-all",
+    // Mobile: rounded-xl con padding generoso y touch-friendly
+    "rounded-xl p-4 pr-10",
+    // Swipe down to dismiss (vertical, no horizontal — patrón nativo Android/iOS)
+    "data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y)] data-[swipe=move]:transition-none",
+    // Animations: slide-up desde bottom (fixed bottom:0 safe)
     "data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out",
     "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-bottom-full",
     "data-[state=open]:slide-in-from-bottom-full data-[state=open]:fade-in-0",
