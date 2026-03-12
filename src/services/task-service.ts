@@ -15,8 +15,9 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { Task, Priority, AppContext, RecurrenceType } from '@/types/task';
+import type { Priority, AppContext } from '@/types/task';
 
+// ── TASKS (Kanban) ─────────────────────────────────────────
 function getUserTasksRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'tasks');
 }
@@ -42,14 +43,6 @@ export function createTask(
     status: string;
     tags?: string[];
     context: AppContext;
-    dueDate?: string;
-    location?: string;
-    category?: string;
-    recurrenceType?: RecurrenceType;
-    isRecurring?: boolean;
-    recurringDays?: number[];
-    scheduledStartTime?: string;
-    scheduledEndTime?: string;
   }
 ) {
   const colRef = getUserTasksRef(firestore, userId);
@@ -90,4 +83,117 @@ export function moveTaskToStatus(
   newStatus: string
 ) {
   updateTask(firestore, userId, taskId, { status: newStatus });
+}
+
+// ── ROUTINES (Horario semanal) ─────────────────────────────
+function getUserRoutinesRef(firestore: Firestore, userId: string): CollectionReference {
+  return collection(firestore, 'users', userId, 'routines');
+}
+
+function getRoutineDocRef(firestore: Firestore, userId: string, routineId: string): DocumentReference {
+  return doc(firestore, 'users', userId, 'routines', routineId);
+}
+
+export function buildRoutinesQuery(firestore: Firestore, userId: string, context: AppContext) {
+  return query(
+    getUserRoutinesRef(firestore, userId),
+    where('context', '==', context)
+  );
+}
+
+export function createRoutine(
+  firestore: Firestore,
+  userId: string,
+  data: {
+    title: string;
+    startTime: string;
+    endTime: string;
+    recurringDays: number[];
+    priority: Priority;
+    context: AppContext;
+    color?: string;
+  }
+) {
+  const colRef = getUserRoutinesRef(firestore, userId);
+  return addDocumentNonBlocking(colRef, {
+    ...data,
+    userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function updateRoutine(
+  firestore: Firestore,
+  userId: string,
+  routineId: string,
+  data: Record<string, unknown>
+) {
+  const docRef = getRoutineDocRef(firestore, userId, routineId);
+  updateDocumentNonBlocking(docRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function deleteRoutine(firestore: Firestore, userId: string, routineId: string) {
+  const docRef = getRoutineDocRef(firestore, userId, routineId);
+  deleteDocumentNonBlocking(docRef);
+}
+
+// ── EVENTS (Calendario de eventos puntuales) ───────────────
+function getUserEventsRef(firestore: Firestore, userId: string): CollectionReference {
+  return collection(firestore, 'users', userId, 'events');
+}
+
+function getEventDocRef(firestore: Firestore, userId: string, eventId: string): DocumentReference {
+  return doc(firestore, 'users', userId, 'events', eventId);
+}
+
+export function buildEventsQuery(firestore: Firestore, userId: string, context: AppContext) {
+  return query(
+    getUserEventsRef(firestore, userId),
+    where('context', '==', context)
+  );
+}
+
+export function createEvent(
+  firestore: Firestore,
+  userId: string,
+  data: {
+    title: string;
+    description?: string;
+    startDate: string;
+    endDate: string;
+    allDay: boolean;
+    location?: string;
+    color: string;
+    context: AppContext;
+  }
+) {
+  const colRef = getUserEventsRef(firestore, userId);
+  return addDocumentNonBlocking(colRef, {
+    ...data,
+    userId,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function updateEvent(
+  firestore: Firestore,
+  userId: string,
+  eventId: string,
+  data: Record<string, unknown>
+) {
+  const docRef = getEventDocRef(firestore, userId, eventId);
+  updateDocumentNonBlocking(docRef, {
+    ...data,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export function deleteEvent(firestore: Firestore, userId: string, eventId: string) {
+  const docRef = getEventDocRef(firestore, userId, eventId);
+  deleteDocumentNonBlocking(docRef);
 }

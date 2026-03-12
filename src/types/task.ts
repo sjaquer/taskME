@@ -1,11 +1,10 @@
 export type Priority = 'baja' | 'media' | 'alta';
 
-export type RecurrenceType = 'none' | 'weekly' | 'monthly';
-
 export type AppContext = 'Trabajo' | 'Estudio';
 
 export type TaskStatus = 'Pendiente' | 'Haciendo' | 'Hecho' | string;
 
+// ── Kanban Tasks (tablero) ─────────────────────────────────
 export interface Task {
   id: string;
   title: string;
@@ -14,15 +13,9 @@ export interface Task {
   priority: Priority;
   context: AppContext;
   userId: string;
-  dueDate?: string;
   tags?: string[];
-  scheduledStartTime?: string;
-  scheduledEndTime?: string;
-  isRecurring?: boolean;
-  recurringDays?: number[];
-  recurrenceType?: RecurrenceType;
-  location?: string;
-  category?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
 export interface TaskFormData {
@@ -33,21 +26,56 @@ export interface TaskFormData {
   tags: string;
 }
 
-export interface CalendarFormData {
+// ── Routines (horario semanal recurrente) ──────────────────
+export interface Routine {
+  id: string;
   title: string;
-  time: string;
+  startTime: string;        // "HH:mm"
+  endTime: string;           // "HH:mm"
+  recurringDays: number[];   // 0=Dom, 1=Lun ... 6=Sab
   priority: Priority;
-  status: string;
-  location: string;
-  category: string;
-  recurrenceType: RecurrenceType;
+  context: AppContext;
+  userId: string;
+  color?: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 }
 
-export interface ScheduleFormData {
+export interface RoutineFormData {
   title: string;
   startTime: string;
   endTime: string;
   priority: Priority;
-  isRecurring: boolean;
   recurringDays: number[];
+  color: string;
+}
+
+// ── Calendar Events (eventos puntuales) ────────────────────
+export type EventColor = 'tomato' | 'flamingo' | 'tangerine' | 'banana' | 'sage' | 'basil' | 'peacock' | 'blueberry' | 'lavender' | 'grape' | 'graphite';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  startDate: string;         // ISO datetime
+  endDate: string;           // ISO datetime
+  allDay: boolean;
+  location?: string;
+  color: EventColor;
+  context: AppContext;
+  userId: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
+
+export interface CalendarEventFormData {
+  title: string;
+  description: string;
+  startDate: string;          // "YYYY-MM-DD"
+  startTime: string;          // "HH:mm"
+  endDate: string;            // "YYYY-MM-DD"
+  endTime: string;            // "HH:mm"
+  allDay: boolean;
+  location: string;
+  color: EventColor;
 }

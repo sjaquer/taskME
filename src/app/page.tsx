@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
-import { isSameDay, parseISO, startOfToday } from "date-fns";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,11 +34,9 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    setToday(startOfToday());
   }, []);
 
   useEffect(() => {
@@ -56,17 +53,16 @@ export default function Home() {
   const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
 
   const metrics = useMemo(() => {
-    if (!tasks || !today)
-      return { todayTasks: [] as Task[], completedToday: 0, progressPercent: 0, highPriorityTasks: [] as Task[], pendingTasksCount: 0 };
+    if (!tasks)
+      return { allTasks: [] as Task[], completedCount: 0, progressPercent: 0, highPriorityTasks: [] as Task[], pendingTasksCount: 0 };
 
-    const todayTasks = tasks.filter((t) => t.dueDate && isSameDay(parseISO(t.dueDate), today));
-    const completedToday = todayTasks.filter((t) => t.status === "Hecho").length;
-    const progressPercent = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0;
-    const highPriorityTasks = todayTasks.filter((t) => t.priority === "alta" && t.status !== "Hecho").slice(0, 3);
-    const pendingTasksCount = todayTasks.filter((t) => t.status !== "Hecho").length;
+    const completedCount = tasks.filter((t) => t.status === "Hecho").length;
+    const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
+    const highPriorityTasks = tasks.filter((t) => t.priority === "alta" && t.status !== "Hecho").slice(0, 3);
+    const pendingTasksCount = tasks.filter((t) => t.status !== "Hecho").length;
 
-    return { todayTasks, completedToday, progressPercent, highPriorityTasks, pendingTasksCount };
-  }, [tasks, today]);
+    return { allTasks: tasks, completedCount, progressPercent, highPriorityTasks, pendingTasksCount };
+  }, [tasks]);
 
   const handleQuickComplete = (taskId: string) => {
     if (!user || !firestore) return;
@@ -144,7 +140,7 @@ export default function Home() {
               label="Eficiencia"
               value={`${metrics.progressPercent}%`}
               icon={<Target className="w-5 h-5 text-primary" />}
-              subValue={`${metrics.completedToday}/${metrics.todayTasks.length} Procesadas`}
+              subValue={`${metrics.completedCount}/${metrics.allTasks.length} Procesadas`}
               color="text-primary"
             />
             <MetricCard
@@ -207,7 +203,7 @@ export default function Home() {
                       <h4 className="font-black text-xl md:text-2xl tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">{task.title}</h4>
                       <p className="text-[9px] text-white/40 uppercase font-black tracking-widest flex items-center gap-2">
                         <Clock className="w-3.5 h-3.5 text-primary" />
-                        <span className="font-data">Vence: {task.dueDate ? task.dueDate.split("T")[1]?.slice(0, 5) ?? "00:00" : "00:00"}</span>
+                        <span className="font-data">Prioridad: Alta</span>
                       </p>
                     </div>
                     <div className="mt-auto pt-4 border-t border-white/[0.06] flex items-center justify-between">
@@ -251,7 +247,7 @@ export default function Home() {
                 <p>{">"} Booting System...</p>
                 <p>{">"} Auth: OK</p>
                 <p>{">"} Syncing Firestore nodes...</p>
-                <p>{">"} <span className="font-data">{metrics.todayTasks.length}</span> mapped.</p>
+                <p>{">"} <span className="font-data">{metrics.allTasks.length}</span> mapped.</p>
                 <p className="text-white/40 animate-pulse">{">"} Ready.</p>
               </div>
             </div>

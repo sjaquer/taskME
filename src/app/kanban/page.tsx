@@ -124,7 +124,6 @@ export default function KanbanPage() {
     if (editingTask) {
       updateTask(firestore, user.uid, editingTask.id, {
         ...result.data,
-        dueDate: editingTask.dueDate || new Date().toISOString(),
       });
       toast({ title: "Actualizado" });
     } else {
@@ -132,7 +131,6 @@ export default function KanbanPage() {
         ...result.data,
         priority: result.data.priority as Priority,
         context: result.data.context as AppContext,
-        dueDate: new Date().toISOString(),
       });
       toast({ title: "Inyectado" });
     }

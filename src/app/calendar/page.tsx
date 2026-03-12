@@ -5,35 +5,52 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
-import { format, isSameDay, parseISO, setHours, setMinutes, getDay, getDate } from "date-fns";
+import { format, isSameDay, parseISO, addHours } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Plus, Inbox, RefreshCw, Link, Link2Off, MapPin } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Plus, Inbox, RefreshCw, Link, Link2Off, MapPin, AlignLeft } from "lucide-react";
 import { useGoogleCalendar } from "@/hooks/use-google-calendar";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
-import { CalendarEvent } from "@/components/molecules";
-import { buildTasksQuery, createTask, updateTask, deleteTask } from "@/services/task-service";
-import type { Task, Priority, RecurrenceType, CalendarFormData } from "@/types/task";
+import { CalendarEventCard } from "@/components/molecules";
+import { buildEventsQuery, createEvent, updateEvent, deleteEvent } from "@/services/task-service";
+import type { CalendarEvent, EventColor, CalendarEventFormData } from "@/types/task";
+import { cn } from "@/lib/utils";
 
-const CATEGORIES = [
-  { label: "Personal", color: "bg-blue-500" },
-  { label: "Académico", color: "bg-purple-500" },
-  { label: "Laboral", color: "bg-orange-500" },
-  { label: "Especial", color: "bg-pink-500" },
+const EVENT_COLORS: { value: EventColor; bg: string; label: string }[] = [
+  { value: "tomato", bg: "bg-red-500", label: "Tomate" },
+  { value: "flamingo", bg: "bg-pink-400", label: "Flamingo" },
+  { value: "tangerine", bg: "bg-orange-500", label: "Mandarina" },
+  { value: "banana", bg: "bg-yellow-400", label: "Banana" },
+  { value: "sage", bg: "bg-emerald-400", label: "Salvia" },
+  { value: "basil", bg: "bg-green-600", label: "Albahaca" },
+  { value: "peacock", bg: "bg-cyan-500", label: "Pavo real" },
+  { value: "blueberry", bg: "bg-blue-600", label: "Arándano" },
+  { value: "lavender", bg: "bg-violet-400", label: "Lavanda" },
+  { value: "grape", bg: "bg-purple-600", label: "Uva" },
+  { value: "graphite", bg: "bg-zinc-500", label: "Grafito" },
 ];
 
-const INITIAL_FORM: CalendarFormData = {
-  title: "", time: "09:00", priority: "media", status: "Pendiente",
-  location: "", category: "Personal", recurrenceType: "none",
+function getColorClasses(color: EventColor): string {
+  return EVENT_COLORS.find((c) => c.value === color)?.bg ?? "bg-blue-600";
+}
+
+function todayStr() { return format(new Date(), "yyyy-MM-dd"); }
+function nowTimeStr() { return format(new Date(), "HH:mm"); }
+function oneHourLaterStr() { return format(addHours(new Date(), 1), "HH:mm"); }
+
+const INITIAL_FORM: CalendarEventFormData = {
+  title: "", description: "", startDate: todayStr(), startTime: nowTimeStr(),
+  endDate: todayStr(), endTime: oneHourLaterStr(), allDay: false,
+  location: "", color: "blueberry",
 };
 
 export default function CalendarPage() {
@@ -46,23 +63,31 @@ export default function CalendarPage() {
   const [mounted, setMounted] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [formData, setFormData] = useState<CalendarFormData>(INITIAL_FORM);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [formData, setFormData] = useState<CalendarEventFormData>(INITIAL_FORM);
 
   useEffect(() => { setMounted(true); setDate(new Date()); }, []);
 
   useEffect(() => {
     setFormData(INITIAL_FORM);
-    setEditingTask(null);
+    setEditingEvent(null);
     setIsDialogOpen(false);
   }, [context]);
 
-  const tasksQuery = useMemoFirebase(() => {
+  // When user selects a date in the calendar picker, update the form dates
+  useEffect(() => {
+    if (date && !isDialogOpen) {
+      const dateStr = format(date, "yyyy-MM-dd");
+      setFormData((prev) => ({ ...prev, startDate: dateStr, endDate: dateStr }));
+    }
+  }, [date, isDialogOpen]);
+
+  const eventsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return buildTasksQuery(firestore, user.uid, context);
+    return buildEventsQuery(firestore, user.uid, context);
   }, [firestore, user, context]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const { data: events, isLoading: isEventsLoading } = useCollection<CalendarEvent>(eventsQuery);
 
   useEffect(() => {
     if (!isUserLoading && !user) router.push("/login");
@@ -78,71 +103,86 @@ export default function CalendarPage() {
     </div>
   );
 
-  const selectedDayTasks = tasks?.filter((task) => {
-    if (!task.dueDate || !date || task.context !== context) return false;
-    const taskDate = parseISO(task.dueDate);
-    if (isSameDay(taskDate, date)) return true;
-    if (task.recurrenceType === "weekly" && task.recurringDays?.includes(getDay(date))) return true;
-    if (task.recurrenceType === "monthly" && getDate(taskDate) === getDate(date)) return true;
-    return false;
-  }).sort((a, b) => (a.dueDate ?? "").localeCompare(b.dueDate ?? "")) || [];
+  const selectedDayEvents = events?.filter((ev) => {
+    if (!date || ev.context !== context) return false;
+    const start = parseISO(ev.startDate);
+    const end = parseISO(ev.endDate);
+    // Event spans this day
+    return (isSameDay(start, date) || isSameDay(end, date) || (start < date && end > date));
+  }).sort((a, b) => a.startDate.localeCompare(b.startDate)) || [];
 
-  const daysWithTasks = tasks?.filter((t) => t.context === context && t.dueDate).map((t) => parseISO(t.dueDate!)) || [];
+  const daysWithEvents = events?.filter((e) => e.context === context && e.startDate)
+    .map((e) => parseISO(e.startDate)) || [];
 
   const selectedDayGoogleEvents = date ? getEventsForDay(date) : [];
-  const totalEventsCount = selectedDayTasks.length + selectedDayGoogleEvents.length;
+  const totalEventsCount = selectedDayEvents.length + selectedDayGoogleEvents.length;
 
   const handleSaveEvent = () => {
-    if (!formData.title.trim() || !date) return;
-    const [hours, minutes] = formData.time.split(":").map(Number);
-    const finalDate = setMinutes(setHours(date, hours), minutes).toISOString();
+    if (!formData.title.trim()) return;
 
-    const taskData = {
+    let startDate: string;
+    let endDate: string;
+
+    if (formData.allDay) {
+      startDate = new Date(formData.startDate + "T00:00:00").toISOString();
+      endDate = new Date(formData.endDate + "T23:59:59").toISOString();
+    } else {
+      startDate = new Date(formData.startDate + "T" + formData.startTime + ":00").toISOString();
+      endDate = new Date(formData.endDate + "T" + formData.endTime + ":00").toISOString();
+    }
+
+    const eventData = {
       title: formData.title,
-      dueDate: finalDate,
-      scheduledStartTime: finalDate,
-      priority: formData.priority,
-      status: formData.status,
-      location: formData.location,
-      category: formData.category,
-      recurrenceType: formData.recurrenceType,
-      isRecurring: formData.recurrenceType !== "none",
-      recurringDays: formData.recurrenceType === "weekly" ? [getDay(date)] : [],
+      description: formData.description || undefined,
+      startDate,
+      endDate,
+      allDay: formData.allDay,
+      location: formData.location || undefined,
+      color: formData.color,
       context,
     };
 
-    if (editingTask) {
-      updateTask(firestore, user.uid, editingTask.id, taskData);
+    if (editingEvent) {
+      updateEvent(firestore, user.uid, editingEvent.id, eventData);
     } else {
-      createTask(firestore, user.uid, taskData);
+      createEvent(firestore, user.uid, eventData);
       if (gcalConnected) {
-        gcalPush({ title: formData.title, startISO: finalDate, location: formData.location || undefined });
+        gcalPush({ title: formData.title, startISO: startDate, location: formData.location || undefined });
       }
     }
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingTask ? "Actualizado" : gcalConnected ? "Agendado en app y Google" : "Agendado" });
+    toast({ title: editingEvent ? "Evento actualizado" : gcalConnected ? "Evento creado + Google" : "Evento creado" });
   };
 
-  const resetForm = () => { setFormData(INITIAL_FORM); setEditingTask(null); };
+  const resetForm = () => {
+    const dateStr = date ? format(date, "yyyy-MM-dd") : todayStr();
+    setFormData({ ...INITIAL_FORM, startDate: dateStr, endDate: dateStr, startTime: nowTimeStr(), endTime: oneHourLaterStr() });
+    setEditingEvent(null);
+  };
 
-  const openEditDialog = (task: Task) => {
-    setEditingTask(task);
+  const openEditDialog = (ev: CalendarEvent) => {
+    setEditingEvent(ev);
+    const start = parseISO(ev.startDate);
+    const end = parseISO(ev.endDate);
     setFormData({
-      title: task.title,
-      time: task.dueDate ? format(parseISO(task.dueDate), "HH:mm") : "09:00",
-      priority: task.priority || "media",
-      status: task.status,
-      location: task.location || "",
-      category: task.category || "Personal",
-      recurrenceType: task.recurrenceType || "none",
+      title: ev.title,
+      description: ev.description || "",
+      startDate: format(start, "yyyy-MM-dd"),
+      startTime: format(start, "HH:mm"),
+      endDate: format(end, "yyyy-MM-dd"),
+      endTime: format(end, "HH:mm"),
+      allDay: ev.allDay,
+      location: ev.location || "",
+      color: ev.color || "blueberry",
     });
     setIsDialogOpen(true);
   };
 
-  const handleDeleteEvent = (taskId: string) => {
-    deleteTask(firestore, user.uid, taskId);
+  const handleDeleteEvent = (eventId: string) => {
+    deleteEvent(firestore, user.uid, eventId);
+    toast({ title: "Evento eliminado", variant: "destructive" });
   };
 
   return (
@@ -152,14 +192,14 @@ export default function CalendarPage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-              Calendario <span className="text-primary italic glow-text">{context}</span>
+              Eventos <span className="text-primary italic glow-text">{context}</span>
             </h2>
             <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px] font-data">
-              {tasks?.length || 0} TOTAL
+              {events?.length || 0} TOTAL
             </Badge>
           </div>
           <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em] flex items-center gap-2">
-            <CalendarIcon className="w-3 h-3 text-primary/40" /> Control Temporal
+            <CalendarIcon className="w-3 h-3 text-primary/40" /> Eventos Puntuales
           </p>
         </div>
 
@@ -184,74 +224,102 @@ export default function CalendarPage() {
           )}
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
             <DialogTrigger asChild>
-              <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Agendar</TacticalButton>
+              <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Nuevo Evento</TacticalButton>
             </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[450px] p-6 sm:p-5 md:p-8">
+            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] p-5 sm:p-6 md:p-8">
               <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase">
-                  {editingTask ? "Editar Evento" : "Nuevo Evento"}
+                <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
+                  <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />
+                  {editingEvent ? "Editar Evento" : "Nuevo Evento"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
+              <div className="space-y-4 py-2">
+                {/* Title — large like GCal */}
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-primary">Nombre</Label>
-                  <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                  <Input
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="Agregar título"
+                    className="bg-transparent border-0 border-b border-white/[0.08] rounded-none h-12 text-lg font-bold px-0 focus-visible:ring-0 focus-visible:border-primary placeholder:text-white/20"
+                  />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black">Categoría</Label>
-                    <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                      <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                        {CATEGORIES.map((cat) => <SelectItem key={cat.label} value={cat.label}>{cat.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black">Repetición</Label>
-                    <Select value={formData.recurrenceType} onValueChange={(v) => setFormData({ ...formData, recurrenceType: v as RecurrenceType })}>
-                      <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                        <SelectItem value="none">Ninguna</SelectItem>
-                        <SelectItem value="weekly">Semanal</SelectItem>
-                        <SelectItem value="monthly">Mensual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+
+                {/* All Day toggle */}
+                <div className="flex items-center justify-between">
+                  <Label className="text-[11px] uppercase font-black tracking-widest flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-primary/60" /> Todo el día
+                  </Label>
+                  <Switch checked={formData.allDay} onCheckedChange={(val) => setFormData({ ...formData, allDay: val })} />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black">Hora</Label>
-                    <Input type="time" value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg font-data" />
+
+                {/* Date & Time — GCal style */}
+                <div className="space-y-3 p-3 glass-card border-white/[0.06] rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-black text-primary uppercase w-12">Inicio</span>
+                    <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data flex-1" />
+                    {!formData.allDay && (
+                      <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                        className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data w-28" />
+                    )}
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black">Prioridad</Label>
-                    <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as Priority })}>
-                      <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                        <SelectItem value="baja">Baja</SelectItem>
-                        <SelectItem value="media">Media</SelectItem>
-                        <SelectItem value="alta">Alta</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[9px] font-black text-white/40 uppercase w-12">Fin</span>
+                    <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data flex-1" />
+                    {!formData.allDay && (
+                      <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                        className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg font-data w-28" />
+                    )}
                   </div>
                 </div>
+
+                {/* Location */}
                 <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black flex items-center gap-1.5">
-                    <MapPin className="w-3 h-3" /> Ubicación
-                    <span className="text-white/30 normal-case font-medium text-[9px]">(opcional)</span>
+                  <Label className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5">
+                    <MapPin className="w-3 h-3 text-primary/60" /> Ubicación
                   </Label>
                   <Input
-                    placeholder="Aula 203, Zoom, Oficina..."
+                    placeholder="Agregar ubicación"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"
+                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg"
                   />
+                </div>
+
+                {/* Description */}
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] uppercase font-black tracking-widest flex items-center gap-1.5">
+                    <AlignLeft className="w-3 h-3 text-primary/60" /> Descripción
+                  </Label>
+                  <Textarea
+                    placeholder="Agregar descripción o notas"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="bg-white/[0.03] border-white/[0.08] min-h-[60px] rounded-lg resize-none"
+                  />
+                </div>
+
+                {/* Color picker — GCal style dots */}
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] uppercase font-black tracking-widest">Color</Label>
+                  <div className="flex gap-2 flex-wrap">
+                    {EVENT_COLORS.map((c) => (
+                      <button key={c.value} onClick={() => setFormData({ ...formData, color: c.value })}
+                        className={cn(
+                          "w-6 h-6 rounded-full transition-all border-2",
+                          c.bg,
+                          formData.color === c.value ? "border-white scale-125 ring-2 ring-white/20" : "border-transparent opacity-60 hover:opacity-100"
+                        )}
+                        title={c.label}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
               <DialogFooter>
                 <TacticalButton onClick={handleSaveEvent} className="w-full">
-                  {editingTask ? "Actualizar" : gcalConnected ? "Agendar + Google Calendar" : "Confirmar"}
+                  {editingEvent ? "Guardar cambios" : gcalConnected ? "Crear evento + Google" : "Crear evento"}
                 </TacticalButton>
               </DialogFooter>
             </DialogContent>
@@ -269,8 +337,8 @@ export default function CalendarPage() {
                   day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary font-black",
                   day: "h-9 w-9 p-0 font-bold transition-all hover:bg-white/[0.03] rounded-lg relative font-data",
                 }}
-                modifiers={{ hasTask: daysWithTasks }}
-                modifiersClassNames={{ hasTask: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
+                modifiers={{ hasEvent: daysWithEvents }}
+                modifiersClassNames={{ hasEvent: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full" }}
               />
           </Card>
           {/* Google Calendar status */}
@@ -317,18 +385,18 @@ export default function CalendarPage() {
 
           <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1 scrollbar-hide px-2">
             <AnimatePresence mode="popLayout">
-              {(selectedDayTasks.length > 0 || selectedDayGoogleEvents.length > 0) ? (
+              {(selectedDayEvents.length > 0 || selectedDayGoogleEvents.length > 0) ? (
                 <>
-                  {selectedDayTasks.map((task, idx) => (
-                    <CalendarEvent key={task.id} task={task} index={idx} onEdit={openEditDialog} onDelete={handleDeleteEvent} />
+                  {selectedDayEvents.map((ev, idx) => (
+                    <CalendarEventCard key={ev.id} event={ev} index={idx} onEdit={openEditDialog} onDelete={handleDeleteEvent} />
                   ))}
-                  {selectedDayGoogleEvents.map((ev, idx) => (
+                  {selectedDayGoogleEvents.map((gev, idx) => (
                     <motion.div
-                      key={ev.id}
+                      key={gev.id}
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
-                      transition={{ delay: (selectedDayTasks.length + idx) * 0.05 }}
+                      transition={{ delay: (selectedDayEvents.length + idx) * 0.05 }}
                       className="glass-card p-4 md:p-6 relative overflow-hidden border-white/[0.05]"
                     >
                       <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
@@ -337,16 +405,16 @@ export default function CalendarPage() {
                           <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase border border-blue-500/20 bg-blue-500/10 text-blue-400 font-mono">
                             Google
                           </span>
-                          {ev.start.dateTime && (
+                          {gev.start.dateTime && (
                             <span className="text-[10px] text-white/30 font-data">
-                              {format(parseISO(ev.start.dateTime), "HH:mm")}
+                              {format(parseISO(gev.start.dateTime), "HH:mm")}
                             </span>
                           )}
                         </div>
-                        <h4 className="font-black text-lg md:text-xl leading-tight">{ev.summary}</h4>
-                        {ev.location && (
+                        <h4 className="font-black text-lg md:text-xl leading-tight">{gev.summary}</h4>
+                        {gev.location && (
                           <p className="text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
-                            <MapPin className="w-3 h-3" /> {ev.location}
+                            <MapPin className="w-3 h-3" /> {gev.location}
                           </p>
                         )}
                       </div>

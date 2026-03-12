@@ -38,7 +38,7 @@ service cloud.firestore {
         allow delete: if isOwner(userId);
       }
 
-      // ── Tareas del usuario ─────────────────────────────────
+      // ── Tareas del usuario (Kanban) ────────────────────────
       match /tasks/{taskId} {
         allow read: if isOwner(userId);
 
@@ -55,6 +55,46 @@ service cloud.firestore {
                       && request.resource.data.title.size() > 0
                       && isValidContext(request.resource.data)
                       && isValidPriority(request.resource.data);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Rutinas del usuario (Horario semanal) ──────────────
+      match /routines/{routineId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && request.resource.data.userId == userId
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data)
+                      && isValidPriority(request.resource.data);
+
+        allow update: if isOwner(userId)
+                      && request.resource.data.userId == userId
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data)
+                      && isValidPriority(request.resource.data);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Eventos del usuario (Calendario puntual) ───────────
+      match /events/{eventId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && request.resource.data.userId == userId
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data);
+
+        allow update: if isOwner(userId)
+                      && request.resource.data.userId == userId
+                      && request.resource.data.title is string
+                      && request.resource.data.title.size() > 0
+                      && isValidContext(request.resource.data);
 
         allow delete: if isOwner(userId);
       }
