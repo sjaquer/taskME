@@ -186,58 +186,42 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 pb-24 px-4 sm:px-6">
-      {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-4 mt-2 mb-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-3">
-            <h2 className="text-3xl md:text-4xl font-black tracking-tighter uppercase">
-              Eventos <span className="text-primary italic glow-text">{context}</span>
-            </h2>
-            <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px] font-data">
-              {events?.length || 0} TOTAL
-            </Badge>
+    <div className="max-w-5xl mx-auto pb-24 px-4 sm:px-6">
+      {/* Header compacto mobile-first */}
+      <div className="flex items-center justify-between gap-4 py-4 sticky top-0 z-10 bg-[#050505]/95 backdrop-blur-xl -mx-4 px-4 sm:-mx-6 sm:px-6 border-b border-white/[0.04]">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+            <CalendarIcon className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em] flex items-center gap-2">
-            <CalendarIcon className="w-3 h-3 text-primary/40" /> Eventos Puntuales
-          </p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-black tracking-tight uppercase truncate">
+              Eventos <span className="text-primary">{context}</span>
+            </h1>
+            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+              {events?.length || 0} registrados
+            </p>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          {gcalConnected ? (
-            <button
-              onClick={gcalSync}
-              disabled={gcalSyncing}
-              className="h-10 px-3 rounded-xl border border-blue-500/30 bg-blue-500/5 text-blue-400 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-blue-500/10 transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${gcalSyncing ? "animate-spin" : ""}`} />
-              {gcalSyncing ? "Sincronizando..." : "Google Sync"}
+        
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
+          <DialogTrigger asChild>
+            <button className="h-11 w-11 sm:h-10 sm:w-auto sm:px-4 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(57,255,20,0.3)] active:scale-95 transition-transform">
+              <Plus className="w-5 h-5" />
+              <span className="hidden sm:inline">Nuevo</span>
             </button>
-          ) : (
-            <button
-              onClick={gcalConnect}
-              className="h-10 px-3 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/40 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-blue-500/30 hover:text-blue-400 transition-all"
-            >
-              <Link className="w-3.5 h-3.5" />
-              Conectar Google
-            </button>
-          )}
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-            <DialogTrigger asChild>
-              <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Nuevo Evento</TacticalButton>
-            </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] p-5 sm:p-6 md:p-8">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
-                  <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />
-                  {editingEvent ? "Editar Evento" : "Nuevo Evento"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6 py-2">
-                {/* Title — large like GCal */}
-                <div className="space-y-1.5 focus-within:ring-0">
-                  <Input
-                    value={formData.title}
+          </DialogTrigger>
+          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 md:p-8">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
+                <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />
+                {editingEvent ? "Editar Evento" : "Nuevo Evento"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-2">
+              {/* Title — large like GCal */}
+              <div className="space-y-1.5 focus-within:ring-0">
+                <Input
+                  value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Agregar título"
                     className="bg-transparent border-0 border-b-2 border-white/[0.08] rounded-none h-14 text-2xl md:text-3xl font-black px-1 focus-visible:ring-0 focus-visible:border-primary placeholder:text-white/20 transition-all font-sans"
@@ -329,67 +313,82 @@ export default function CalendarPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-        <div className="lg:col-span-5 space-y-4">
-          <Card className="glass-card bg-[#0a0a0a]/60 p-2 sm:p-4 flex justify-center border-white/[0.08] shadow-2xl">
-            <Calendar
-                mode="single" selected={date} onSelect={setDate} locale={es} 
-                className="rounded-2xl border-none p-2 w-full max-w-sm"
-                classNames={{
-                  day: "h-11 w-full p-0 font-bold transition-all hover:bg-white/[0.05] rounded-xl relative font-data",
-                  day_today: "bg-primary/10 text-primary border border-primary/30 font-black",
-                  day_selected: "bg-primary text-primary-foreground neon-glow hover:bg-primary font-black",
-                }}
-                modifiers={{ hasEvent: daysWithEvents }}
-                modifiersClassNames={{ hasEvent: "after:content-[''] after:absolute after:bottom-1 after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full after:shadow-[0_0_5px_rgba(57,255,20,0.8)]" }}
-              />
-          </Card>
-          {/* Google Calendar status */}
-          <div className="glass-card p-4 flex items-center justify-between gap-3 border-white/[0.08] shadow-lg">
-            {gcalConnected ? (
-              <>
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 animate-pulse" />
-                  <span className="text-[11px] font-black text-blue-400 uppercase tracking-widest truncate">
-                    {googleEvents.length} eventos de Google
-                  </span>
-                </div>
-                <button
-                  onClick={gcalDisconnect}
-                  className="text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-red-400 transition-all flex items-center gap-1 flex-shrink-0"
-                >
-                  <Link2Off className="w-3 h-3" /> Desconectar
-                </button>
-              </>
-            ) : (
-              <>
-                <span className="text-[11px] font-black text-white/20 uppercase tracking-widest">Google Calendar</span>
-                <button
-                  onClick={gcalConnect}
-                  className="h-7 px-2.5 rounded-lg border border-white/[0.06] text-white/30 text-[10px] font-black uppercase flex items-center gap-1.5 hover:border-blue-500/30 hover:text-blue-400 transition-all"
-                >
-                  <Link className="w-3 h-3" /> Conectar
-                </button>
-              </>
-            )}
-          </div>
+      {/* Layout principal — mobile-first, calendario como hero */}
+      <div className="space-y-6 mt-6">
+        {/* Calendario Hero Card */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a]/80 p-4 sm:p-6 shadow-2xl">
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={setDate}
+            locale={es}
+            className="w-full"
+            modifiers={{ hasEvent: daysWithEvents }}
+            modifiersClassNames={{
+              hasEvent: cn(
+                "after:content-[''] after:absolute after:bottom-1.5 after:left-1/2 after:-translate-x-1/2",
+                "after:w-1.5 after:h-1.5 after:bg-primary after:rounded-full",
+                "after:shadow-[0_0_6px_rgba(57,255,20,0.9)]"
+              )
+            }}
+          />
         </div>
 
-        <div className="lg:col-span-7 space-y-6">
+        {/* Google Calendar conexión — touch-friendly */}
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-4">
+          {gcalConnected ? (
+            <>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
+                <span className="text-xs font-bold text-blue-400 truncate">
+                  {googleEvents.length} eventos de Google
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={gcalSync}
+                  disabled={gcalSyncing}
+                  className="h-10 w-10 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-4 h-4", gcalSyncing && "animate-spin")} />
+                </button>
+                <button
+                  onClick={gcalDisconnect}
+                  className="h-10 w-10 rounded-xl border border-white/[0.08] text-white/30 flex items-center justify-center hover:text-red-400 hover:border-red-500/30 active:scale-95 transition-all"
+                >
+                  <Link2Off className="w-4 h-4" />
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Google Calendar</span>
+              <button
+                onClick={gcalConnect}
+                className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/50 text-xs font-bold uppercase flex items-center gap-2 hover:border-blue-500/30 hover:text-blue-400 active:scale-95 transition-all"
+              >
+                <Link className="w-4 h-4" /> Conectar
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Fecha seleccionada y eventos */}
+        <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
-            <h3 className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em] flex items-center gap-3">
+            <h3 className="text-sm sm:text-base font-black uppercase tracking-wide flex items-center gap-3">
               <Clock className="w-4 h-4 text-primary" />
-              <span className="font-data">{date ? format(date, "EEEE, d 'de' MMMM", { locale: es }) : "Fecha"}</span>
+              <span>{date ? format(date, "EEEE d", { locale: es }) : "Selecciona"}</span>
             </h3>
-            <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 h-6 font-black text-[11px] font-data px-3">
-              {totalEventsCount} EVENTOS
+            <Badge variant="outline" className="rounded-full border-primary/30 text-primary bg-primary/10 h-7 px-3 font-black text-xs">
+              {totalEventsCount}
             </Badge>
           </div>
 
-          <div className="space-y-4 max-h-[650px] lg:max-h-[800px] overflow-y-auto pr-2 scrollbar-hide px-1">
+          {/* Lista de eventos — scroll natural sin max-height fijo que falla en WebView */}
+          <div className="space-y-3">
             <AnimatePresence mode="popLayout">
               {(selectedDayEvents.length > 0 || selectedDayGoogleEvents.length > 0) ? (
                 <>
@@ -399,28 +398,28 @@ export default function CalendarPage() {
                   {selectedDayGoogleEvents.map((gev, idx) => (
                     <motion.div
                       key={gev.id}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -10 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
                       transition={{ delay: (selectedDayEvents.length + idx) * 0.05 }}
-                      className="glass-card p-4 md:p-6 relative overflow-hidden border-white/[0.05]"
+                      className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 relative overflow-hidden active:scale-[0.98] transition-transform"
                     >
-                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
-                      <div className="flex flex-col gap-2 pl-1">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-xl" />
+                      <div className="flex flex-col gap-2 pl-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full uppercase border border-blue-500/20 bg-blue-500/10 text-blue-400 font-mono">
+                          <span className="text-[10px] font-bold px-2 py-1 rounded-lg uppercase border border-blue-500/30 bg-blue-500/10 text-blue-400">
                             Google
                           </span>
                           {gev.start.dateTime && (
-                            <span className="text-[10px] text-white/30 font-data">
+                            <span className="text-xs text-white/40 font-mono">
                               {format(parseISO(gev.start.dateTime), "HH:mm")}
                             </span>
                           )}
                         </div>
-                        <h4 className="font-black text-lg md:text-xl leading-tight">{gev.summary}</h4>
+                        <h4 className="font-black text-base sm:text-lg leading-tight">{gev.summary}</h4>
                         {gev.location && (
-                          <p className="text-[11px] font-black text-muted-foreground uppercase flex items-center gap-2">
-                            <MapPin className="w-3 h-3" /> {gev.location}
+                          <p className="text-xs text-white/50 flex items-center gap-2">
+                            <MapPin className="w-3.5 h-3.5" /> {gev.location}
                           </p>
                         )}
                       </div>
@@ -428,10 +427,15 @@ export default function CalendarPage() {
                   ))}
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center py-24 opacity-[0.04]">
-                  <Inbox className="w-12 h-12 mb-2" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.4em]">Sin Eventos</p>
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex flex-col items-center justify-center py-16 rounded-xl border border-dashed border-white/[0.06]"
+                >
+                  <Inbox className="w-10 h-10 mb-3 text-white/10" />
+                  <p className="text-xs font-bold uppercase tracking-wider text-white/20">Sin eventos este día</p>
+                  <p className="text-[10px] text-white/10 mt-1">Toca + para crear uno</p>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
