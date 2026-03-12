@@ -125,14 +125,14 @@ export default function KanbanPage() {
       updateTask(firestore, user.uid, editingTask.id, {
         ...result.data,
       });
-      toast({ title: "Actualizado" });
+      toast({ variant: "success", title: "Actualizado" });
     } else {
       createTask(firestore, user.uid, {
         ...result.data,
         priority: result.data.priority as Priority,
         context: result.data.context as AppContext,
       });
-      toast({ title: "Inyectado" });
+      toast({ variant: "success", title: "Inyectado" });
     }
 
     resetForm();
@@ -159,7 +159,7 @@ export default function KanbanPage() {
 
   const handleDeleteTask = (taskId: string) => {
     deleteTask(firestore, user.uid, taskId);
-    toast({ title: "Nodo Purgado", variant: "destructive" });
+    toast({ title: "Nodo Purgado", variant: "warning" });
   };
 
   const handleAddColumn = () => {
@@ -171,7 +171,7 @@ export default function KanbanPage() {
 
   const handleRemoveColumn = (col: string) => {
     if (tasks?.some((t) => t.status === col)) {
-      toast({ variant: "destructive", title: "Ocupado", description: "Estado con tareas activas." });
+      toast({ variant: "warning", title: "Ocupado", description: "Estado con tareas activas." });
       return;
     }
     setColumns(columns.filter((c) => c !== col));

@@ -127,7 +127,7 @@ export default function SchedulePage() {
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingRoutine ? "Rutina actualizada" : "Rutina creada" });
+    toast({ variant: "success", title: editingRoutine ? "Rutina actualizada" : "Rutina creada" });
   };
 
   const resetForm = () => { setFormData(INITIAL_FORM); setEditingRoutine(null); };
@@ -147,7 +147,7 @@ export default function SchedulePage() {
 
   const handleDeleteRoutine = (routineId: string) => {
     deleteRoutine(firestore, user.uid, routineId);
-    toast({ title: "Rutina eliminada", variant: "destructive" });
+    toast({ title: "Rutina eliminada", variant: "warning" });
   };
 
   return (

@@ -67,7 +67,7 @@ export default function Home() {
   const handleQuickComplete = (taskId: string) => {
     if (!user || !firestore) return;
     completeTask(firestore, user.uid, taskId);
-    toast({ title: "Nodo Finalizado", description: "Operación completada." });
+    toast({ variant: "success", title: "Nodo Finalizado", description: "Operación completada." });
   };
 
   if (!mounted || isUserLoading || !user)

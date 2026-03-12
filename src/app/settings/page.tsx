@@ -64,7 +64,7 @@ export default function SettingsPage() {
     setIsUpdatingName(true);
     try {
       await updateUserProfile(user, firestore, newName.trim());
-      toast({ title: "Perfil actualizado" });
+      toast({ variant: "success", title: "Perfil actualizado" });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Error desconocido";
       toast({ variant: "destructive", title: "Error", description: message });
@@ -78,7 +78,7 @@ export default function SettingsPage() {
     setIsUpdatingEmail(true);
     try {
       await updateUserEmail(user, firestore, emailData.newEmail.trim(), emailData.password);
-      toast({ title: "Email actualizado" });
+      toast({ variant: "success", title: "Email actualizado" });
       setEmailData({ newEmail: "", password: "" });
       setEmailDialogOpen(false);
     } catch (error: unknown) {
@@ -101,7 +101,7 @@ export default function SettingsPage() {
     }
     try {
       await changeUserPassword(user, passwords.new, isEmailUser ? passwords.current : undefined);
-      toast({ title: "Clave actualizada" });
+      toast({ variant: "success", title: "Clave actualizada" });
       setPasswords({ current: "", new: "", confirm: "" });
       setPasswordDialogOpen(false);
     } catch {
@@ -121,7 +121,7 @@ export default function SettingsPage() {
       a.download = `taskme-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Datos exportados" });
+      toast({ variant: "success", title: "Datos exportados" });
     } catch {
       toast({ variant: "destructive", title: "Error", description: "No se pudieron exportar los datos." });
     } finally {

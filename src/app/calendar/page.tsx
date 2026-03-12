@@ -153,7 +153,7 @@ export default function CalendarPage() {
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ title: editingEvent ? "Evento actualizado" : gcalConnected ? "Evento creado + Google" : "Evento creado" });
+    toast({ variant: "success", title: editingEvent ? "Evento actualizado" : gcalConnected ? "Evento creado + Google" : "Evento creado" });
   };
 
   const resetForm = () => {
@@ -182,7 +182,7 @@ export default function CalendarPage() {
 
   const handleDeleteEvent = (eventId: string) => {
     deleteEvent(firestore, user.uid, eventId);
-    toast({ title: "Evento eliminado", variant: "destructive" });
+    toast({ title: "Evento eliminado", variant: "warning" });
   };
 
   return (

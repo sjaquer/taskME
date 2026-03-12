@@ -11,7 +11,7 @@ export function FirebaseErrorListener() {
       toast({
         variant: "destructive",
         title: "Error de permisos",
-        description: "No se pudo completar la operación. Verifica tu conexión.",
+        description: "No se pudo completar la operación. Verifica tu conexión e inicia sesión nuevamente.",
       });
       console.error('[Firestore]', error.message);
     };
