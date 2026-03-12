@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * useGoogleCalendar — Google Calendar bidirectional sync hook
+ * useGoogleCalendar — Google Calendar read + push sync hook
  *
  * Requires NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local
  *
@@ -13,10 +13,16 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { isSameDay, parseISO } from 'date-fns';
+import { addDays, format, isSameDay, parseISO } from 'date-fns';
 
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 const STORAGE_KEY = 'taskme_gcal_token';
+const GIS_SCRIPT_ID = 'gsi-client-script';
+
+type GoogleCalendarActionResult = {
+  ok: boolean;
+  message?: string;
+};
 
 export interface GoogleCalendarEvent {
   id: string;
@@ -34,6 +40,11 @@ interface StoredToken {
 
 type GisTokenClient = {
   requestAccessToken: (opts?: { prompt?: string }) => void;
+};
+
+type GisOAuth2 = {
+  initTokenClient: (opts: object) => GisTokenClient;
+  revoke?: (token: string, done?: () => void) => void;
 };
 
 function storeToken(token: string, expiresIn: number) {
@@ -62,14 +73,51 @@ function clearToken() {
   try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
 }
 
+function getNextDateString(dateString: string) {
+  return format(addDays(new Date(`${dateString}T00:00:00`), 1), 'yyyy-MM-dd');
+}
+
+function getConfigMessage() {
+  return 'Falta NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env.local.';
+}
+
+function getGoogleAuthMessage(error?: string) {
+  switch (error) {
+    case 'popup_closed':
+      return 'Cerraste la ventana de Google antes de completar la autorización.';
+    case 'popup_failed_to_open':
+      return 'El navegador bloqueó la ventana emergente de Google. Permite popups e inténtalo otra vez.';
+    case 'access_denied':
+      return 'La cuenta rechazó el permiso para sincronizar Google Calendar.';
+    case 'idpiframe_initialization_failed':
+      return 'Google no pudo inicializar la autenticación. Revisa orígenes autorizados y cookies del navegador.';
+    case 'immediate_failed':
+      return 'Google no pudo reutilizar la sesión actual. Vuelve a intentar la conexión.';
+    default:
+      return 'No se pudo completar la autorización con Google Calendar.';
+  }
+}
+
+async function getCalendarApiErrorMessage(response: Response) {
+  try {
+    const data = await response.json();
+    const message = data?.error?.message;
+    if (typeof message === 'string' && message.trim()) return message;
+  } catch {
+    // ignore JSON parsing failures and fall back to status-based message
+  }
+
+  if (response.status === 401) return 'La sesión de Google expiró. Vuelve a conectar la cuenta.';
+  if (response.status === 403) return 'Google rechazó la solicitud. Revisa el permiso calendar.events y que tu cuenta esté como usuario de prueba.';
+  return `Google Calendar devolvió error ${response.status}.`;
+}
+
 function getGis() {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as {
     google?: {
       accounts?: {
-        oauth2?: {
-          initTokenClient: (opts: object) => GisTokenClient;
-        };
+        oauth2?: GisOAuth2;
       };
     };
   };
@@ -80,10 +128,15 @@ export function useGoogleCalendar() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const fetchEvents = useCallback(async (token: string) => {
     setIsSyncing(true);
+    setError(null);
     try {
       const now = new Date();
       const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
@@ -102,13 +155,23 @@ export function useGoogleCalendar() {
       if (res.status === 401) {
         clearToken();
         setAccessToken(null);
-        return;
+        setGoogleEvents([]);
+        setError('La sesión de Google expiró. Vuelve a conectar la cuenta.');
+        return { ok: false, message: 'La sesión de Google expiró. Vuelve a conectar la cuenta.' } satisfies GoogleCalendarActionResult;
       }
-      if (!res.ok) throw new Error(`Calendar API error: ${res.status}`);
+      if (!res.ok) {
+        const message = await getCalendarApiErrorMessage(res);
+        setError(message);
+        return { ok: false, message } satisfies GoogleCalendarActionResult;
+      }
       const data = await res.json();
       setGoogleEvents((data.items as GoogleCalendarEvent[]) ?? []);
+      setLastSyncedAt(Date.now());
+      return { ok: true } satisfies GoogleCalendarActionResult;
     } catch (e) {
       console.error('[TaskMe] Google Calendar sync error:', e);
+      setError('No se pudieron sincronizar los eventos de Google Calendar.');
+      return { ok: false, message: 'No se pudieron sincronizar los eventos de Google Calendar.' } satisfies GoogleCalendarActionResult;
     } finally {
       setIsSyncing(false);
     }
@@ -125,61 +188,155 @@ export function useGoogleCalendar() {
 
   // Inject GIS script once
   useEffect(() => {
-    if (!clientId || typeof window === 'undefined') return;
-    if (document.getElementById('gsi-client-script')) return;
-    const script = document.createElement('script');
-    script.id = 'gsi-client-script';
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    document.head.appendChild(script);
-  }, [clientId]);
+    if (typeof window === 'undefined') return;
 
-  const connect = useCallback(() => {
     if (!clientId) {
-      console.warn('[TaskMe] Configura NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env.local para usar Google Calendar');
+      setIsReady(false);
+      setError(getConfigMessage());
       return;
     }
 
-    const tryInit = (): boolean => {
-      const oauth2 = getGis();
-      if (!oauth2) return false;
-      const client = oauth2.initTokenClient({
-        client_id: clientId,
-        scope: SCOPES,
-        callback: (response: { error?: string; access_token: string; expires_in: number }) => {
-          if (response.error) return;
-          storeToken(response.access_token, response.expires_in);
-          setAccessToken(response.access_token);
-          fetchEvents(response.access_token);
-        },
-      });
-      // Use empty prompt to try silently first, but popup if needed
-      client.requestAccessToken({ prompt: '' });
-      return true;
+    if (getGis()) {
+      setIsReady(true);
+      setError(null);
+      return;
+    }
+
+    const onLoad = () => {
+      setIsReady(true);
+      setError(null);
     };
 
-    if (!tryInit()) {
+    const onError = () => {
+      setIsReady(false);
+      setError('No se pudo cargar Google Identity Services.');
+    };
+
+    const existingScript = document.getElementById(GIS_SCRIPT_ID) as HTMLScriptElement | null;
+    if (existingScript) {
+      existingScript.addEventListener('load', onLoad);
+      existingScript.addEventListener('error', onError);
+      return () => {
+        existingScript.removeEventListener('load', onLoad);
+        existingScript.removeEventListener('error', onError);
+      };
+    }
+
+    const script = document.createElement('script');
+    script.id = GIS_SCRIPT_ID;
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.addEventListener('load', onLoad);
+    script.addEventListener('error', onError);
+    document.head.appendChild(script);
+
+    return () => {
+      script.removeEventListener('load', onLoad);
+      script.removeEventListener('error', onError);
+    };
+  }, [clientId]);
+
+  const connect = useCallback(async (): Promise<GoogleCalendarActionResult> => {
+    if (!clientId) {
+      const message = getConfigMessage();
+      console.warn('[TaskMe] Configura NEXT_PUBLIC_GOOGLE_CLIENT_ID en .env.local para usar Google Calendar');
+      setError(message);
+      return { ok: false, message };
+    }
+
+    setIsConnecting(true);
+    setError(null);
+
+    return new Promise<GoogleCalendarActionResult>((resolve) => {
+      let isResolved = false;
+
+      const finish = (result: GoogleCalendarActionResult) => {
+        if (isResolved) return;
+        isResolved = true;
+        setIsConnecting(false);
+        resolve(result);
+      };
+
+      const tryInit = (): boolean => {
+        const oauth2 = getGis();
+        if (!oauth2) return false;
+
+        const client = oauth2.initTokenClient({
+          client_id: clientId,
+          scope: SCOPES,
+          callback: async (response: { error?: string; access_token?: string; expires_in?: number }) => {
+            if (response.error || !response.access_token || !response.expires_in) {
+              const message = getGoogleAuthMessage(response.error);
+              setError(message);
+              finish({ ok: false, message });
+              return;
+            }
+
+            storeToken(response.access_token, response.expires_in);
+            setAccessToken(response.access_token);
+            const syncResult = await fetchEvents(response.access_token);
+            if (!syncResult.ok) {
+              finish(syncResult);
+              return;
+            }
+
+            finish({ ok: true });
+          },
+        });
+
+        client.requestAccessToken({ prompt: 'consent' });
+        return true;
+      };
+
+      if (tryInit()) return;
+
       let attempts = 0;
       const poll = setInterval(() => {
-        if (tryInit() || ++attempts > 25) clearInterval(poll);
+        if (tryInit()) {
+          clearInterval(poll);
+          return;
+        }
+
+        attempts += 1;
+        if (attempts > 25) {
+          clearInterval(poll);
+          const message = 'Google Identity Services no terminó de cargar. Revisa tu conexión e inténtalo otra vez.';
+          setError(message);
+          finish({ ok: false, message });
+        }
       }, 300);
-    }
+    });
   }, [clientId, fetchEvents]);
 
   const pushEvent = useCallback(async (event: {
     title: string;
-    startISO: string;
+    description?: string;
     location?: string;
+    allDay: boolean;
+    startISO: string;
+    endISO: string;
+    startDate: string;
+    endDate: string;
   }) => {
-    if (!accessToken) return;
+    if (!accessToken) {
+      return { ok: false, message: 'Primero debes conectar Google Calendar.' } satisfies GoogleCalendarActionResult;
+    }
+
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const endISO = new Date(new Date(event.startISO).getTime() + 3_600_000).toISOString();
     const body: Record<string, unknown> = {
       summary: event.title,
-      start: { dateTime: event.startISO, timeZone: tz },
-      end: { dateTime: endISO, timeZone: tz },
     };
+
+    if (event.allDay) {
+      body.start = { date: event.startDate };
+      body.end = { date: getNextDateString(event.endDate) };
+    } else {
+      body.start = { dateTime: event.startISO, timeZone: tz };
+      body.end = { dateTime: event.endISO, timeZone: tz };
+    }
+
     if (event.location) body.location = event.location;
+    if (event.description) body.description = event.description;
 
     try {
       const res = await fetch(
@@ -193,21 +350,42 @@ export function useGoogleCalendar() {
           body: JSON.stringify(body),
         }
       );
-      if (res.ok) fetchEvents(accessToken);
+
+      if (!res.ok) {
+        const message = await getCalendarApiErrorMessage(res);
+        setError(message);
+        return { ok: false, message } satisfies GoogleCalendarActionResult;
+      }
+
+      await fetchEvents(accessToken);
+      return { ok: true } satisfies GoogleCalendarActionResult;
     } catch (e) {
       console.error('[TaskMe] Google Calendar push error:', e);
+      setError('No se pudo crear el evento en Google Calendar.');
+      return { ok: false, message: 'No se pudo crear el evento en Google Calendar.' } satisfies GoogleCalendarActionResult;
     }
   }, [accessToken, fetchEvents]);
 
-  const syncNow = useCallback(() => {
-    if (accessToken) fetchEvents(accessToken);
+  const syncNow = useCallback(async () => {
+    if (!accessToken) {
+      return { ok: false, message: 'Primero debes conectar Google Calendar.' } satisfies GoogleCalendarActionResult;
+    }
+
+    return fetchEvents(accessToken);
   }, [accessToken, fetchEvents]);
 
   const disconnect = useCallback(() => {
+    const oauth2 = getGis();
+    if (accessToken && oauth2?.revoke) {
+      oauth2.revoke(accessToken, () => undefined);
+    }
+
     clearToken();
     setAccessToken(null);
     setGoogleEvents([]);
-  }, []);
+    setLastSyncedAt(null);
+    setError(null);
+  }, [accessToken]);
 
   /**
    * Filter Google events for a given day (handles both dateTime and all-day events)
@@ -226,6 +404,11 @@ export function useGoogleCalendar() {
   return {
     isConnected: !!accessToken,
     isSyncing,
+    isConnecting,
+    isReady,
+    hasClientId: !!clientId,
+    error,
+    lastSyncedAt,
     googleEvents,
     getEventsForDay,
     connect,

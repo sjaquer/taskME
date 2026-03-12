@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { Calendar } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { format, isSameDay, parseISO, addHours } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar as CalendarIcon, Clock, Plus, Inbox, RefreshCw, Link, Link2Off, MapPin, AlignLeft } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Plus, Inbox, RefreshCw, Link, Link2Off, MapPin, AlignLeft, AlertTriangle } from "lucide-react";
 import { useGoogleCalendar } from "@/hooks/use-google-calendar";
 import { Badge } from "@/components/ui/badge";
 import { useRouter } from "next/navigation";
@@ -58,13 +58,28 @@ export default function CalendarPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const { isConnected: gcalConnected, isSyncing: gcalSyncing, googleEvents, getEventsForDay, connect: gcalConnect, pushEvent: gcalPush, disconnect: gcalDisconnect, syncNow: gcalSync } = useGoogleCalendar();
+  const {
+    isConnected: gcalConnected,
+    isSyncing: gcalSyncing,
+    isConnecting: gcalConnecting,
+    isReady: gcalReady,
+    hasClientId: gcalHasClientId,
+    error: gcalError,
+    lastSyncedAt: gcalLastSyncedAt,
+    googleEvents,
+    getEventsForDay,
+    connect: gcalConnect,
+    pushEvent: gcalPush,
+    disconnect: gcalDisconnect,
+    syncNow: gcalSync,
+  } = useGoogleCalendar();
 
   const [mounted, setMounted] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [formData, setFormData] = useState<CalendarEventFormData>(INITIAL_FORM);
+  const lastGoogleErrorRef = useRef<string | null>(null);
 
   useEffect(() => { setMounted(true); setDate(new Date()); }, []);
 
@@ -93,6 +108,17 @@ export default function CalendarPage() {
     if (!isUserLoading && !user) router.push("/login");
   }, [user, isUserLoading, router]);
 
+  useEffect(() => {
+    if (!gcalError || lastGoogleErrorRef.current === gcalError) return;
+
+    lastGoogleErrorRef.current = gcalError;
+    toast({
+      variant: gcalHasClientId ? "warning" : "destructive",
+      title: "Google Calendar",
+      description: gcalError,
+    });
+  }, [gcalError, gcalHasClientId]);
+
   if (!mounted || isUserLoading || !user) return (
     <div className="max-w-7xl mx-auto space-y-8 p-4">
       <Skeleton className="h-16 w-1/2 bg-white/[0.03] rounded-2xl" />
@@ -117,7 +143,7 @@ export default function CalendarPage() {
   const selectedDayGoogleEvents = date ? getEventsForDay(date) : [];
   const totalEventsCount = selectedDayEvents.length + selectedDayGoogleEvents.length;
 
-  const handleSaveEvent = () => {
+  const handleSaveEvent = async () => {
     if (!formData.title.trim()) return;
 
     let startDate: string;
@@ -144,16 +170,38 @@ export default function CalendarPage() {
 
     if (editingEvent) {
       updateEvent(firestore, user.uid, editingEvent.id, eventData);
+      toast({ variant: "success", title: "Evento actualizado" });
     } else {
       createEvent(firestore, user.uid, eventData);
+
       if (gcalConnected) {
-        gcalPush({ title: formData.title, startISO: startDate, location: formData.location || undefined });
+        const googleResult = await gcalPush({
+          title: formData.title,
+          description: formData.description || undefined,
+          location: formData.location || undefined,
+          allDay: formData.allDay,
+          startISO: startDate,
+          endISO: endDate,
+          startDate: formData.startDate,
+          endDate: formData.endDate,
+        });
+
+        if (!googleResult.ok) {
+          toast({
+            variant: "warning",
+            title: "Evento local creado",
+            description: googleResult.message || "No se pudo sincronizar con Google Calendar.",
+          });
+        } else {
+          toast({ variant: "success", title: "Evento creado + Google Calendar" });
+        }
+      } else {
+        toast({ variant: "success", title: "Evento creado" });
       }
     }
 
     resetForm();
     setIsDialogOpen(false);
-    toast({ variant: "success", title: editingEvent ? "Evento actualizado" : gcalConnected ? "Evento creado + Google" : "Evento creado" });
   };
 
   const resetForm = () => {
@@ -183,6 +231,31 @@ export default function CalendarPage() {
   const handleDeleteEvent = (eventId: string) => {
     deleteEvent(firestore, user.uid, eventId);
     toast({ title: "Evento eliminado", variant: "warning" });
+  };
+
+  const handleGoogleConnect = async () => {
+    const result = await gcalConnect();
+    if (!result.ok) {
+      toast({ variant: gcalHasClientId ? "warning" : "destructive", title: "Google Calendar", description: result.message });
+      return;
+    }
+
+    toast({ variant: "success", title: "Google Calendar conectado" });
+  };
+
+  const handleGoogleSync = async () => {
+    const result = await gcalSync();
+    if (!result.ok) {
+      toast({ variant: "warning", title: "No se pudo sincronizar", description: result.message });
+      return;
+    }
+
+    toast({ variant: "info", title: "Google Calendar sincronizado" });
+  };
+
+  const handleGoogleDisconnect = () => {
+    gcalDisconnect();
+    toast({ variant: "warning", title: "Google Calendar desconectado" });
   };
 
   return (
@@ -337,42 +410,70 @@ export default function CalendarPage() {
         </div>
 
         {/* Google Calendar conexión — touch-friendly */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-center justify-between gap-4">
-          {gcalConnected ? (
-            <>
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-3 h-3 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
-                <span className="text-xs font-bold text-blue-400 truncate">
-                  {googleEvents.length} eventos de Google
-                </span>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-1">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs font-bold text-white/70 uppercase tracking-wider">Google Calendar</span>
+                {!gcalHasClientId && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-red-500/20 bg-red-500/10 text-red-300 uppercase tracking-wider">
+                    Config pendiente
+                  </span>
+                )}
+                {gcalConnected && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-500/20 bg-blue-500/10 text-blue-300 uppercase tracking-wider">
+                    Conectado
+                  </span>
+                )}
               </div>
+              <p className="text-xs text-white/45 leading-relaxed">
+                {gcalConnected
+                  ? `Lectura y creación activas. ${googleEvents.length} eventos cargados${gcalLastSyncedAt ? ` · Última sincronización ${format(new Date(gcalLastSyncedAt), "HH:mm")}` : ""}.`
+                  : !gcalHasClientId
+                  ? "Falta el Client ID público de Google en el entorno local."
+                  : !gcalReady
+                  ? "Cargando el cliente de Google para iniciar OAuth."
+                  : "Conecta tu cuenta para leer eventos de Google y enviar nuevos eventos creados aquí."}
+              </p>
+            </div>
+
+            {gcalConnected ? (
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={gcalSync}
+                  onClick={handleGoogleSync}
                   disabled={gcalSyncing}
                   className="h-10 w-10 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50"
                 >
                   <RefreshCw className={cn("w-4 h-4", gcalSyncing && "animate-spin")} />
                 </button>
                 <button
-                  onClick={gcalDisconnect}
+                  onClick={handleGoogleDisconnect}
                   className="h-10 w-10 rounded-xl border border-white/[0.08] text-white/30 flex items-center justify-center hover:text-red-400 hover:border-red-500/30 active:scale-95 transition-all"
                 >
                   <Link2Off className="w-4 h-4" />
                 </button>
               </div>
-            </>
-          ) : (
-            <>
-              <span className="text-xs font-bold text-white/30 uppercase tracking-wider">Google Calendar</span>
+            ) : (
               <button
-                onClick={gcalConnect}
-                className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/50 text-xs font-bold uppercase flex items-center gap-2 hover:border-blue-500/30 hover:text-blue-400 active:scale-95 transition-all"
+                onClick={handleGoogleConnect}
+                disabled={!gcalHasClientId || !gcalReady || gcalConnecting}
+                className="h-10 px-4 rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/50 text-xs font-bold uppercase flex items-center gap-2 hover:border-blue-500/30 hover:text-blue-400 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Link className="w-4 h-4" /> Conectar
+                <Link className="w-4 h-4" /> {gcalConnecting ? "Conectando" : "Conectar"}
               </button>
-            </>
+            )}
+          </div>
+
+          {gcalError && (
+            <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-3 py-2 flex items-start gap-2 text-yellow-100">
+              <AlertTriangle className="w-4 h-4 mt-0.5 text-yellow-300 flex-shrink-0" />
+              <p className="text-xs leading-relaxed text-yellow-100/85">{gcalError}</p>
+            </div>
           )}
+
+          <p className="text-[11px] text-white/30 leading-relaxed">
+            La sincronización actual lee eventos desde Google y envía nuevos eventos creados en esta vista. Editar o eliminar eventos locales todavía no actualiza Google.
+          </p>
         </div>
 
         {/* Fecha seleccionada y eventos */}
