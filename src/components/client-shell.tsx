@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
+import { NotificationMonitor } from './notification-monitor';
 
 const DESKTOP_NAV = [
   { icon: Home, label: "Inicio", href: "/" },
@@ -99,6 +100,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
           </div>
         </SidebarProvider>
       </FirebaseClientProvider>
+      <NotificationMonitor />
       <Toaster />
     </>
   );

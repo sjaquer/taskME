@@ -14,6 +14,7 @@ export interface Task {
   context: AppContext;
   userId: string;
   tags?: string[];
+  dueDate?: string | Date;   // ISO datetime (opcional)
   createdAt?: unknown;
   updatedAt?: unknown;
 }
@@ -24,6 +25,7 @@ export interface TaskFormData {
   priority: Priority;
   status: string;
   tags: string;
+  dueDate?: string;           // "YYYY-MM-DD" (opcional)
 }
 
 // ── Routines (horario semanal recurrente) ──────────────────

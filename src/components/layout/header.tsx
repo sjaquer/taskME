@@ -6,6 +6,7 @@ import { Briefcase, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppContext } from "@/types/task";
 import Image from "next/image";
+import { NotificationSetup } from "@/components/notification-setup";
 
 const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] = [
   { value: 'Trabajo', icon: Briefcase, label: 'Trabajo' },
@@ -26,22 +27,25 @@ export function Header() {
         </h1>
       </div>
 
-      <div className="flex bg-white/[0.03] rounded-full p-1 border border-white/[0.06]">
-        {CONTEXTS.map(({ value, icon: Icon, label }) => (
-          <button
-            key={value}
-            onClick={() => setContext(value)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all",
-              context === value
-                ? "bg-primary text-primary-foreground neon-glow"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <Icon className="w-3.5 h-3.5" />
-            {label}
-          </button>
-        ))}
+      <div className="flex items-center gap-4">
+        <div className="flex bg-white/[0.03] rounded-full p-1 border border-white/[0.06]">
+          {CONTEXTS.map(({ value, icon: Icon, label }) => (
+            <button
+              key={value}
+              onClick={() => setContext(value)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all",
+                context === value
+                  ? "bg-primary text-primary-foreground neon-glow"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+        <NotificationSetup />
       </div>
     </header>
   );
