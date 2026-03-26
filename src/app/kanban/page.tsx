@@ -66,6 +66,7 @@ export default function KanbanPage() {
     priority: "media" as Priority,
     status: "",
     tags: "",
+    dueDate: "",
   });
   const [activeTask, setActiveTask] = useState<Task | null>(null);
 
@@ -93,7 +94,7 @@ export default function KanbanPage() {
   }, [columns, taskForm.status]);
 
   useEffect(() => {
-    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "", dueDate: "" });
     setEditingTask(null);
     setIsDialogOpen(false);
   }, [context, columns]);
@@ -126,17 +127,19 @@ export default function KanbanPage() {
       return;
     }
 
+    // Agregar dueDate si existe (después de la validación)
+    const taskData = {
+      ...result.data,
+      priority: result.data.priority as Priority,
+      context: result.data.context as AppContext,
+      ...(taskForm.dueDate && { dueDate: taskForm.dueDate }),
+    };
+
     if (editingTask) {
-      updateTask(firestore, user.uid, editingTask.id, {
-        ...result.data,
-      });
+      updateTask(firestore, user.uid, editingTask.id, taskData);
       toast({ variant: "success", title: "Actualizado" });
     } else {
-      createTask(firestore, user.uid, {
-        ...result.data,
-        priority: result.data.priority as Priority,
-        context: result.data.context as AppContext,
-      });
+      createTask(firestore, user.uid, taskData);
       toast({ variant: "success", title: "Inyectado" });
     }
 
@@ -146,18 +149,25 @@ export default function KanbanPage() {
   };
 
   const resetForm = () => {
-    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "" });
+    setTaskForm({ title: "", description: "", priority: "media", status: columns[0], tags: "", dueDate: "" });
     setEditingTask(null);
   };
 
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
+    // Convertir dueDate a formato YYYY-MM-DD si existe
+    let dueDateFormatted = "";
+    if (task.dueDate) {
+      const date = typeof task.dueDate === 'string' ? new Date(task.dueDate) : task.dueDate as Date;
+      dueDateFormatted = date.toISOString().split('T')[0];
+    }
     setTaskForm({
       title: task.title,
       description: task.description || "",
       priority: task.priority,
       status: task.status,
       tags: task.tags?.join(", ") || "",
+      dueDate: dueDateFormatted,
     });
     setIsDialogOpen(true);
   };
@@ -272,6 +282,14 @@ export default function KanbanPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Fecha Vencimiento (Opcional)</Label>
+                  <Input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Etiquetas (separadas por coma)</Label>
+                  <Input value={taskForm.tags} onChange={(e) => setTaskForm({ ...taskForm, tags: e.target.value })} placeholder="bug, feature, urgente" className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
                 </div>
               </div>
               <DialogFooter>

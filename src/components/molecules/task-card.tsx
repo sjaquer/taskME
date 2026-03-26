@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Edit3, Trash2, CheckCircle2, Tags } from 'lucide-react';
+import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar } from 'lucide-react';
+import { differenceInDays, isAfter, parseISO } from 'date-fns';
 import { PriorityBadge, NodeId } from '@/components/atoms';
 import type { Task } from '@/types/task';
 
@@ -14,7 +15,41 @@ interface TaskCardProps {
   isOverlay?: boolean;
 }
 
+interface DueStatus {
+  isOverdue: boolean;
+  isUrgent: boolean;
+  daysLeft: number | null;
+  formattedDate: string;
+}
+
+function getDueStatus(dueDate: string | Date | undefined): DueStatus | null {
+  if (!dueDate) return null;
+
+  try {
+    const date = typeof dueDate === 'string' ? parseISO(dueDate) : dueDate as Date;
+    const now = new Date();
+    const daysLeft = differenceInDays(date, now);
+    const isOverdue = isAfter(now, date);
+    const isUrgent = daysLeft <= 3 && daysLeft > 0;
+
+    const formattedDate = new Intl.DateTimeFormat('es-ES', {
+      month: 'short',
+      day: 'numeric',
+    }).format(date);
+
+    return {
+      isOverdue,
+      isUrgent,
+      daysLeft: isOverdue ? null : daysLeft,
+      formattedDate,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
+  const dueStatus = getDueStatus(task.dueDate);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     data: { type: 'Task', task },
@@ -89,8 +124,25 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
         )}
 
         <div className="pt-3 flex items-center justify-between border-t border-white/[0.06]">
-          <NodeId id={task.id} />
-          {task.status === 'Hecho' && <CheckCircle2 className="w-3 h-3 text-primary" />}
+          <div className="flex items-center gap-2">
+            <NodeId id={task.id} />
+            {dueStatus && (
+              <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                dueStatus.isOverdue
+                  ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                  : dueStatus.isUrgent
+                  ? 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                  : 'bg-white/[0.02] border-white/[0.08] text-white/50'
+              }`}>
+                <Calendar className="w-2.5 h-2.5" />
+                {dueStatus.isOverdue ? 'Vencido' : `${dueStatus.daysLeft}d`}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {dueStatus?.isOverdue && <AlertCircle className="w-3 h-3 text-red-400" />}
+            {task.status === 'Hecho' && <CheckCircle2 className="w-3 h-3 text-primary" />}
+          </div>
         </div>
       </div>
     </motion.div>
