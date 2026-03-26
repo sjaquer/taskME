@@ -610,14 +610,14 @@ export default function CalendarPage() {
 
       {/* Dialog para crear/editar evento */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-        <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 max-h-[92dvh] overflow-y-auto">
+        <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 max-h-[92dvh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
               <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />
               {editingEvent ? "Editar Evento" : "Nuevo Evento"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-5 py-2">
+          <div className="space-y-5 py-2 pr-1 overflow-y-auto max-h-[calc(100dvh-14rem)] sm:max-h-[58dvh]">
             {/* Title */}
             <Input
               value={formData.title}
