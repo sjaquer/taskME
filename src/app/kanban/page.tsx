@@ -259,7 +259,7 @@ export default function KanbanPage() {
                   <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
                   <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="bg-white/[0.03] border-white/[0.08] min-h-[80px] rounded-lg" />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
                     <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>
@@ -282,10 +282,15 @@ export default function KanbanPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Fecha Vencimiento (Opcional)</Label>
-                  <Input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] uppercase font-black tracking-widest">Vencimiento (Opcional)</Label>
+                    <Input
+                      type="date"
+                      value={taskForm.dueDate}
+                      onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                      className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"
+                    />
+                  </div>
                 </div>
               </div>
               <DialogFooter>
