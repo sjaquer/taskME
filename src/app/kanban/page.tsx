@@ -287,10 +287,6 @@ export default function KanbanPage() {
                   <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Fecha Vencimiento (Opcional)</Label>
                   <Input type="date" value={taskForm.dueDate} onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Etiquetas (separadas por coma)</Label>
-                  <Input value={taskForm.tags} onChange={(e) => setTaskForm({ ...taskForm, tags: e.target.value })} placeholder="bug, feature, urgente" className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
-                </div>
               </div>
               <DialogFooter>
                 <TacticalButton onClick={handleSaveTask} disabled={isSaving} className="w-full">
