@@ -5,7 +5,8 @@ import { format, parseISO } from 'date-fns';
 import { Edit3, Trash2, MapPin, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
+import { useAppContextStore } from '@/lib/store';
 import type { CalendarEvent, EventColor } from '@/types/task';
 
 interface CalendarEventCardProps {
@@ -33,6 +34,11 @@ export function CalendarEventCard({ event, index, onEdit, onDelete }: CalendarEv
   const colorClass = COLOR_MAP[event.color] ?? 'bg-blue-600';
   const start = parseISO(event.startDate);
   const end = parseISO(event.endDate);
+  const { hourFormat } = useAppContextStore();
+
+  // Convertir las fechas a formato "HH:mm" para formatTime
+  const startTimeString = format(start, 'HH:mm');
+  const endTimeString = format(end, 'HH:mm');
 
   return (
     <motion.div
@@ -50,7 +56,7 @@ export function CalendarEventCard({ event, index, onEdit, onDelete }: CalendarEv
             {!event.allDay && (
               <span className="text-xs text-white/50 font-mono flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {format(start, 'HH:mm')} — {format(end, 'HH:mm')}
+                {formatTime(startTimeString, hourFormat)} — {formatTime(endTimeString, hourFormat)}
               </span>
             )}
             {event.allDay && (

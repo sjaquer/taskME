@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { AppContext } from '@/types/task';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet';
+export type HourFormat = '24h' | '12h';
 
 interface ModuleFlags {
   dashboard: boolean;
@@ -22,6 +23,8 @@ interface AppState {
   setHighPerformanceMode: (enabled: boolean) => void;
   kanbanColumns: string[];
   setKanbanColumns: (columns: string[]) => void;
+  hourFormat: HourFormat;
+  setHourFormat: (format: HourFormat) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -47,6 +50,8 @@ export const useAppContextStore = create<AppState>()(
       setHighPerformanceMode: (enabled) => set({ highPerformanceMode: enabled }),
       kanbanColumns: ['Pendiente', 'Haciendo', 'Hecho'],
       setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
+      hourFormat: '24h',
+      setHourFormat: (format) => set({ hourFormat: format }),
     }),
     {
       name: 'taskme-app-state-v2',

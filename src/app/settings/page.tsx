@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser, useAuth, useFirestore } from "@/firebase";
 import { useAppContextStore } from "@/lib/store";
-import type { AppTheme } from "@/lib/store";
+import type { AppTheme, HourFormat } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { TacticalButton } from "@/components/atoms";
@@ -39,7 +39,7 @@ export default function SettingsPage() {
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { activeModules, toggleModule, theme, setTheme } = useAppContextStore();
+  const { activeModules, toggleModule, theme, setTheme, hourFormat, setHourFormat } = useAppContextStore();
 
   const [newName, setNewName] = useState(user?.displayName || "");
   const [isUpdatingName, setIsUpdatingName] = useState(false);
@@ -186,7 +186,7 @@ export default function SettingsPage() {
         <div className="flex-1 space-y-3 text-center md:text-left w-full">
           <div className="space-y-1">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-              Ajustes <span className="text-primary italic glow-text">Operador</span>
+              Configuraciones
             </h2>
             <p className="text-[11px] text-muted-foreground font-black uppercase tracking-[0.4em] flex items-center justify-center md:justify-start gap-2">
               <Fingerprint className="w-3 h-3 text-primary/40" />
@@ -325,7 +325,7 @@ export default function SettingsPage() {
         <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
           <Palette className="w-3.5 h-3.5 text-primary" /> Apariencia
         </h3>
-        <div className="glass-card p-5 space-y-4">
+        <div className="glass-card p-5 space-y-6">
           <div className="space-y-1.5">
             <Label className="text-[11px] uppercase font-black text-primary">Tema de Color</Label>
             <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
@@ -352,6 +352,28 @@ export default function SettingsPage() {
                 <p className="text-[10px] text-white/40 mt-1">{option.hint}</p>
               </button>
             ))}
+          </div>
+
+          <div className="border-t border-white/[0.06] pt-4">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase font-black text-primary">Formato de Hora</Label>
+              <Select value={hourFormat} onValueChange={(value) => setHourFormat(value as any)}>
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                  <SelectItem value="24h" className="text-[11px] font-black uppercase tracking-wider">
+                    24 Horas
+                  </SelectItem>
+                  <SelectItem value="12h" className="text-[11px] font-black uppercase tracking-wider">
+                    12 Horas (AM/PM)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-white/40 mt-2">
+                {hourFormat === '24h' ? 'Formato: 14:30' : 'Formato: 02:30 PM'}
+              </p>
+            </div>
           </div>
         </div>
       </section>

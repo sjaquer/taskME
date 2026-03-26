@@ -6,7 +6,8 @@ import { Clock, Edit3, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { cn } from '@/lib/utils';
+import { cn, formatTime } from '@/lib/utils';
+import { useAppContextStore } from '@/lib/store';
 import type { Routine } from '@/types/task';
 
 interface ScheduleItemProps {
@@ -36,6 +37,7 @@ function getActivityProgress(routine: Routine, selectedDate: Date, currentTime: 
 export function ScheduleItem({ routine, selectedDate, currentTime, index, onEdit, onDelete }: ScheduleItemProps) {
   const progress = getActivityProgress(routine, selectedDate, currentTime);
   const isActive = progress !== null;
+  const { hourFormat } = useAppContextStore();
 
   return (
     <motion.div
@@ -55,7 +57,7 @@ export function ScheduleItem({ routine, selectedDate, currentTime, index, onEdit
       <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-12">
         <div className="w-16 pt-3">
           <span className={cn('text-xs md:text-sm font-black tracking-widest font-data', isActive ? 'text-primary' : 'text-white/20')}>
-            {routine.startTime || '--:--'}
+            {formatTime(routine.startTime, hourFormat)}
           </span>
         </div>
         <div
@@ -95,7 +97,7 @@ export function ScheduleItem({ routine, selectedDate, currentTime, index, onEdit
           )}
           <div className="flex items-center gap-4 text-[11px] text-white/20 uppercase font-black tracking-widest font-data">
             <Clock className="w-3 h-3 text-primary" />
-            {routine.startTime || '--:--'} - {routine.endTime || '...'}
+            {formatTime(routine.startTime, hourFormat)} - {formatTime(routine.endTime, hourFormat)}
           </div>
         </div>
       </div>
