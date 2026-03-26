@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
@@ -74,6 +74,10 @@ export default function KanbanPage() {
   }, [firestore, user, context]);
 
   const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const totalTasks = tasks?.length || 0;
+  const completedTasks = tasks?.filter((t) => t.status === "Hecho").length || 0;
+  const inProgressTasks = tasks?.filter((t) => t.status === "Haciendo").length || 0;
+  const criticalTasks = tasks?.filter((t) => t.priority === "alta" && t.status !== "Hecho").length || 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -201,18 +205,18 @@ export default function KanbanPage() {
   return (
     <div className="space-y-6 pb-24">
       {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-              Tablero <span className="text-primary italic glow-text">{context}</span>
+              Kanban <span className="text-primary italic glow-text">{context}</span>
             </h2>
             <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-2 h-5 font-black text-[11px] font-data">
-              {tasks?.length || 0} NODOS
+              {totalTasks} TAREAS
             </Badge>
           </div>
           <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] flex items-center gap-3">
-            <Database className="w-3 h-3 text-primary/40" /> Orquestación de Datos
+            <Database className="w-3 h-3 text-primary/40" /> Arrastra tareas entre estados para avanzar el flujo
           </p>
         </div>
 
@@ -279,6 +283,31 @@ export default function KanbanPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="glass-card p-3 md:p-4">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Total</p>
+          <p className="text-xl md:text-2xl font-black mt-1 font-data">{totalTasks}</p>
+        </div>
+        <div className="glass-card p-3 md:p-4">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">En Progreso</p>
+          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2">
+            <Clock3 className="w-4 h-4 text-primary" /> {inProgressTasks}
+          </p>
+        </div>
+        <div className="glass-card p-3 md:p-4">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Críticas</p>
+          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2 text-red-400">
+            <Flame className="w-4 h-4" /> {criticalTasks}
+          </p>
+        </div>
+        <div className="glass-card p-3 md:p-4">
+          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Completadas</p>
+          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2 text-primary">
+            <CircleCheckBig className="w-4 h-4" /> {completedTasks}
+          </p>
+        </div>
+      </div>
+
       {/* Column Management */}
       <AnimatePresence>
         {isManagingColumns && (
@@ -305,7 +334,8 @@ export default function KanbanPage() {
 
       {/* Kanban Board */}
       <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 md:gap-8 overflow-x-auto pb-8 scrollbar-hide min-h-[50vh] -mx-4 px-4 md:mx-0">
+        <div className="glass-card p-3 md:p-4 border-white/[0.08]">
+          <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide min-h-[50vh] -mx-1 px-1 md:mx-0">
           <div className="flex gap-4 md:gap-8 min-w-full">
             {isTasksLoading ? (
               [...Array(3)].map((_, i) => (
@@ -325,6 +355,7 @@ export default function KanbanPage() {
                 />
               ))
             )}
+          </div>
           </div>
         </div>
         <DragOverlay>

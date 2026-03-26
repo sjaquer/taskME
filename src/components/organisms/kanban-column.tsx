@@ -21,11 +21,11 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnPr
   });
 
   return (
-    <div className="flex-shrink-0 w-[80vw] sm:w-80 md:w-96 flex flex-col gap-4" id={status}>
-      <div className="flex items-center gap-3 px-2">
-        <div className={cn('w-1.5 h-1.5 rounded-full', status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20')} />
-        <h3 className="font-black uppercase tracking-[0.2em] text-[9px] text-white/60">{status}</h3>
-        <span className="text-[11px] font-black bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/[0.06] text-muted-foreground/50 font-data">
+    <div className="flex-shrink-0 w-[85vw] sm:w-80 md:w-96 flex flex-col gap-3" id={status}>
+      <div className="flex items-center gap-3 px-2 py-1 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+        <div className={cn('w-2 h-2 rounded-full', status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20')} />
+        <h3 className="font-black uppercase tracking-[0.2em] text-[10px] text-white/70">{status}</h3>
+        <span className="ml-auto text-[11px] font-black bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/[0.06] text-muted-foreground/70 font-data">
           {tasks.length}
         </span>
       </div>
@@ -33,7 +33,7 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnPr
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 glass-card p-3 md:p-5 border-dashed min-h-[400px] relative transition-colors',
+          'flex-1 glass-card p-3 md:p-4 border-dashed min-h-[420px] relative transition-colors',
           isOver && 'border-primary/60 bg-primary/[0.06]'
         )}
       >
@@ -45,9 +45,10 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnPr
           </div>
         </SortableContext>
         {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-32 opacity-[0.04]">
-            <AlertCircle className="w-12 h-12 mb-2" />
-            <p className="text-[9px] font-black uppercase tracking-[0.5em]">Vacío</p>
+          <div className="flex flex-col items-center justify-center py-24 opacity-60 text-center">
+            <AlertCircle className="w-8 h-8 mb-3 text-white/20" />
+            <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/30">Sin tareas</p>
+            <p className="text-[10px] text-white/25 mt-1">Arrastra una tarjeta aquí</p>
           </div>
         )}
       </div>

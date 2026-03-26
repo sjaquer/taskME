@@ -21,20 +21,102 @@ service cloud.firestore {
              && data.priority in ['baja', 'media', 'alta'];
     }
 
+    function isValidTimestampField(value) {
+      return value is timestamp;
+    }
+
+    function isValidTags(tags) {
+      return tags is list && tags.size() <= 20;
+    }
+
+    function isValidUserDoc(data) {
+      return data.keys().hasOnly(['displayName', 'email', 'updatedAt', 'createdAt'])
+             && (!('displayName' in data) || data.displayName is string)
+             && (!('email' in data) || data.email is string)
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt))
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt));
+    }
+
+    function isValidTaskDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'title', 'description', 'priority', 'status', 'tags',
+               'context', 'createdAt', 'updatedAt'
+             ])
+             && data.userId == userId
+             && data.title is string
+             && data.title.size() > 0
+             && data.title.size() <= 140
+             && (!('description' in data) || (data.description is string && data.description.size() <= 2000))
+             && data.status is string
+             && data.status.size() > 0
+             && isValidContext(data)
+             && isValidPriority(data)
+             && (!('tags' in data) || isValidTags(data.tags))
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
+    function isValidRoutineDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'title', 'startTime', 'endTime', 'recurringDays',
+               'priority', 'context', 'color', 'createdAt', 'updatedAt'
+             ])
+             && data.userId == userId
+             && data.title is string
+             && data.title.size() > 0
+             && data.startTime is string
+             && data.endTime is string
+             && data.recurringDays is list
+             && data.recurringDays.size() <= 7
+             && isValidContext(data)
+             && isValidPriority(data)
+             && (!('color' in data) || data.color is string)
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
+    function isValidEventDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'title', 'description', 'startDate', 'endDate', 'allDay',
+               'location', 'color', 'context', 'createdAt', 'updatedAt'
+             ])
+             && data.userId == userId
+             && data.title is string
+             && data.title.size() > 0
+             && data.startDate is string
+             && data.endDate is string
+             && data.allDay is bool
+             && data.color is string
+             && (!('description' in data) || data.description is string)
+             && (!('location' in data) || data.location is string)
+             && isValidContext(data)
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
+    function isValidSettingsDoc(data) {
+      return data.keys().hasOnly(['activeModules', 'theme', 'updatedAt'])
+             && (!('activeModules' in data) || data.activeModules is map)
+             && (!('theme' in data) || (data.theme is string && data.theme in ['neon', 'cyan', 'amber', 'rose', 'violet']))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
     // ── Perfil de usuario ──────────────────────────────────────
     match /users/{userId} {
       allow read: if isOwner(userId);
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId)
+                    && isValidUserDoc(request.resource.data);
       allow update: if isOwner(userId)
-                    && (!('email' in request.resource.data) || request.resource.data.email is string)
-                    && (!('displayName' in request.resource.data) || request.resource.data.displayName is string);
+                    && isValidUserDoc(request.resource.data);
       allow delete: if isOwner(userId);
 
       // ── Configuraciones del usuario ────────────────────────
       match /settings/{settingId} {
         allow read: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isOwner(userId);
+        allow create: if isOwner(userId)
+                      && isValidSettingsDoc(request.resource.data);
+        allow update: if isOwner(userId)
+                      && isValidSettingsDoc(request.resource.data);
         allow delete: if isOwner(userId);
       }
 
@@ -43,18 +125,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data)
-                      && isValidPriority(request.resource.data);
+                      && isValidTaskDoc(request.resource.data, userId);
 
         allow update: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data)
-                      && isValidPriority(request.resource.data);
+                      && isValidTaskDoc(request.resource.data, userId);
 
         allow delete: if isOwner(userId);
       }
@@ -64,18 +138,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data)
-                      && isValidPriority(request.resource.data);
+                      && isValidRoutineDoc(request.resource.data, userId);
 
         allow update: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data)
-                      && isValidPriority(request.resource.data);
+                      && isValidRoutineDoc(request.resource.data, userId);
 
         allow delete: if isOwner(userId);
       }
@@ -85,16 +151,10 @@ service cloud.firestore {
         allow read: if isOwner(userId);
 
         allow create: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data);
+                      && isValidEventDoc(request.resource.data, userId);
 
         allow update: if isOwner(userId)
-                      && request.resource.data.userId == userId
-                      && request.resource.data.title is string
-                      && request.resource.data.title.size() > 0
-                      && isValidContext(request.resource.data);
+                      && isValidEventDoc(request.resource.data, userId);
 
         allow delete: if isOwner(userId);
       }

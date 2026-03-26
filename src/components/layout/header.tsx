@@ -2,19 +2,10 @@
 "use client";
 
 import { useAppContextStore } from "@/lib/store";
-import { Briefcase, GraduationCap, Palette } from "lucide-react";
+import { Briefcase, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppContext } from "@/types/task";
 import Image from "next/image";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const THEMES = [
-  { value: "neon", label: "Neon Verde" },
-  { value: "cyan", label: "Cyan" },
-  { value: "amber", label: "Amber" },
-  { value: "rose", label: "Rose" },
-  { value: "violet", label: "Violet" },
-] as const;
 
 const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] = [
   { value: 'Trabajo', icon: Briefcase, label: 'Trabajo' },
@@ -22,7 +13,7 @@ const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] =
 ];
 
 export function Header() {
-  const { context, setContext, theme, setTheme } = useAppContextStore();
+  const { context, setContext } = useAppContextStore();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-blur gpu-blur h-16 px-4 flex items-center justify-between border-b border-white/[0.06] md:px-8">
@@ -35,24 +26,7 @@ export function Header() {
         </h1>
       </div>
 
-      <div className="flex items-center gap-2">
-        <div className="hidden md:flex items-center gap-2 bg-white/[0.03] rounded-full p-1.5 border border-white/[0.06]">
-          <Palette className="w-3.5 h-3.5 text-primary ml-1" />
-          <Select value={theme} onValueChange={(value) => setTheme(value as typeof theme)}>
-            <SelectTrigger className="h-8 w-36 rounded-full border-white/[0.08] bg-transparent text-[11px] font-black uppercase tracking-wider focus:ring-primary/40 focus:ring-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-              {THEMES.map((themeOption) => (
-                <SelectItem key={themeOption.value} value={themeOption.value} className="text-[11px] font-black uppercase tracking-wider">
-                  {themeOption.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex bg-white/[0.03] rounded-full p-1 border border-white/[0.06]">
+      <div className="flex bg-white/[0.03] rounded-full p-1 border border-white/[0.06]">
         {CONTEXTS.map(({ value, icon: Icon, label }) => (
           <button
             key={value}
@@ -68,7 +42,6 @@ export function Header() {
             {label}
           </button>
         ))}
-        </div>
       </div>
     </header>
   );
