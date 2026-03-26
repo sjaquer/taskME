@@ -57,7 +57,8 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
           <div
             {...attributes}
             {...listeners}
-            className="p-1.5 hover:bg-white/[0.03] rounded-lg cursor-grab active:cursor-grabbing ml-auto opacity-20 group-hover:opacity-100"
+            className="p-1.5 hover:bg-white/[0.03] rounded-lg cursor-grab active:cursor-grabbing ml-auto opacity-20 group-hover:opacity-100 touch-none"
+            style={{ touchAction: 'none' }}
           >
             <GripVertical className="w-3 h-3" />
           </div>

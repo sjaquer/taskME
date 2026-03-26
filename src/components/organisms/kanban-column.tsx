@@ -1,5 +1,6 @@
 'use client';
 
+import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { AlertCircle } from 'lucide-react';
 import { TaskCard } from '@/components/molecules/task-card';
@@ -14,6 +15,11 @@ interface KanbanColumnProps {
 }
 
 export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+    data: { type: 'Column', status },
+  });
+
   return (
     <div className="flex-shrink-0 w-[80vw] sm:w-80 md:w-96 flex flex-col gap-4" id={status}>
       <div className="flex items-center gap-3 px-2">
@@ -24,7 +30,13 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnPr
         </span>
       </div>
 
-      <div className="flex-1 glass-card p-3 md:p-5 border-dashed min-h-[400px] relative">
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'flex-1 glass-card p-3 md:p-5 border-dashed min-h-[400px] relative transition-colors',
+          isOver && 'border-primary/60 bg-primary/[0.06]'
+        )}
+      >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-4 relative z-10">
             {tasks.map((task) => (
