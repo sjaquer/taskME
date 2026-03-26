@@ -19,8 +19,8 @@ import {
   ListTodo,
   CalendarDays,
 } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
-import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
+import { useEffect, useMemo } from "react";
+import { useUser, useFirestore, useCollectionOnce, useMemoFirebase } from "@/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,11 +36,6 @@ export default function Home() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -53,7 +48,7 @@ export default function Home() {
     return buildTasksQuery(firestore, user.uid, context);
   }, [firestore, user, context]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const { data: tasks, isLoading: isTasksLoading } = useCollectionOnce<Task>(tasksQuery);
 
   const metrics = useMemo(() => {
     if (!tasks)
@@ -81,7 +76,7 @@ export default function Home() {
     toast({ variant: "success", title: "Nodo Finalizado", description: "Operación completada." });
   };
 
-  if (!mounted || isUserLoading || !user)
+  if (isUserLoading || !user)
     return (
       <div className="space-y-8 pb-24 px-4">
         <Skeleton className="h-20 w-full md:w-2/3 bg-white/[0.03]" />

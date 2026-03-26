@@ -8,12 +8,42 @@ import {
   FirestoreError,
 } from 'firebase/firestore';
 
-export type WithId<T> = T & { id: string };
+type WithId<T> = T & { id: string };
 
 export interface UseCollectionOnceResult<T> {
   data: WithId<T>[] | null;
   isLoading: boolean;
   error: FirestoreError | Error | null;
+}
+
+function getQueryCacheKey(query: Query<DocumentData>): string {
+  try {
+    const internal = query as unknown as { _query?: unknown };
+    return `taskme:cache:once:${JSON.stringify(internal._query)}`;
+  } catch {
+    return 'taskme:cache:once:default';
+  }
+}
+
+function readCached<T>(key: string): WithId<T>[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WithId<T>[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCached<T>(key: string, value: WithId<T>[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage failures.
+  }
 }
 
 /**
@@ -24,8 +54,11 @@ export interface UseCollectionOnceResult<T> {
 export function useCollectionOnce<T = unknown>(
   memoizedQuery: Query<DocumentData> | null | undefined,
 ): UseCollectionOnceResult<T> {
-  const [data, setData] = useState<WithId<T>[] | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const initialCacheKey = memoizedQuery ? getQueryCacheKey(memoizedQuery) : null;
+  const initialCachedData = initialCacheKey ? readCached<T>(initialCacheKey) : null;
+
+  const [data, setData] = useState<WithId<T>[] | null>(initialCachedData);
+  const [isLoading, setIsLoading] = useState(!!memoizedQuery && !initialCachedData);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -36,7 +69,15 @@ export function useCollectionOnce<T = unknown>(
       return;
     }
 
-    setIsLoading(true);
+    const cacheKey = getQueryCacheKey(memoizedQuery);
+    const cachedData = readCached<T>(cacheKey);
+    if (cachedData && cachedData.length > 0) {
+      setData(cachedData);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     setError(null);
 
     getDocs(memoizedQuery)
@@ -46,6 +87,7 @@ export function useCollectionOnce<T = unknown>(
           id: doc.id,
         }));
         setData(results);
+        writeCached<T>(cacheKey, results);
         setIsLoading(false);
       })
       .catch((err) => {

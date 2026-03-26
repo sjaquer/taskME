@@ -21,7 +21,7 @@ export type WithId<T> = T & { id: string };
  */
 export interface UseCollectionResult<T> {
   data: WithId<T>[] | null; // Document data with ID, or null.
-  isLoading: boolean;       // True if loading.
+  isLoading: boolean; // True if loading.
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
@@ -33,32 +33,78 @@ export interface InternalQuery extends Query<DocumentData> {
     path: {
       canonicalString(): string;
       toString(): string;
-    }
+    };
+  };
+}
+
+function getQueryPath(target: CollectionReference<DocumentData> | Query<DocumentData>): string {
+  return target.type === 'collection'
+    ? (target as CollectionReference<DocumentData>).path
+    : (target as unknown as InternalQuery)._query.path.canonicalString();
+}
+
+function getQuerySignature(target: CollectionReference<DocumentData> | Query<DocumentData>): string {
+  if (target.type === 'collection') return (target as CollectionReference<DocumentData>).path;
+
+  const internal = target as unknown as { _query?: unknown };
+  try {
+    return JSON.stringify(internal._query) || getQueryPath(target);
+  } catch {
+    return getQueryPath(target);
+  }
+}
+
+function getCollectionCacheKey(signature: string): string {
+  return `taskme:cache:collection:${signature}`;
+}
+
+function readCachedCollection<T>(signature: string): WithId<T>[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(getCollectionCacheKey(signature));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WithId<T>[];
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedCollection<T>(signature: string, data: WithId<T>[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(getCollectionCacheKey(signature), JSON.stringify(data));
+  } catch {
+    // Ignore localStorage quota and serialization errors.
   }
 }
 
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
- * 
  *
  * IMPORTANT! YOU MUST MEMOIZE the inputted memoizedTargetRefOrQuery or BAD THINGS WILL HAPPEN
- * use useMemo to memoize it per React guidence.  Also make sure that it's dependencies are stable
- * references
- *  
+ * use useMemo to memoize it per React guidance. Also make sure that its dependencies are stable references.
+ *
  * @template T Optional type for document data. Defaults to any.
  * @param {CollectionReference<DocumentData> | Query<DocumentData> | null | undefined} targetRefOrQuery -
  * The Firestore CollectionReference or Query. Waits if null/undefined.
  * @returns {UseCollectionResult<T>} Object with data, isLoading, error.
  */
 export function useCollection<T = unknown>(
-    memoizedTargetRefOrQuery: ((CollectionReference<DocumentData> | Query<DocumentData>) & {__memo?: boolean})  | null | undefined,
+  memoizedTargetRefOrQuery:
+    | ((CollectionReference<DocumentData> | Query<DocumentData>) & { __memo?: boolean })
+    | null
+    | undefined,
 ): UseCollectionResult<T> {
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
-  const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const initialSignature = memoizedTargetRefOrQuery ? getQuerySignature(memoizedTargetRefOrQuery) : null;
+  const initialCachedData = initialSignature ? readCachedCollection<T>(initialSignature) : null;
+
+  const [data, setData] = useState<StateDataType>(initialCachedData);
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery && !initialCachedData);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -69,46 +115,54 @@ export function useCollection<T = unknown>(
       return;
     }
 
-    setIsLoading(true);
+    const queryPath = getQueryPath(memoizedTargetRefOrQuery);
+    const querySignature = getQuerySignature(memoizedTargetRefOrQuery);
+    const cachedData = readCachedCollection<T>(querySignature);
+
+    if (cachedData && cachedData.length > 0) {
+      setData(cachedData);
+      setIsLoading(false);
+    } else {
+      setIsLoading(true);
+    }
+
     setError(null);
 
-    // Directly use memoizedTargetRefOrQuery as it's assumed to be the final query
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
         const results: ResultItemType[] = [];
-        for (const doc of snapshot.docs) {
-          results.push({ ...(doc.data() as T), id: doc.id });
+        for (const snapshotDoc of snapshot.docs) {
+          results.push({ ...(snapshotDoc.data() as T), id: snapshotDoc.id });
         }
         setData(results);
+        writeCachedCollection<T>(querySignature, results);
         setError(null);
         setIsLoading(false);
       },
-      (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
-
+      () => {
         const contextualError = new FirestorePermissionError({
           operation: 'list',
-          path,
-        })
+          path: queryPath,
+        });
 
-        setError(contextualError)
-        setData(null)
-        setIsLoading(false)
+        setError(contextualError);
+        if (!cachedData) {
+          setData(null);
+        }
+        setIsLoading(false);
 
-        // trigger global error propagation
+        // Trigger global error propagation.
         errorEmitter.emit('permission-error', contextualError);
-      }
+      },
     );
 
     return () => unsubscribe();
-  }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+  }, [memoizedTargetRefOrQuery]);
+
+  if (memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
+
   return { data, isLoading, error };
 }
