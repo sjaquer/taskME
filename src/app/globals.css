@@ -34,6 +34,36 @@
     --ring: 111 100% 54%;
     --radius: 1rem;
   }
+
+  :root[data-theme='neon'] {
+    --primary: 111 100% 54%;
+    --accent: 111 100% 54%;
+    --ring: 111 100% 54%;
+  }
+
+  :root[data-theme='cyan'] {
+    --primary: 188 100% 56%;
+    --accent: 188 100% 56%;
+    --ring: 188 100% 56%;
+  }
+
+  :root[data-theme='amber'] {
+    --primary: 43 100% 54%;
+    --accent: 43 100% 54%;
+    --ring: 43 100% 54%;
+  }
+
+  :root[data-theme='rose'] {
+    --primary: 348 100% 64%;
+    --accent: 348 100% 64%;
+    --ring: 348 100% 64%;
+  }
+
+  :root[data-theme='violet'] {
+    --primary: 263 90% 67%;
+    --accent: 263 90% 67%;
+    --ring: 263 90% 67%;
+  }
 }
 
 @layer base {
@@ -44,7 +74,7 @@
     @apply bg-[#050505] text-foreground selection:bg-primary/20 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
     background-image:
-      radial-gradient(ellipse 60% 40% at 50% -5%, rgba(57,255,20,0.04), transparent),
+      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(var(--primary) / 0.08), transparent),
       url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.015' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
   }
 }
@@ -73,14 +103,18 @@
     will-change: transform;
   }
   .neon-glow {
-    @apply shadow-[0_0_12px_rgba(57,255,20,0.25)] hover:shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-shadow duration-300;
+    box-shadow: 0 0 12px hsl(var(--primary) / 0.25);
+    transition: box-shadow 300ms;
+  }
+  .neon-glow:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
   .neon-border {
     @apply border border-primary/30;
-    box-shadow: 0 0 8px rgba(57, 255, 20, 0.1), inset 0 0 8px rgba(57, 255, 20, 0.03);
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.1), inset 0 0 8px hsl(var(--primary) / 0.03);
   }
   .glow-text {
-    text-shadow: 0 0 8px rgba(57, 255, 20, 0.4);
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.4);
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);

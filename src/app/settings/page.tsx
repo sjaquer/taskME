@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Shield, LogOut, Zap, Layout, Check, RefreshCcw, KeyRound, Eye, EyeOff, Fingerprint,
-  Download, Trash2, Mail,
+  Download, Trash2, Mail, Palette,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser, useAuth, useFirestore } from "@/firebase";
 import { useAppContextStore } from "@/lib/store";
+import type { AppTheme } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { TacticalButton } from "@/components/atoms";
@@ -24,12 +25,21 @@ import {
   exportUserData,
   saveSettingsToCloud,
 } from "@/services/user-service";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const THEME_OPTIONS: { value: AppTheme; label: string; hint: string }[] = [
+  { value: "neon", label: "Neon Verde", hint: "Modo original" },
+  { value: "cyan", label: "Cyan", hint: "Frío y técnico" },
+  { value: "amber", label: "Amber", hint: "Cálido y enfocado" },
+  { value: "rose", label: "Rose", hint: "Alto contraste" },
+  { value: "violet", label: "Violet", hint: "Profundo y suave" },
+];
 
 export default function SettingsPage() {
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { activeModules, toggleModule } = useAppContextStore();
+  const { activeModules, toggleModule, theme, setTheme } = useAppContextStore();
 
   const [newName, setNewName] = useState(user?.displayName || "");
   const [isUpdatingName, setIsUpdatingName] = useState(false);
@@ -310,6 +320,41 @@ export default function SettingsPage() {
           </div>
         </section>
       </div>
+
+      <section className="space-y-3">
+        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+          <Palette className="w-3.5 h-3.5 text-primary" /> Apariencia
+        </h3>
+        <div className="glass-card p-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label className="text-[11px] uppercase font-black text-primary">Tema de Color</Label>
+            <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                {THEME_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value} className="text-[11px] font-black uppercase tracking-wider">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+            {THEME_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={`rounded-xl border p-3 text-left transition-all ${theme === option.value ? "border-primary/50 bg-primary/[0.08]" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"}`}
+              >
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/80">{option.label}</p>
+                <p className="text-[10px] text-white/40 mt-1">{option.hint}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Danger Zone */}
       <section className="space-y-3">

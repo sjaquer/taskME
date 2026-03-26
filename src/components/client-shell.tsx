@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
@@ -19,6 +19,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { cn } from '@/lib/utils';
+import { useAppContextStore } from '@/lib/store';
 
 const DESKTOP_NAV = [
   { icon: Home, label: "Inicio", href: "/" },
@@ -30,6 +31,11 @@ const DESKTOP_NAV = [
 
 export function ClientShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const theme = useAppContextStore((state) => state.theme);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   return (
     <>

@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AppContext } from '@/types/task';
 
+export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet';
+
 interface ModuleFlags {
   dashboard: boolean;
   kanban: boolean;
@@ -12,6 +14,8 @@ interface ModuleFlags {
 interface AppState {
   context: AppContext;
   setContext: (context: AppContext) => void;
+  theme: AppTheme;
+  setTheme: (theme: AppTheme) => void;
   activeModules: ModuleFlags;
   toggleModule: (module: keyof ModuleFlags) => void;
   highPerformanceMode: boolean;
@@ -25,6 +29,8 @@ export const useAppContextStore = create<AppState>()(
     (set) => ({
       context: 'Trabajo',
       setContext: (context) => set({ context }),
+      theme: 'neon',
+      setTheme: (theme) => set({ theme }),
       activeModules: {
         dashboard: true,
         kanban: true,

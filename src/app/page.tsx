@@ -15,6 +15,9 @@ import {
   Layers,
   ShieldCheck,
   Zap,
+  Compass,
+  ListTodo,
+  CalendarDays,
 } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { useUser, useFirestore, useCollection, useMemoFirebase } from "@/firebase";
@@ -54,14 +57,22 @@ export default function Home() {
 
   const metrics = useMemo(() => {
     if (!tasks)
-      return { allTasks: [] as Task[], completedCount: 0, progressPercent: 0, highPriorityTasks: [] as Task[], pendingTasksCount: 0 };
+      return {
+        allTasks: [] as Task[],
+        completedCount: 0,
+        progressPercent: 0,
+        highPriorityTasks: [] as Task[],
+        pendingTasksCount: 0,
+        nextPendingTask: null as Task | null,
+      };
 
     const completedCount = tasks.filter((t) => t.status === "Hecho").length;
     const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
     const highPriorityTasks = tasks.filter((t) => t.priority === "alta" && t.status !== "Hecho").slice(0, 3);
     const pendingTasksCount = tasks.filter((t) => t.status !== "Hecho").length;
+    const nextPendingTask = tasks.find((t) => t.status !== "Hecho") || null;
 
-    return { allTasks: tasks, completedCount, progressPercent, highPriorityTasks, pendingTasksCount };
+    return { allTasks: tasks, completedCount, progressPercent, highPriorityTasks, pendingTasksCount, nextPendingTask };
   }, [tasks]);
 
   const handleQuickComplete = (taskId: string) => {
@@ -84,13 +95,13 @@ export default function Home() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-24">
-      {/* HUD Header */}
+      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 px-2">
         <div className="space-y-4 max-w-2xl">
           <div className="flex flex-wrap items-center gap-3">
             <div className="bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md">
               <span className="text-primary text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
-                <Terminal className="w-3 h-3" /> System Terminal
+                <Terminal className="w-3 h-3" /> Cabine Grid
               </span>
             </div>
             <div className="flex items-center gap-3">
@@ -104,15 +115,15 @@ export default function Home() {
 
           <div className="space-y-1">
             <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-none text-white">
-              Protocolo <span className="text-primary italic glow-text">{context}</span>
+              Panel <span className="text-primary italic glow-text">{context}</span>
             </h2>
             {isTasksLoading ? (
               <Skeleton className="h-4 w-64 bg-white/[0.03] rounded-full" />
             ) : (
               <p className="text-white/40 text-[10px] md:text-xs font-black uppercase tracking-widest">
                 {metrics.pendingTasksCount > 0
-                  ? `Análisis: ${metrics.pendingTasksCount} nodos pendientes detectados en el ciclo.`
-                  : "Estado: Nominal. Todos los procesos finalizados."}
+                  ? `Tienes ${metrics.pendingTasksCount} tareas pendientes. Empieza por: ${metrics.nextPendingTask?.title ?? "tu tablero"}.`
+                  : "Todo al día. Puedes planificar la siguiente semana."}
               </p>
             )}
           </div>
@@ -123,7 +134,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="space-y-0.5">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] relative z-10 block text-primary">Acceso</span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/40 relative z-10">Tablero de Procesos</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/40 relative z-10">Abrir Kanban</span>
             </div>
             <ArrowUpRight className="w-6 h-6 text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform relative z-10" />
           </div>
@@ -168,14 +179,50 @@ export default function Home() {
         )}
       </div>
 
+      {/* Quick Orientation */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 px-2">
+        <Link href="/kanban" className="glass-card p-5 hover:border-primary/30 transition-colors group">
+          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Siguiente Paso</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wider">Mover y priorizar tareas</p>
+              <p className="text-[11px] text-white/40 mt-1">Reordena estados y resuelve bloqueos críticos.</p>
+            </div>
+            <Compass className="w-5 h-5 text-primary/70 group-hover:text-primary" />
+          </div>
+        </Link>
+
+        <Link href="/schedule" className="glass-card p-5 hover:border-primary/30 transition-colors group">
+          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Plan Diario</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wider">Bloques de enfoque</p>
+              <p className="text-[11px] text-white/40 mt-1">Reserva tiempo para tareas de mayor impacto.</p>
+            </div>
+            <ListTodo className="w-5 h-5 text-primary/70 group-hover:text-primary" />
+          </div>
+        </Link>
+
+        <Link href="/calendar" className="glass-card p-5 hover:border-primary/30 transition-colors group">
+          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Agenda</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black uppercase tracking-wider">Revisa próximos eventos</p>
+              <p className="text-[11px] text-white/40 mt-1">Coordina entregas y reuniones en un solo lugar.</p>
+            </div>
+            <CalendarDays className="w-5 h-5 text-primary/70 group-hover:text-primary" />
+          </div>
+        </Link>
+      </div>
+
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-2">
         <div className="lg:col-span-8 space-y-8">
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-            <SectionLabel icon={<Layers className="w-5 h-5 text-primary" />}>Prioridades de Ejecución</SectionLabel>
+            <SectionLabel icon={<Layers className="w-5 h-5 text-primary" />}>Lo Más Urgente Hoy</SectionLabel>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
-              <span className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hidden sm:inline font-data">Live Monitor</span>
+              <span className="text-[11px] font-black text-primary uppercase tracking-[0.3em] hidden sm:inline font-data">En Vivo</span>
             </div>
           </div>
 
@@ -238,17 +285,17 @@ export default function Home() {
             <SectionLabel icon={<Zap className="w-4 h-4 text-yellow-500" />} className="text-white/30 mb-4">Resumen Operativo</SectionLabel>
             <div className="space-y-4">
               <SystemFeature label="Contexto" value={context} icon={<Target className="w-4 h-4" />} />
-              <SystemFeature label="Módulos" value="4/4" icon={<Layers className="w-4 h-4" />} />
-              <SystemFeature label="Seguridad" value="Active" icon={<ShieldCheck className="w-4 h-4" />} />
+              <SystemFeature label="Pendientes" value={metrics.pendingTasksCount.toString()} icon={<Layers className="w-4 h-4" />} />
+              <SystemFeature label="Cuenta" value={user.displayName || "Operador"} icon={<ShieldCheck className="w-4 h-4" />} />
             </div>
             <div className="pt-6 border-t border-white/[0.06] space-y-3">
-              <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">System Logs</p>
+              <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">Estado Rápido</p>
               <div className="bg-[#050505] rounded-xl p-4 border border-white/[0.06] font-mono text-[9px] text-primary/60 space-y-1">
-                <p>{">"} Booting System...</p>
-                <p>{">"} Auth: OK</p>
-                <p>{">"} Syncing Firestore nodes...</p>
-                <p>{">"} <span className="font-data">{metrics.allTasks.length}</span> mapped.</p>
-                <p className="text-white/40 animate-pulse">{">"} Ready.</p>
+                <p>{">"} Sesión iniciada correctamente.</p>
+                <p>{">"} Contexto activo: {context}.</p>
+                <p>{">"} Tareas registradas: <span className="font-data">{metrics.allTasks.length}</span>.</p>
+                <p>{">"} Completadas: <span className="font-data">{metrics.completedCount}</span>.</p>
+                <p className="text-white/40 animate-pulse">{">"} Listo para continuar.</p>
               </div>
             </div>
           </div>
