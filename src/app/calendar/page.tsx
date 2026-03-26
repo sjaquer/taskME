@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { 
   format, isSameDay, parseISO, addHours, startOfMonth, endOfMonth, 
   eachDayOfInterval, isSameMonth, isToday, addMonths, subMonths,
@@ -609,7 +610,7 @@ export default function CalendarPage() {
 
       {/* Dialog para crear/editar evento */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-        <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 max-h-[92dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
               <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />

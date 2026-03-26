@@ -50,12 +50,18 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-export * from './provider';
-export * from './client-provider';
-export * from './firestore/use-collection';
-export * from './firestore/use-collection-once';
-export * from './firestore/use-doc';
-export * from './non-blocking-updates';
-export * from './non-blocking-login';
-export * from './errors';
-export * from './error-emitter';
+export {
+  FirebaseProvider,
+  useFirebase,
+  useAuth,
+  useFirestore,
+  useFirebaseApp,
+  useMemoFirebase,
+  useUser,
+} from './provider';
+export { FirebaseClientProvider } from './client-provider';
+export { useCollectionOnce } from './firestore/use-collection-once';
+export { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
+export { initiateAnonymousSignIn, initiateEmailSignUp, initiateEmailSignIn } from './non-blocking-login';
+export { FirestorePermissionError } from './errors';
+export { errorEmitter } from './error-emitter';

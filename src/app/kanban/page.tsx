@@ -6,7 +6,8 @@ import { useAppContextStore } from "@/lib/store";
 import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
+import { useCollection } from "@/firebase/firestore/use-collection";
 import { useRouter } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -232,7 +233,7 @@ export default function KanbanPage() {
                 <Plus className="w-4 h-4 mr-2" /> Inyectar
               </TacticalButton>
             </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] p-6 sm:p-5 md:p-8">
+            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tighter uppercase flex items-center gap-3">
                   <Layers className="w-6 h-6 text-primary" />
