@@ -38,9 +38,9 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // Mobile: full-screen sheet que sube desde abajo — no depende de dvh/vw
+        // Mobile: full-screen estable (evita colapso con teclado en WebView)
         "fixed z-50 flex flex-col gap-4 border bg-background shadow-2xl duration-200",
-        "inset-0 max-h-[100dvh] p-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-none overflow-y-auto overflow-x-hidden overscroll-contain",
+        "inset-0 h-[100svh] max-h-[100svh] p-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-none overflow-y-auto overflow-x-hidden overscroll-contain",
         // Desktop (sm+): modal centrado clásico
         "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(48rem,calc(100vw-2rem))] sm:max-w-none sm:h-fit sm:max-h-[90dvh] sm:rounded-2xl sm:p-6",
         // Animaciones: slide-up en móvil, zoom en desktop

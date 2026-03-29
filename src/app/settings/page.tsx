@@ -217,7 +217,7 @@ export default function SettingsPage() {
                         <Mail className="w-4 h-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[420px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+                    <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[420px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
                       <DialogHeader><DialogTitle className="text-lg font-black uppercase">Cambiar Email</DialogTitle></DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-1.5">
@@ -271,7 +271,7 @@ export default function SettingsPage() {
                   <KeyRound className="w-4 h-4 text-primary" /> Nueva Clave
                 </Button>
               </DialogTrigger>
-              <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[420px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+              <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[420px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
                 <DialogHeader><DialogTitle className="text-lg font-black uppercase">Cambiar Password</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   {isEmailUser && (
@@ -408,7 +408,7 @@ export default function SettingsPage() {
                   <Trash2 className="w-3.5 h-3.5" /> Eliminar
                 </Button>
               </DialogTrigger>
-              <DialogContent className="glass-card-elevated border-red-500/20 bg-[#050505]/95 sm:max-w-[420px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+              <DialogContent className="glass-card-elevated border-red-500/20 bg-[#050505]/95 sm:max-w-[420px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
                 <DialogHeader><DialogTitle className="text-lg font-black uppercase text-red-400">Eliminar Cuenta</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   <p className="text-[11px] text-muted-foreground">Esta acción es <span className="text-red-400 font-bold">irreversible</span>. Se eliminarán permanentemente:</p>

@@ -173,7 +173,7 @@ export default function SchedulePage() {
           <DialogTrigger asChild>
             <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Nueva Rutina</TacticalButton>
           </DialogTrigger>
-          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[450px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[450px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase tracking-tighter">
                 {editingRoutine ? "Editar Rutina" : "Nueva Rutina"}

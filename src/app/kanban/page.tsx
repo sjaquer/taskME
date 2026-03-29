@@ -244,7 +244,7 @@ export default function KanbanPage() {
                 <Plus className="w-4 h-4 mr-2" /> Inyectar
               </TacticalButton>
             </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tighter uppercase flex items-center gap-3">
                   <Layers className="w-6 h-6 text-primary" />
