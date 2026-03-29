@@ -21,6 +21,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
 import { NotificationMonitor } from './notification-monitor';
+import { isNativeAndroidContainer } from '@/lib/native-bridge';
 
 const DESKTOP_NAV = [
   { icon: Home, label: "Inicio", href: "/" },
@@ -37,6 +38,14 @@ export function ClientShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    if (isNativeAndroidContainer()) {
+      document.documentElement.dataset.shell = 'android-webview';
+    } else {
+      delete document.documentElement.dataset.shell;
+    }
+  }, []);
 
   return (
     <>

@@ -101,6 +101,47 @@ service cloud.firestore {
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }
 
+    function isValidDeviceDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'platform', 'pushToken', 'appVersion', 'osVersion', 'deviceModel',
+               'locale', 'timezone', 'isActive', 'createdAt', 'updatedAt', 'lastSeenAt'
+             ])
+             && data.userId == userId
+             && data.platform is string
+             && data.platform in ['android', 'web']
+             && data.pushToken is string
+             && data.pushToken.size() >= 20
+             && data.pushToken.size() <= 4096
+             && (!('appVersion' in data) || data.appVersion is string)
+             && (!('osVersion' in data) || data.osVersion is string)
+             && (!('deviceModel' in data) || data.deviceModel is string)
+             && (!('locale' in data) || data.locale is string)
+             && (!('timezone' in data) || data.timezone is string)
+             && (!('isActive' in data) || data.isActive is bool)
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt))
+             && (!('lastSeenAt' in data) || isValidTimestampField(data.lastSeenAt));
+    }
+
+    function isValidMobileLogDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'name', 'source', 'level', 'appBuild', 'correlationId', 'data', 'createdAt'
+             ])
+             && data.userId == userId
+             && data.name is string
+             && data.source is string
+             && data.source in ['android', 'web']
+             && (!('level' in data) || (data.level is string && data.level in ['debug', 'info', 'warn', 'error']))
+             && (!('appBuild' in data) || data.appBuild is string)
+             && (!('correlationId' in data) || data.correlationId is string)
+             && (!('data' in data) || data.data is map)
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt));
+    }
+
+    function isNotificationReadUpdateOnly() {
+      return request.resource.data.diff(resource.data).changedKeys().hasOnly(['readAt', 'openedAt', 'updatedAt']);
+    }
+
     // ── Perfil de usuario ──────────────────────────────────────
     match /users/{userId} {
       allow read: if isOwner(userId);
@@ -157,6 +198,43 @@ service cloud.firestore {
                       && isValidEventDoc(request.resource.data, userId);
 
         allow delete: if isOwner(userId);
+      }
+
+      // ── Dispositivos para push (web y android) ─────────────
+      match /devices/{deviceId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && isValidDeviceDoc(request.resource.data, userId);
+
+        allow update: if isOwner(userId)
+                      && isValidDeviceDoc(request.resource.data, userId);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Notificaciones persistidas del usuario ──────────────
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+
+        // Las notificaciones se crean desde backend trusted (admin SDK).
+        allow create: if false;
+
+        // El cliente solo puede confirmar lectura/apertura.
+        allow update: if isOwner(userId)
+                      && isNotificationReadUpdateOnly();
+
+        allow delete: if false;
+      }
+
+      // ── Logs móviles para observabilidad ────────────────────
+      match /mobile_logs/{logId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && isValidMobileLogDoc(request.resource.data, userId);
+
+        allow update, delete: if false;
       }
     }
 
