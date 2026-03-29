@@ -3,11 +3,6 @@
  * Utiliza la Notification API para enviar avisos de tareas y eventos próximos
  */
 
-export interface NotificationOptions {
-  title: string;
-  options?: NotificationOptions;
-}
-
 export class NotificationService {
   /**
    * Solicita permiso al usuario para enviar notificaciones

@@ -77,15 +77,6 @@ export function completeTask(firestore: Firestore, userId: string, taskId: strin
   updateTask(firestore, userId, taskId, { status: 'Hecho' });
 }
 
-export function moveTaskToStatus(
-  firestore: Firestore,
-  userId: string,
-  taskId: string,
-  newStatus: string
-) {
-  updateTask(firestore, userId, taskId, { status: newStatus });
-}
-
 // ── ROUTINES (Horario semanal) ─────────────────────────────
 function getUserRoutinesRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'routines');

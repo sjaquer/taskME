@@ -19,15 +19,6 @@ export interface Task {
   updatedAt?: unknown;
 }
 
-export interface TaskFormData {
-  title: string;
-  description: string;
-  priority: Priority;
-  status: string;
-  tags: string;
-  dueDate?: string;           // "YYYY-MM-DD" (opcional)
-}
-
 // ── Routines (horario semanal recurrente) ──────────────────
 export interface Routine {
   id: string;

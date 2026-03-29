@@ -99,8 +99,8 @@ export function ClientShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </SidebarProvider>
+        <NotificationMonitor />
       </FirebaseClientProvider>
-      <NotificationMonitor />
       <Toaster />
     </>
   );
