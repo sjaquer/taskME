@@ -1,373 +1,204 @@
-# Cabine Grid - Especificacion Tecnica App Android (WebView+)
+# TaskMe - Guia Tecnica Simple para APK WebView
 
-## 1) Objetivo
-Definir una app Android basada en WebView (no nativa full) pero con capacidades profesionales para superar las limitaciones clasicas:
-- Push notifications nativas (FCM), incluso con app cerrada.
-- Integracion segura Web <-> Android via bridge.
-- Deep links y apertura contextual de pantallas.
-- Sincronizacion estable de sesion, datos y estado de notificaciones.
-- Telemetria, seguridad y estrategia de escalado.
+## 1. Objetivo
 
----
+Este documento define como conectar la APK Android (WebView simple) con la web actual de TaskMe, para que el programador Android pueda implementar mejoras sin rehacer la app completa.
 
-## 2) Alcance funcional
-La app Android sera un contenedor WebView avanzado de la plataforma web Cabine Grid, manteniendo:
-- UX web central para features existentes.
-- Capacidades nativas puntuales donde WebView no alcanza.
+Meta principal:
 
-Incluye:
-- Login y sesion persistente.
-- Modulos web existentes (kanban, calendario, schedule, settings).
-- Push nativo y centro de notificaciones sincronizado.
-- Cache offline basico para carga inicial y reconexion.
+1. Mantener WebView como base.
+2. Agregar conexion correcta con push nativo.
+3. Sincronizar estado entre app y web (open/read, logs, dispositivo).
+4. Mejorar seguridad y estabilidad sin aumentar complejidad.
 
-No incluye en esta fase:
-- Reescritura completa en Kotlin/Compose.
-- Replica nativa de todas las pantallas web.
+## 2. Estado real de la web (codigo actual)
 
----
+### 2.1 Bridge Web ya implementado
 
-## 3) Arquitectura objetivo (WebView+)
+Archivo: src/lib/native-bridge.ts
 
-### 3.1 Capas
-1. Capa Web (Next.js actual)
-- UI principal y reglas de negocio existentes.
-- Endpoints API y servicios Firebase.
-
-2. Capa Android Shell (Kotlin)
-- Activity principal con WebView.
-- Gestion de permisos, push FCM, deep links.
-- Bridge seguro para exponer capacidades nativas al JS.
-
-3. Capa Backend/Servicios
-- Firebase Auth + Firestore + Cloud Messaging.
-- Endpoint de registro de dispositivo para push.
-- Orquestacion de eventos de notificacion.
-
-### 3.2 Flujo de alto nivel
-1. Usuario inicia sesion en web embebida.
-2. Android obtiene token FCM y registra dispositivo en backend.
-3. Backend asocia usuario <-> dispositivo <-> token.
-4. Evento de dominio (ej. tarea por vencer) dispara push.
-5. Push abre app y navega a URL interna via deep link.
-6. WebView consume payload y actualiza UI/estado.
-
----
-
-## 4) Stack tecnologico recomendado
-
-### Web
-- Next.js + TypeScript.
-- Firebase Auth, Firestore, Cloud Functions.
-- Service Worker (canal web push opcional).
-- API facade en rutas server-side para logica sensible.
-
-### Android (APK)
-- Kotlin.
-- AndroidX WebKit + WebView.
-- Firebase Messaging.
-- OkHttp (opcional para endpoints nativos).
-- DataStore o SharedPreferences cifradas.
-- WorkManager para retries en background.
-
-### Build y distribucion
-- Gradle Kotlin DSL.
-- Flavors: dev/staging/prod.
-- Firma release + Play Integrity recomendado.
-
----
-
-## 5) Especificacion WebView profesional
-
-### 5.1 Configuracion WebView minima
-- JavaScript habilitado.
-- DomStorage habilitado.
-- Mixed content bloqueado en prod.
-- File access deshabilitado cuando no sea requerido.
-- Safe Browsing habilitado.
-- User-Agent custom para deteccion controlada del shell Android.
-
-### 5.2 Politica de navegacion
-Permitir solo dominios confiables:
-- https://cabinegrid.com
-- https://www.cabinegrid.com
-- Subdominios autorizados de entorno.
-
-Regla:
-- URL interna: abrir en el mismo WebView.
-- URL externa: abrir con intent del sistema.
-
-### 5.3 Sesion y cookies
-- CookieManager con third-party cookies solo si es necesario.
-- Persistencia de sesion con expiracion controlada.
-- Logout web debe disparar limpieza de token local nativo.
-
----
-
-## 6) Bridge seguro Android <-> Web
-
-### 6.1 Principios
-- Nada de exponer metodos sensibles en global sin validacion.
-- Bridge habilitado solo en dominios allowlist.
-- Cada mensaje JS debe incluir:
-  - action
-  - requestId
-  - timestamp
-  - payload
-- Respuesta nativa con:
-  - requestId
-  - ok
-  - data o error
-
-### 6.2 Acciones del bridge (v1)
-1. app.getDeviceInfo
-2. app.getPushToken
-3. app.requestNotificationPermission
-4. app.openExternalUrl
-5. app.vibrate
-6. app.share
-7. app.logEvent
-
-### 6.3 Ejemplo web (JS) para invocar bridge
 ```ts
-// src/lib/native-bridge.ts
-export type NativeRequest = {
-  action: string;
-  requestId: string;
-  timestamp: number;
-  payload?: Record<string, unknown>;
-};
+export function isNativeAndroidContainer(): boolean {
+  return typeof window !== 'undefined' && typeof window.AndroidBridge?.postMessage === 'function';
+}
 
-export function callNative(action: string, payload: Record<string, unknown> = {}) {
-  const request: NativeRequest = {
+export async function callNativeBridge(action: string, payload: Record<string, unknown> = {}) {
+  if (!isNativeAndroidContainer()) {
+    throw new Error('Native bridge unavailable');
+  }
+
+  const request: NativeBridgeRequest = {
     action,
     requestId: crypto.randomUUID(),
     timestamp: Date.now(),
     payload,
   };
 
-  // Android inyecta window.AndroidBridge.postMessage
-  const bridge = (window as any)?.AndroidBridge;
-  if (!bridge?.postMessage) {
-    throw new Error("Android bridge no disponible");
-  }
+  const promise = new Promise<NativeBridgeResponse>((resolve, reject) => {
+    // Se resuelve cuando Android responde via window.onNativeMessage.
+  });
 
-  bridge.postMessage(JSON.stringify(request));
-  return request.requestId;
+  window.AndroidBridge?.postMessage(JSON.stringify(request));
+  return promise;
 }
 ```
 
-### 6.4 Ejemplo web para recibir respuestas nativas
+Conclusion para Android:
+
+1. La APK debe exponer window.AndroidBridge.postMessage(...).
+2. La APK debe responder por window.onNativeMessage(...).
+
+### 2.2 Registro automatico de dispositivo Android
+
+Archivo: src/services/mobile-integration-service.ts
+
 ```ts
-// src/lib/native-bridge-listener.ts
-export function registerNativeResponseListener(
-  onMessage: (msg: any) => void
-) {
-  (window as any).onNativeMessage = (raw: string) => {
-    try {
-      const parsed = JSON.parse(raw);
-      onMessage(parsed);
-    } catch {
-      // opcional: loggear parse error
-    }
-  };
+await callNativeBridge('app.requestNotificationPermission');
+
+const [deviceInfoResponse, tokenResponse] = await Promise.all([
+  callNativeBridge('app.getDeviceInfo').catch(() => ({ ok: false, requestId: '', data: {} })),
+  callNativeBridge('app.getPushToken'),
+]);
+
+const response = await postWithAuth(user, '/api/v1/devices/register', payload);
+```
+
+Conclusion para Android:
+
+1. Debe soportar acciones app.getDeviceInfo, app.getPushToken y app.requestNotificationPermission.
+2. El token FCM se registra automaticamente en backend cuando hay sesion.
+
+### 2.3 Monitor de notificaciones enlazado con deep link
+
+Archivo: src/components/notification-monitor.tsx
+
+```ts
+const notificationId = searchParams.get('notificationId');
+if (notificationId) {
+  markNotificationAsOpened(user, notificationId).catch(() => {});
 }
 ```
 
----
+Conclusion para Android:
 
-## 7) Push notifications nativas + sincronizacion web
+1. Al tocar push, abrir la URL web con query param notificationId.
+2. La web marcara opened automaticamente.
 
-### 7.1 Objetivo
-Unificar notificaciones del sistema Android con el centro de notificaciones web para evitar inconsistencias y duplicados.
+### 2.4 Endpoint de registro de dispositivo ya disponible
 
-### 7.2 Modelo de datos recomendado
-Coleccion: users/{userId}/devices/{deviceId}
-- platform: "android" | "web"
-- pushToken: string
-- appVersion: string
-- osVersion: string
-- locale: string
-- timezone: string
-- lastSeenAt: timestamp
-- isActive: boolean
+Archivo: src/app/api/v1/devices/register/route.ts
 
-Coleccion: users/{userId}/notifications/{notificationId}
-- type: "task_due" | "event_reminder" | "system"
-- title: string
-- body: string
-- deepLink: string
-- dedupeKey: string
-- createdAt: timestamp
-- sentAt: timestamp | null
-- readAt: timestamp | null
-
-### 7.3 Flujo recomendado
-1. Android obtiene FCM token.
-2. WebView (via bridge) entrega user context al shell.
-3. Shell registra token en endpoint seguro.
-4. Backend emite push por evento de negocio.
-5. Al tocar push:
-- Abre app.
-- Carga URL deepLink en WebView.
-- Marca notificacion como opened.
-6. Web sincroniza y refleja estado read/opened.
-
-### 7.4 Endpoint de registro de dispositivo
-POST /api/v1/devices/register
-Headers:
-- Authorization: Bearer <firebase_id_token>
-Body:
-- platform: "android"
-- pushToken: string
-- appVersion: string
-- osVersion: string
-- deviceModel: string
-- locale: string
-- timezone: string
-
-Response 200:
-- ok: true
-- deviceId: string
-
-### 7.5 Ejemplo web para solicitar registro push nativo
 ```ts
-// src/components/notification-setup.tsx (idea de integracion)
-import { callNative } from "@/lib/native-bridge";
+const registerDeviceSchema = z.object({
+  platform: z.enum(['android', 'web']),
+  pushToken: z.string().min(20).max(4096),
+  appVersion: z.string().max(64).optional(),
+  osVersion: z.string().max(64).optional(),
+  deviceModel: z.string().max(120).optional(),
+  locale: z.string().max(20).optional(),
+  timezone: z.string().max(64).optional(),
+});
+```
 
-export async function ensureNativePushRegistration() {
-  try {
-    // 1) pedir permiso desde shell nativo
-    callNative("app.requestNotificationPermission");
+## 3. Contrato minimo WebView <-> Android
 
-    // 2) pedir token
-    const requestId = callNative("app.getPushToken");
+### 3.1 Mensaje JS -> Android
 
-    // 3) cuando llegue respuesta en onNativeMessage,
-    // enviar token al backend con sesion web actual
-    return requestId;
-  } catch {
-    return null;
+```json
+{
+  "action": "app.getPushToken",
+  "requestId": "uuid",
+  "timestamp": 1710000000000,
+  "payload": {}
+}
+```
+
+### 3.2 Mensaje Android -> JS
+
+```json
+{
+  "requestId": "uuid",
+  "ok": true,
+  "data": {
+    "pushToken": "fcm-token"
   }
 }
 ```
 
----
+### 3.3 Acciones que la APK debe soportar
 
-## 8) API y contratos recomendados
+1. app.getPushToken
+2. app.getDeviceInfo
+3. app.requestNotificationPermission
+4. app.openExternalUrl (recomendado)
 
-### 8.1 Convenciones
-- Versionado por prefijo: /api/v1
-- Auth: Firebase ID token
-- Errores estandar:
-  - code: string
-  - message: string
-  - details?: object
+## 4. Endpoints web que debe usar la APK
 
-### 8.2 Endpoints clave
-1. POST /api/v1/devices/register
-2. DELETE /api/v1/devices/{deviceId}
-3. GET /api/v1/notifications?limit=50&cursor=...
-4. POST /api/v1/notifications/{id}/read
-5. POST /api/v1/notifications/{id}/opened
-6. POST /api/v1/events/mobile-log
+Base: /api/v1
 
-### 8.3 Campos recomendados para trazabilidad
-- correlationId (request)
-- source: "web" | "android"
-- appBuild
-- clientTimestamp
+1. POST /devices/register
+2. DELETE /devices/{deviceId}
+3. POST /notifications/{notificationId}/opened
+4. POST /notifications/{notificationId}/read
+5. POST /events/mobile-log
 
----
+Autenticacion:
 
-## 9) Seguridad
+1. Header Authorization: Bearer <firebase_id_token>
+2. Token obtenido de la sesion Firebase del usuario.
 
-### 9.1 Reglas base
-- No hardcodear secrets en APK ni en JS cliente.
-- Validar ID token en backend siempre.
-- Bridge solo en origenes permitidos.
-- Desactivar debugging WebView en build release.
-- Certificate pinning opcional para endpoints criticos.
+## 5. Flujo operativo recomendado (simple)
 
-### 9.2 Riesgos y mitigaciones
-1. Riesgo: inyeccion JS en WebView.
-- Mitigar con CSP estricta + dominio allowlist + bridge cerrado.
+1. Usuario entra a la web en WebView y se autentica.
+2. Web detecta AndroidBridge.
+3. Web pide permiso push + token FCM por bridge.
+4. Web registra el device en /api/v1/devices/register.
+5. Backend envia push FCM.
+6. APK abre URL con notificationId.
+7. Web marca opened en /api/v1/notifications/{id}/opened.
 
-2. Riesgo: robo de token push.
-- Mitigar con registro autenticado y rotacion por logout.
+## 6. Reglas de datos y seguridad ya alineadas
 
-3. Riesgo: phishing por navegacion externa.
-- Mitigar con validacion de URL y apertura externa controlada.
+Archivo: firestore.rules
 
----
+Ya existen reglas para:
 
-## 10) Rendimiento y resiliencia
+1. users/{userId}/devices
+2. users/{userId}/notifications (solo read/opened desde cliente)
+3. users/{userId}/mobile_logs
 
-1. Carga inicial:
-- Splash nativo corto + precarga URL principal.
+Esto permite separar:
 
-2. Offline:
-- Pagina offline local HTML como fallback.
-- Reintento de carga con backoff.
+1. Escritura de notificaciones desde backend trusted.
+2. Confirmacion opened/read desde clientes autenticados.
 
-3. Crash handling:
-- Captura de errores en WebChromeClient/WebViewClient.
-- Reporte a Crashlytics.
+## 7. Mejoras simples y utiles para la APK (alineadas a tu idea)
 
-4. Observabilidad:
-- Eventos: app_open, push_received, push_opened, webview_error, bridge_error.
+1. Deep link estandar
+Formato recomendado: https://tu-dominio/ruta?notificationId=<id>&source=android_push
 
----
+2. Reintento de bridge
+Si app.getPushToken falla, reintentar 1 vez luego de 3 segundos.
 
-## 11) Plan de implementacion por fases
+3. Cola offline minima
+Guardar localmente eventos opened/read y enviarlos al recuperar red.
 
-### Fase 1 - Shell WebView seguro
-- Proyecto Android base + WebView hardening.
-- Navegacion controlada y deep links.
-- Integracion de sesion basica.
+4. User-Agent identificable
+Agregar sufijo en WebView, por ejemplo CabineGridAndroid/1.0, para analitica y debugging.
 
-### Fase 2 - Bridge v1
-- Contrato JSON request/response.
-- Acciones basicas (device info, open url, share).
-- Listener JS en web.
+5. Log tecnico minimo
+Enviar mobile-log en estos casos: app_open, bridge_error, push_opened, push_register_failed.
 
-### Fase 3 - Push nativo
-- FCM + registro de token + endpoint backend.
-- Apertura contextual por deepLink.
-- Estado opened/read sincronizado.
+## 8. Checklist para pasar al programador APK
 
-### Fase 4 - Calidad productiva
-- Telemetria y crash monitoring.
-- Pruebas E2E Android + smoke tests web.
-- Hardening release y checklist Play Store.
+1. Implementar AndroidBridge con postMessage y respuesta a onNativeMessage.
+2. Implementar acciones app.getPushToken, app.getDeviceInfo, app.requestNotificationPermission.
+3. Abrir pushes con query notificationId.
+4. Asegurar que WebView conserve sesion (cookies/storage habilitados).
+5. Permitir solo dominios oficiales de TaskMe.
+6. Agregar logica de reintento simple para token push.
+7. Reportar errores al endpoint /api/v1/events/mobile-log.
 
----
+## 9. Resumen ejecutivo
 
-## 12) Criterios de aceptacion
-
-1. La app recibe push nativo con app en foreground/background/killed.
-2. Al tocar notificacion, abre pantalla web correcta en menos de 2.5s (p95).
-3. No hay duplicados de notificacion para un mismo dedupeKey.
-4. Logout invalida sesion y token asociado del dispositivo.
-5. Bridge rechaza mensajes desde origen no permitido.
-6. Tasa de crash < 1% en primera release interna.
-
----
-
-## 13) Checklist tecnico para desarrollador
-
-- [ ] Crear app Android shell con flavors dev/staging/prod.
-- [ ] Configurar WebView con seguridad recomendada.
-- [ ] Implementar deep links y politica de navegacion.
-- [ ] Implementar bridge JSON con requestId.
-- [ ] Integrar FCM y ciclo de vida de token.
-- [ ] Crear endpoint /api/v1/devices/register.
-- [ ] Persistir devices en Firestore por usuario.
-- [ ] Implementar envio push por eventos de negocio.
-- [ ] Sincronizar estados read/opened en coleccion notifications.
-- [ ] Instrumentar telemetria y errores.
-
----
-
-## 14) Nota de evolucion futura
-Cuando se detecten cuellos de UX/rendimiento en modulos especificos (por ejemplo calendario o kanban), migrar ese modulo a pantalla nativa Compose sin descartar el enfoque WebView+ del resto de la app. Esto permite evolucion gradual y control de costos.
+La web ya esta preparada para conectarse con una APK WebView mejorada. El trabajo principal en Android es implementar bien el bridge, el flujo de push y la apertura por deep link con notificationId. Con eso, la conexion web-app queda operativa, trazable y lista para evolucionar.
