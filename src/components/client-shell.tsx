@@ -51,7 +51,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
     <>
       <FirebaseClientProvider>
         <SidebarProvider defaultOpen={true}>
-          <div className="flex min-h-screen w-full relative bg-[#050505]">
+          <div className="flex min-h-[100dvh] w-full relative bg-[#050505]">
             {/* Subtle ambient glow — GPU composited */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-15 gpu-blur">
               <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/15 blur-[120px] rounded-full" />
@@ -101,7 +101,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
 
             <div className="flex-1 flex flex-col min-w-0 z-10">
               <Header />
-              <main className="flex-1 pt-20 pb-24 px-4 md:px-10 md:pb-10 max-w-7xl mx-auto w-full">
+              <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x">
                 {children}
               </main>
               <BottomNav />

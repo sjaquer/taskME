@@ -40,9 +40,9 @@ const DialogContent = React.forwardRef<
       className={cn(
         // Mobile: full-screen sheet que sube desde abajo — no depende de dvh/vw
         "fixed z-50 flex flex-col gap-4 border bg-background shadow-2xl duration-200",
-        "inset-0 max-h-[100dvh] p-4 pt-5 rounded-none overflow-y-auto overflow-x-hidden overscroll-contain",
+        "inset-0 max-h-[100dvh] p-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-none overflow-y-auto overflow-x-hidden overscroll-contain",
         // Desktop (sm+): modal centrado clásico
-        "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[calc(100vw-2rem)] sm:max-w-lg sm:h-fit sm:max-h-[90dvh] sm:rounded-2xl sm:p-6",
+        "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(48rem,calc(100vw-2rem))] sm:max-w-none sm:h-fit sm:max-h-[90dvh] sm:rounded-2xl sm:p-6",
         // Animaciones: slide-up en móvil, zoom en desktop
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -83,7 +83,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky bottom-0 mt-auto flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 pt-3 pb-1",
+      "sticky bottom-0 mt-auto flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:space-x-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 pt-3 pb-1",
       className
     )}
     {...props}
