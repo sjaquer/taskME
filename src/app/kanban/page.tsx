@@ -51,10 +51,6 @@ const TaskSchema = z.object({
   userId: z.string(),
 });
 
-function getTodayInputDate() {
-  return format(new Date(), "yyyy-MM-dd");
-}
-
 function toInputDateValue(value: string | Date | undefined) {
   if (!value) return "";
   const parsed = typeof value === "string" ? parseISO(value) : value;
@@ -293,7 +289,6 @@ export default function KanbanPage() {
                       type="date"
                       value={taskForm.dueDate}
                       onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                      min={getTodayInputDate()}
                       className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-white [color-scheme:dark]"
                     />
                     <p className="text-[10px] text-white/45">Si no eliges fecha, el nodo se crea sin vencimiento.</p>
