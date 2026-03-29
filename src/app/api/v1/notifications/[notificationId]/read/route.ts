@@ -7,11 +7,11 @@ export const runtime = 'nodejs';
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { notificationId: string } }
+  { params }: { params: Promise<{ notificationId: string }> }
 ) {
   try {
     const userId = await requireUserIdFromRequest(req);
-    const { notificationId } = params;
+    const { notificationId } = await params;
 
     if (!notificationId) {
       return NextResponse.json({ ok: false, error: 'Missing notificationId' }, { status: 400 });

@@ -7,11 +7,11 @@ export const runtime = 'nodejs';
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   try {
     const userId = await requireUserIdFromRequest(req);
-    const { deviceId } = params;
+    const { deviceId } = await params;
 
     if (!deviceId) {
       return NextResponse.json({ ok: false, error: 'Missing deviceId' }, { status: 400 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, Suspense, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
@@ -108,7 +108,9 @@ export function ClientShell({ children }: { children: ReactNode }) {
             </div>
           </div>
         </SidebarProvider>
-        <NotificationMonitor />
+        <Suspense fallback={null}>
+          <NotificationMonitor />
+        </Suspense>
       </FirebaseClientProvider>
       <Toaster />
     </>
