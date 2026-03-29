@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import {
   Shield, LogOut, Zap, Layout, Check, RefreshCcw, KeyRound, Eye, EyeOff, Fingerprint,
-  Download, Trash2, Mail, Palette,
+  Download, Trash2, Mail, Palette, Bell,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   saveSettingsToCloud,
 } from "@/services/user-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NotificationSetup } from "@/components/notification-setup";
 
 const THEME_OPTIONS: { value: AppTheme; label: string; hint: string }[] = [
   { value: "neon", label: "Neon Verde", hint: "Modo original" },
@@ -375,6 +376,18 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+          <Bell className="w-3.5 h-3.5 text-primary" /> Notificaciones
+        </h3>
+        <div className="glass-card p-5 space-y-3">
+          <p className="text-[11px] text-muted-foreground">
+            Configura aqui los permisos para alertas del navegador y la integracion con la app Android.
+          </p>
+          <NotificationSetup className="h-11 rounded-xl text-[10px] tracking-[0.2em]" />
         </div>
       </section>
 

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useUser, useFirestore } from '@/firebase';
 import { useNotifications } from '@/hooks/use-notifications';
-import { NotificationSetup } from '@/components/notification-setup';
 import { NotificationService } from '@/services/notification-service';
 import {
   markNotificationAsOpened,
@@ -146,9 +145,5 @@ export function NotificationMonitor() {
     return null;
   }
 
-  return (
-    <div className="hidden">
-      <NotificationSetup onPermissionChanged={setNotificationsEnabled} />
-    </div>
-  );
+  return null;
 }

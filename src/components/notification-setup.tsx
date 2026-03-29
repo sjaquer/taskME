@@ -1,19 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Bell, BellOff, Check } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationService } from '@/services/notification-service';
 import { cn } from '@/lib/utils';
 
 interface NotificationSetupProps {
   onPermissionChanged?: (enabled: boolean) => void;
+  className?: string;
 }
 
 /**
  * Componente para solicitar y gestionar permisos de notificación
  */
-export function NotificationSetup({ onPermissionChanged }: NotificationSetupProps) {
+export function NotificationSetup({ onPermissionChanged, className }: NotificationSetupProps) {
   const [isEnabled, setIsEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
@@ -23,9 +24,13 @@ export function NotificationSetup({ onPermissionChanged }: NotificationSetupProp
     const supported = typeof window !== 'undefined' && 'Notification' in window;
     setIsSupported(supported);
     if (supported) {
-      setIsEnabled(NotificationService.isEnabled());
+      const enabled = NotificationService.isEnabled();
+      setIsEnabled(enabled);
+      onPermissionChanged?.(enabled);
+    } else {
+      onPermissionChanged?.(false);
     }
-  }, []);
+  }, [onPermissionChanged]);
 
   const handleRequestPermission = async () => {
     setIsLoading(true);
@@ -47,37 +52,23 @@ export function NotificationSetup({ onPermissionChanged }: NotificationSetupProp
     }
   };
 
-  if (!isSupported) {
-    return (
-      <div className="text-[10px] text-muted-foreground">
-        Tu navegador no soporta notificaciones
-      </div>
-    );
-  }
-
-  if (isEnabled) {
-    return (
-      <div className="flex items-center gap-2 text-[10px] text-emerald-400 font-black">
-        <Check className="w-3 h-3" />
-        Notificaciones Activas
-      </div>
-    );
-  }
-
   return (
     <Button
-      onClick={handleRequestPermission}
-      disabled={isLoading}
+      onClick={isSupported ? handleRequestPermission : undefined}
+      disabled={isLoading || !isSupported}
       variant="outline"
       size="sm"
-      className="text-[9px] font-black uppercase tracking-widest gap-2 h-9 rounded-lg border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08]"
+      className={cn(
+        "text-[9px] font-black uppercase tracking-widest gap-2 h-9 rounded-lg border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08]",
+        className
+      )}
     >
       {isLoading ? (
         <div className="w-3 h-3 animate-spin rounded-full border border-primary border-t-transparent" />
       ) : (
         <Bell className="w-3.5 h-3.5" />
       )}
-      Activar Notificaciones
+      {isSupported ? (isEnabled ? 'Gestionar Permisos' : 'Activar Notificaciones') : 'Permisos No Disponibles'}
     </Button>
   );
 }

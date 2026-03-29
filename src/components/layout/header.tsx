@@ -6,7 +6,6 @@ import { Briefcase, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppContext } from "@/types/task";
 import Image from "next/image";
-import { NotificationSetup } from "@/components/notification-setup";
 
 const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] = [
   { value: 'Trabajo', icon: Briefcase, label: 'Trabajo' },
@@ -45,7 +44,6 @@ export function Header() {
             </button>
           ))}
         </div>
-        <NotificationSetup />
       </div>
     </header>
   );
