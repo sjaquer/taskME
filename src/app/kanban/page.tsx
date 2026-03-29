@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { z } from "zod";
+import { format, isValid, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { TacticalButton, OutlineButton } from "@/components/atoms";
 import { TaskCard } from "@/components/molecules";
@@ -45,9 +46,20 @@ const TaskSchema = z.object({
   priority: z.enum(["baja", "media", "alta"]),
   status: z.string().min(1),
   tags: z.array(z.string()),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida").optional(),
   context: z.string(),
   userId: z.string(),
 });
+
+function getTodayInputDate() {
+  return format(new Date(), "yyyy-MM-dd");
+}
+
+function toInputDateValue(value: string | Date | undefined) {
+  if (!value) return "";
+  const parsed = typeof value === "string" ? parseISO(value) : value;
+  return isValid(parsed) ? format(parsed, "yyyy-MM-dd") : "";
+}
 
 export default function KanbanPage() {
   const { context, kanbanColumns: columns, setKanbanColumns: setColumns } = useAppContextStore();
@@ -116,6 +128,7 @@ export default function KanbanPage() {
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t !== ""),
+      ...(taskForm.dueDate && { dueDate: taskForm.dueDate }),
       context: context as AppContext,
       userId: user.uid,
     };
@@ -127,12 +140,10 @@ export default function KanbanPage() {
       return;
     }
 
-    // Agregar dueDate si existe (después de la validación)
     const taskData = {
       ...result.data,
       priority: result.data.priority as Priority,
       context: result.data.context as AppContext,
-      ...(taskForm.dueDate && { dueDate: taskForm.dueDate }),
     };
 
     if (editingTask) {
@@ -155,19 +166,13 @@ export default function KanbanPage() {
 
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
-    // Convertir dueDate a formato YYYY-MM-DD si existe
-    let dueDateFormatted = "";
-    if (task.dueDate) {
-      const date = typeof task.dueDate === 'string' ? new Date(task.dueDate) : task.dueDate as Date;
-      dueDateFormatted = date.toISOString().split('T')[0];
-    }
     setTaskForm({
       title: task.title,
       description: task.description || "",
       priority: task.priority,
       status: task.status,
       tags: task.tags?.join(", ") || "",
-      dueDate: dueDateFormatted,
+      dueDate: toInputDateValue(task.dueDate),
     });
     setIsDialogOpen(true);
   };
@@ -288,8 +293,10 @@ export default function KanbanPage() {
                       type="date"
                       value={taskForm.dueDate}
                       onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                      className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"
+                      min={getTodayInputDate()}
+                      className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-white [color-scheme:dark]"
                     />
+                    <p className="text-[10px] text-white/45">Si no eliges fecha, el nodo se crea sin vencimiento.</p>
                   </div>
                 </div>
               </div>

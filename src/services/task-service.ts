@@ -42,6 +42,7 @@ export function createTask(
     priority: Priority;
     status: string;
     tags?: string[];
+    dueDate?: string;
     context: AppContext;
   }
 ) {
