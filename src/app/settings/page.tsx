@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { activeModules, toggleModule, theme, setTheme, hourFormat, setHourFormat } = useAppContextStore();
+  const { activeModules, toggleModule, theme, setTheme, hourFormat, setHourFormat, defaultPage, setDefaultPage } = useAppContextStore();
 
   const [newName, setNewName] = useState(user?.displayName || "");
   const [isUpdatingName, setIsUpdatingName] = useState(false);
@@ -355,7 +355,7 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          <div className="border-t border-white/[0.06] pt-4">
+          <div className="border-t border-white/[0.06] pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <Label className="text-[11px] uppercase font-black text-primary">Formato de Hora</Label>
               <Select value={hourFormat} onValueChange={(value) => setHourFormat(value as any)}>
@@ -373,6 +373,32 @@ export default function SettingsPage() {
               </Select>
               <p className="text-[10px] text-white/40 mt-2">
                 {hourFormat === '24h' ? 'Formato: 14:30' : 'Formato: 02:30 PM'}
+              </p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <Label className="text-[11px] uppercase font-black text-primary">Página de Inicio</Label>
+              <Select value={defaultPage} onValueChange={(value) => setDefaultPage(value)}>
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                  <SelectItem value="/" className="text-[11px] font-black uppercase tracking-wider">
+                    Dashboard
+                  </SelectItem>
+                  <SelectItem value="/kanban" className="text-[11px] font-black uppercase tracking-wider">
+                    Tablero Kanban
+                  </SelectItem>
+                  <SelectItem value="/schedule" className="text-[11px] font-black uppercase tracking-wider">
+                    Horario
+                  </SelectItem>
+                  <SelectItem value="/calendar" className="text-[11px] font-black uppercase tracking-wider">
+                    Calendario
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-white/40 mt-2">
+                Página que se abre al iniciar la aplicación.
               </p>
             </div>
           </div>

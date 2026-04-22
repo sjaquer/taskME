@@ -32,7 +32,7 @@ import { buildTasksQuery, completeTask } from "@/services/task-service";
 import type { Task } from "@/types/task";
 
 export default function Home() {
-  const { context } = useAppContextStore();
+  const { context, defaultPage } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -40,8 +40,13 @@ export default function Home() {
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
+    } else if (!isUserLoading && user) {
+      if (defaultPage && defaultPage !== "/" && !sessionStorage.getItem("hasRedirectedToDefault")) {
+        sessionStorage.setItem("hasRedirectedToDefault", "true");
+        router.push(defaultPage);
+      }
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, defaultPage]);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;

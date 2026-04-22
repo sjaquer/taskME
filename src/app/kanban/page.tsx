@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { z } from "zod";
 import { format, isValid, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
@@ -77,6 +78,8 @@ export default function KanbanPage() {
     dueDate: "",
   });
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -153,6 +156,51 @@ export default function KanbanPage() {
     resetForm();
     setIsDialogOpen(false);
     setIsSaving(false);
+  };
+
+  const handleGenerateTasks = async () => {
+    if (!aiPrompt.trim() || !user || !firestore) return;
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/v1/ai/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
+      });
+
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(errorPayload?.error || 'Error al generar tareas desde la API');
+      }
+
+      const { tasks: generatedTasks } = await response.json();
+      if (!Array.isArray(generatedTasks)) {
+        throw new Error('La API no devolvio una lista de tareas valida');
+      }
+      
+      let createdCount = 0;
+      for (const task of generatedTasks) {
+        const taskData = {
+          title: task.title,
+          description: task.description || "",
+          priority: task.priority as Priority,
+          status: columns[0],
+          tags: task.tags || [],
+          context: task.context as AppContext,
+          userId: user.uid,
+        };
+        await createTask(firestore, user.uid, taskData);
+        createdCount++;
+      }
+
+      toast({ variant: "success", title: "Inyección Cuántica", description: `${createdCount} tareas generadas con éxito.` });
+      setAiPrompt("");
+      setIsDialogOpen(false);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error Cuántico", description: error.message });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const resetForm = () => {
@@ -248,58 +296,150 @@ export default function KanbanPage() {
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tighter uppercase flex items-center gap-3">
                   <Layers className="w-6 h-6 text-primary" />
-                  {editingTask ? "Modificar" : "Inyectar"}
+                  {editingTask ? "Modificar Nodo" : "Inyectar Nodo"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre del Nodo</Label>
-                  <Input value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
-                  <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="bg-white/[0.03] border-white/[0.08] min-h-[80px] rounded-lg" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
-                    <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>
-                      <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                        <SelectItem value="baja">BAJA</SelectItem>
-                        <SelectItem value="media">MEDIA</SelectItem>
-                        <SelectItem value="alta">ALTA</SelectItem>
-                      </SelectContent>
-                    </Select>
+
+              {editingTask ? (
+                <>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre del Nodo</Label>
+                      <Input value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
+                      <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="bg-white/[0.03] border-white/[0.08] min-h-[80px] rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
+                        <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>
+                          <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                            <SelectItem value="baja">BAJA</SelectItem>
+                            <SelectItem value="media">MEDIA</SelectItem>
+                            <SelectItem value="alta">ALTA</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] uppercase font-black tracking-widest">Estado</Label>
+                        <Select value={taskForm.status} onValueChange={(v) => setTaskForm({ ...taskForm, status: v })}>
+                          <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                            {columns.map((col) => (
+                              <SelectItem key={col} value={col}>{col}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                      <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Vencimiento (Opcional)</Label>
+                      <Input
+                        type="date"
+                        value={taskForm.dueDate}
+                        onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                        className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-white [color-scheme:dark]"
+                      />
+                      <p className="text-[10px] text-white/45">Si no eliges fecha, el nodo se crea sin vencimiento.</p>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] uppercase font-black tracking-widest">Estado</Label>
-                    <Select value={taskForm.status} onValueChange={(v) => setTaskForm({ ...taskForm, status: v })}>
-                      <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                        {columns.map((col) => (
-                          <SelectItem key={col} value={col}>{col}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
-                  <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Vencimiento (Opcional)</Label>
-                  <Input
-                    type="date"
-                    value={taskForm.dueDate}
-                    onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-white [color-scheme:dark]"
-                  />
-                  <p className="text-[10px] text-white/45">Si no eliges fecha, el nodo se crea sin vencimiento.</p>
-                </div>
-              </div>
-              <DialogFooter>
-                <TacticalButton onClick={handleSaveTask} disabled={isSaving} className="w-full">
-                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Operación"}
-                </TacticalButton>
-              </DialogFooter>
+                  <DialogFooter>
+                    <TacticalButton onClick={handleSaveTask} disabled={isSaving} className="w-full">
+                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Operación"}
+                    </TacticalButton>
+                  </DialogFooter>
+                </>
+              ) : (
+                <Tabs defaultValue="manual" className="w-full mt-2">
+                  <TabsList className="grid w-full grid-cols-2 bg-white/[0.03] border border-white/[0.08] p-1 h-auto rounded-lg mb-4">
+                    <TabsTrigger value="manual" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary rounded-md py-2 text-[10px] uppercase font-black tracking-widest transition-all">Manual</TabsTrigger>
+                    <TabsTrigger value="ai" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 rounded-md py-2 text-[10px] uppercase font-black tracking-widest transition-all flex items-center gap-2 justify-center">
+                      <Sparkles className="w-3 h-3" /> Asistente IA
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="manual" className="space-y-4 outline-none mt-0">
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre del Nodo</Label>
+                        <Input value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] uppercase font-black text-white/40 tracking-widest">Descripción</Label>
+                        <Textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} className="bg-white/[0.03] border-white/[0.08] min-h-[80px] rounded-lg" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
+                          <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>
+                            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                              <SelectItem value="baja">BAJA</SelectItem>
+                              <SelectItem value="media">MEDIA</SelectItem>
+                              <SelectItem value="alta">ALTA</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] uppercase font-black tracking-widest">Estado</Label>
+                          <Select value={taskForm.status} onValueChange={(v) => setTaskForm({ ...taskForm, status: v })}>
+                            <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                            <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                              {columns.map((col) => (
+                                <SelectItem key={col} value={col}>{col}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                        <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Vencimiento (Opcional)</Label>
+                        <Input
+                          type="date"
+                          value={taskForm.dueDate}
+                          onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
+                          className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-white [color-scheme:dark]"
+                        />
+                        <p className="text-[10px] text-white/45">Si no eliges fecha, el nodo se crea sin vencimiento.</p>
+                      </div>
+                    </div>
+                    <DialogFooter className="mt-6">
+                      <TacticalButton onClick={handleSaveTask} disabled={isSaving} className="w-full">
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar Operación"}
+                      </TacticalButton>
+                    </DialogFooter>
+                  </TabsContent>
+
+                  <TabsContent value="ai" className="space-y-4 outline-none mt-0">
+                    <div className="space-y-3">
+                      <Label className="text-[9px] uppercase font-black text-purple-400 tracking-widest flex items-center gap-2">
+                        <Sparkles className="w-3 h-3" /> Instrucciones Cuánticas
+                      </Label>
+                      <Textarea 
+                        placeholder="Ej: Mañana tengo que enviar el reporte mensual y también ir a comprar el pan..."
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        className="bg-white/[0.03] border-white/[0.08] min-h-[160px] rounded-lg text-sm resize-none focus-visible:ring-purple-500/50"
+                      />
+                      <p className="text-[10px] text-white/40 leading-relaxed">
+                        Escribe tus ideas libremente. La IA analizará el texto, separará las tareas, priorizará y asignará etiquetas automáticamente, inyectándolas en la columna <span className="text-white font-bold">{columns[0]}</span>.
+                      </p>
+                    </div>
+                    <DialogFooter className="mt-6">
+                      <TacticalButton onClick={handleGenerateTasks} disabled={isGenerating || !aiPrompt.trim()} className="w-full bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 hover:text-purple-300">
+                        {isGenerating ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Procesando con IA...</>
+                        ) : (
+                          <><Sparkles className="w-4 h-4 mr-2" /> Extraer e Inyectar</>
+                        )}
+                      </TacticalButton>
+                    </DialogFooter>
+                  </TabsContent>
+                </Tabs>
+              )}
             </DialogContent>
           </Dialog>
         </div>

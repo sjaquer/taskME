@@ -68,8 +68,8 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
       {...listeners}
       style={style}
       layoutId={task.id}
-      whileHover={{ y: -2 }}
-      className="group relative glass-card p-4 md:p-5 hover:border-primary/30 transition-all shadow-lg cursor-grab active:cursor-grabbing"
+      whileHover={{ y: -2, scale: 1.01 }}
+      className="group relative glass-card p-4 md:p-5 hover:border-primary/50 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all duration-300 cursor-grab active:cursor-grabbing"
     >
       <div className="absolute top-0 right-0 p-3 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1.5">
         <button

@@ -25,6 +25,8 @@ interface AppState {
   setKanbanColumns: (columns: string[]) => void;
   hourFormat: HourFormat;
   setHourFormat: (format: HourFormat) => void;
+  defaultPage: string;
+  setDefaultPage: (page: string) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -52,6 +54,8 @@ export const useAppContextStore = create<AppState>()(
       setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
       hourFormat: '24h',
       setHourFormat: (format) => set({ hourFormat: format }),
+      defaultPage: '/',
+      setDefaultPage: (page) => set({ defaultPage: page }),
     }),
     {
       name: 'taskme-app-state-v2',
