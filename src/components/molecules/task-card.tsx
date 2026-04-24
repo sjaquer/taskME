@@ -71,30 +71,47 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
       whileHover={{ y: -2, scale: 1.01 }}
       className="group relative glass-card p-4 md:p-5 hover:border-primary/50 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all duration-300 cursor-grab active:cursor-grabbing"
     >
-      <div className="absolute top-0 right-0 p-3 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1.5">
+      <div className="md:hidden absolute top-2 right-2 z-10 flex gap-2">
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-          className="p-1.5 hover:bg-primary/20 rounded-lg text-primary/40 bg-[#050505]/60"
+          className="p-2.5 hover:bg-primary/20 rounded-xl text-primary bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10"
         >
-          <Edit3 className="w-3 h-3" />
+          <Edit3 className="w-4 h-4" />
         </button>
         <button
           onPointerDown={(e) => e.stopPropagation()}
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-500/40 bg-[#050505]/60"
+          className="p-2.5 hover:bg-red-500/20 rounded-xl text-red-500 bg-[#0a0a0a]/80 backdrop-blur-md border border-white/10"
         >
-          <Trash2 className="w-3 h-3" />
+          <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-3.5">
         <div className="flex items-center gap-2">
           <PriorityBadge priority={task.priority} />
-          <div
-            className="p-1.5 hover:bg-white/[0.03] rounded-lg ml-auto opacity-20 group-hover:opacity-100"
-          >
-            <GripVertical className="w-3 h-3" />
+          
+          <div className="ml-auto flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-1">
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                className="p-1.5 hover:bg-primary/20 rounded-lg text-primary/60 hover:text-primary transition-colors"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
+                className="p-1.5 hover:bg-red-500/20 rounded-lg text-red-500/40 hover:text-red-500 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <div className="p-1.5 hover:bg-white/[0.03] rounded-lg opacity-20 group-hover:opacity-100 transition-opacity">
+              <GripVertical className="w-3 h-3 text-white/40" />
+            </div>
           </div>
         </div>
 

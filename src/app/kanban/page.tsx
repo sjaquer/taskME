@@ -86,7 +86,15 @@ export default function KanbanPage() {
     return buildTasksQuery(firestore, user.uid, context);
   }, [firestore, user, context]);
 
-  const { data: tasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const { data: firestoreTasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    if (firestoreTasks) {
+      setTasks(firestoreTasks);
+    }
+  }, [firestoreTasks]);
+
   const totalTasks = tasks?.length || 0;
   const completedTasks = tasks?.filter((t) => t.status === "Hecho").length || 0;
   const inProgressTasks = tasks?.filter((t) => t.status === "Haciendo").length || 0;
@@ -146,9 +154,15 @@ export default function KanbanPage() {
     };
 
     if (editingTask) {
+      // Optimistic Update
+      setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t));
       updateTask(firestore, user.uid, editingTask.id, taskData);
       toast({ variant: "success", title: "Actualizado" });
     } else {
+      // Optimistic Update (Temporary ID)
+      const tempId = `temp-${Date.now()}`;
+      const newTask = { ...taskData, id: tempId } as Task;
+      setTasks(prev => [newTask, ...prev]);
       createTask(firestore, user.uid, taskData);
       toast({ variant: "success", title: "Inyectado" });
     }
@@ -222,6 +236,8 @@ export default function KanbanPage() {
   };
 
   const handleDeleteTask = (taskId: string) => {
+    // Optimistic Delete
+    setTasks(prev => prev.filter(t => t.id !== taskId));
     deleteTask(firestore, user.uid, taskId);
     toast({ title: "Nodo Purgado", variant: "warning" });
   };
@@ -246,19 +262,64 @@ export default function KanbanPage() {
     if (task) setActiveTask(task);
   }
 
-  function handleDragOver(_event: DragOverEvent) {}
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    // Encontrar la tarea activa en el estado local
+    const activeTaskIndex = tasks.findIndex((t) => t.id === activeId);
+    if (activeTaskIndex === -1) return;
+
+    // Obtener el estado destino de forma robusta
+    const overData = over.data.current;
+    let overStatus: string | undefined;
+
+    if (overData?.type === 'Column') {
+      overStatus = overData.status;
+    } else if (overData?.type === 'Task') {
+      overStatus = overData.task.status;
+    } else if (columns.includes(overId as string)) {
+      overStatus = overId as string;
+    }
+
+    if (overStatus && tasks[activeTaskIndex].status !== overStatus) {
+      setTasks((prev) => {
+        const newTasks = [...prev];
+        newTasks[activeTaskIndex] = { ...newTasks[activeTaskIndex], status: overStatus };
+        return newTasks;
+      });
+    }
+  }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveTask(null);
+    
     if (!over) return;
 
-    const overStatus = columns.includes(over.id as string)
-      ? (over.id as string)
-      : tasks?.find((t) => t.id === over.id)?.status;
+    const overId = over.id;
+    const overData = over.data.current;
+    let overStatus: string | undefined;
 
-    if (overStatus && active.data.current?.task.status !== overStatus && user) {
+    if (overData?.type === 'Column') {
+      overStatus = overData.status;
+    } else if (overData?.type === 'Task') {
+      overStatus = overData.task.status;
+    } else if (columns.includes(overId as string)) {
+      overStatus = overId as string;
+    }
+
+    if (overStatus && user) {
+      // Sincronizar con Firestore
       updateTask(firestore, user.uid, active.id as string, { status: overStatus });
+      toast({ 
+        title: "Nodo Sincronizado", 
+        description: `Estado ${overStatus} persistido.`,
+        variant: "success" 
+      });
     }
   }
 
@@ -276,12 +337,31 @@ export default function KanbanPage() {
             </Badge>
           </div>
           <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] flex items-center gap-3">
-            <Database className="w-3 h-3 text-primary/40" /> Arrastra tareas entre estados para avanzar el flujo
+            <Database className="w-3 h-3 text-primary/40" /> {columns.length} ESTADOS • {totalTasks} NODOS ACTIVOS
           </p>
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto">
-          <OutlineButton onClick={() => setIsManagingColumns(!isManagingColumns)}>
+          {/* Mobile Column Navigator */}
+          <div className="flex md:hidden overflow-x-auto scrollbar-hide gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.06] w-full">
+            {columns.map((col) => {
+              const count = tasks?.filter((t) => t.status === col).length || 0;
+              return (
+                <button
+                  key={col}
+                  onClick={() => {
+                    const el = document.getElementById(col);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                  }}
+                  className="flex-shrink-0 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap bg-white/[0.05] border border-white/[0.05] active:bg-primary/20 active:text-primary transition-all"
+                >
+                  {col} <span className="opacity-40 ml-1">({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <OutlineButton onClick={() => setIsManagingColumns(!isManagingColumns)} className="hidden md:flex">
             <Settings2 className="w-4 h-4 mr-2 text-primary/40" />
             <span className="text-[9px] font-black uppercase tracking-widest">Config</span>
           </OutlineButton>
@@ -495,10 +575,30 @@ export default function KanbanPage() {
       </AnimatePresence>
 
       {/* Kanban Board */}
-      <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-        <div className="glass-card p-3 md:p-4 border-white/[0.08]">
-          <div className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide min-h-[50vh] -mx-1 px-1 md:mx-0">
-          <div className="flex gap-4 md:gap-8 min-w-full">
+      <div className="space-y-2">
+        {/* Fake Top Scrollbar */}
+        <div 
+          id="kanban-top-scroll"
+          className="hidden md:block overflow-x-auto h-2 scrollbar-hide border-b border-white/[0.03] -mx-4 px-4 opacity-50 hover:opacity-100 transition-opacity"
+          onScroll={(e) => {
+            const board = document.getElementById('kanban-board');
+            if (board) board.scrollLeft = e.currentTarget.scrollLeft;
+          }}
+        >
+          <div style={{ width: `${columns.length * 400 + (columns.length - 1) * 32}px` }} className="h-full" />
+        </div>
+
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+          <div className="glass-card p-3 md:p-4 border-white/[0.08]">
+            <div 
+              id="kanban-board"
+              className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide min-h-[60vh] -mx-1 px-1 md:mx-0 snap-x snap-mandatory"
+              onScroll={(e) => {
+                const topScroll = document.getElementById('kanban-top-scroll');
+                if (topScroll) topScroll.scrollLeft = e.currentTarget.scrollLeft;
+              }}
+            >
+            <div className="flex gap-4 md:gap-8 min-w-full">
             {isTasksLoading ? (
               [...Array(3)].map((_, i) => (
                 <div key={i} className="flex-shrink-0 w-80 space-y-4">
@@ -528,6 +628,23 @@ export default function KanbanPage() {
           ) : null}
         </DragOverlay>
       </DndContext>
+    </div>
+
+      {/* Floating Action Button (Mobile) */}
+      <div className="fixed bottom-24 right-6 z-40 md:hidden flex flex-col gap-3">
+        <button
+          onClick={() => setIsManagingColumns(!isManagingColumns)}
+          className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/10 shadow-2xl active:scale-90 transition-transform"
+        >
+          <Settings2 className="w-5 h-5 text-primary/60" />
+        </button>
+        <button
+          onClick={() => setIsDialogOpen(true)}
+          className="w-14 h-14 rounded-2xl flex items-center justify-center bg-primary text-black shadow-[0_0_20px_rgba(57,255,20,0.3)] active:scale-90 transition-transform"
+        >
+          <Plus className="w-7 h-7" />
+        </button>
+      </div>
     </div>
   );
 }
