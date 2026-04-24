@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
@@ -63,6 +63,9 @@ export default function KanbanPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
 
   const [newColumnName, setNewColumnName] = useState("");
   const [isManagingColumns, setIsManagingColumns] = useState(false);
@@ -574,61 +577,69 @@ export default function KanbanPage() {
         )}
       </AnimatePresence>
 
-      {/* Kanban Board */}
-      <div className="space-y-2">
-        {/* Fake Top Scrollbar */}
+      {/* Kanban Board Container */}
+      <div className="space-y-4">
+        {/* Top Scrollbar (Desktop Only) */}
         <div 
-          id="kanban-top-scroll"
-          className="hidden md:block overflow-x-auto h-2 scrollbar-hide border-b border-white/[0.03] -mx-4 px-4 opacity-50 hover:opacity-100 transition-opacity"
-          onScroll={(e) => {
-            const board = document.getElementById('kanban-board');
-            if (board) board.scrollLeft = e.currentTarget.scrollLeft;
+          ref={topScrollRef}
+          className="hidden md:block overflow-x-auto h-2 bg-white/[0.02] border-y border-white/[0.05] rounded-full mx-auto max-w-[80%] transition-all hover:bg-white/[0.05]"
+          onScroll={() => {
+            if (boardRef.current && topScrollRef.current) {
+              boardRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+            }
           }}
         >
-          <div style={{ width: `${columns.length * 400 + (columns.length - 1) * 32}px` }} className="h-full" />
+          <div style={{ width: `${columns.length * 400}px` }} className="h-full" />
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
-          <div className="glass-card p-3 md:p-4 border-white/[0.08]">
+          <div className="glass-card-elevated p-3 md:p-6 border-white/[0.08] relative">
             <div 
+              ref={boardRef}
               id="kanban-board"
-              className="flex gap-4 md:gap-8 overflow-x-auto pb-4 scrollbar-hide min-h-[60vh] -mx-1 px-1 md:mx-0 snap-x snap-mandatory"
-              onScroll={(e) => {
-                const topScroll = document.getElementById('kanban-top-scroll');
-                if (topScroll) topScroll.scrollLeft = e.currentTarget.scrollLeft;
+              className="flex gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide min-h-[65vh] -mx-2 px-2 md:mx-0 snap-x snap-mandatory cursor-grab active:cursor-grabbing"
+              onScroll={() => {
+                if (topScrollRef.current && boardRef.current) {
+                  topScrollRef.current.scrollLeft = boardRef.current.scrollLeft;
+                }
               }}
             >
-            <div className="flex gap-4 md:gap-8 min-w-full">
-            {isTasksLoading ? (
-              [...Array(3)].map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-80 space-y-4">
-                  <Skeleton className="h-6 w-24 bg-white/[0.03]" />
-                  <Skeleton className="h-[400px] w-full rounded-2xl bg-white/[0.03]" />
-                </div>
-              ))
-            ) : (
-              columns.map((status) => (
-                <KanbanColumn
-                  key={status}
-                  status={status}
-                  tasks={tasks?.filter((t) => t.status === status) || []}
-                  onDelete={handleDeleteTask}
-                  onEdit={openEditDialog}
-                />
-              ))
-            )}
-          </div>
-          </div>
-        </div>
-        <DragOverlay>
-          {activeTask ? (
-            <div className="w-[300px] rotate-3 scale-105 pointer-events-none opacity-90">
-              <TaskCard task={activeTask} onDelete={() => {}} onEdit={() => {}} isOverlay />
+              <div className="flex gap-6 md:gap-10 min-w-full">
+                {isTasksLoading ? (
+                  [...Array(3)].map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-[85vw] sm:w-80 md:w-96 space-y-4">
+                      <Skeleton className="h-6 w-24 bg-white/[0.03]" />
+                      <Skeleton className="h-[400px] w-full rounded-2xl bg-white/[0.03]" />
+                    </div>
+                  ))
+                ) : (
+                  columns.map((status) => (
+                    <KanbanColumn
+                      key={status}
+                      status={status}
+                      tasks={tasks?.filter((t) => t.status === status) || []}
+                      onDelete={handleDeleteTask}
+                      onEdit={openEditDialog}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-    </div>
+
+            {/* Mobile Navigation Arrows (Visual hint) */}
+            <div className="md:hidden absolute inset-y-0 left-0 w-8 pointer-events-none bg-gradient-to-r from-[#050505]/40 to-transparent" />
+            <div className="md:hidden absolute inset-y-0 right-0 w-8 pointer-events-none bg-gradient-to-l from-[#050505]/40 to-transparent" />
+          </div>
+
+          <DragOverlay>
+            {activeTask ? (
+              <div className="w-[300px] rotate-3 scale-105 pointer-events-none opacity-90">
+                <TaskCard task={activeTask} onDelete={() => {}} onEdit={() => {}} isOverlay />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
+      </div>
 
       {/* Floating Action Button (Mobile) */}
       <div className="fixed bottom-24 right-6 z-40 md:hidden flex flex-col gap-3">
