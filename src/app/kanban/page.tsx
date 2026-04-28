@@ -66,6 +66,9 @@ export default function KanbanPage() {
 
   const boardRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
+  const isSyncingTop = useRef(false);
+  const isSyncingBoard = useRef(false);
+  const [boardScrollWidth, setBoardScrollWidth] = useState(0);
 
   const [newColumnName, setNewColumnName] = useState("");
   const [isManagingColumns, setIsManagingColumns] = useState(false);
@@ -120,6 +123,30 @@ export default function KanbanPage() {
     setEditingTask(null);
     setIsDialogOpen(false);
   }, [context, columns]);
+
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    const updateWidth = () => {
+      if (board) {
+        setBoardScrollWidth(board.scrollWidth);
+      }
+    };
+
+    updateWidth();
+
+    const observer = new ResizeObserver(() => {
+      updateWidth();
+    });
+    
+    observer.observe(board);
+
+    const children = board.querySelectorAll('.flex-shrink-0');
+    children.forEach(child => observer.observe(child));
+
+    return () => observer.disconnect();
+  }, [columns, tasks]);
 
   useEffect(() => {
     if (!isUserLoading && !user) router.push("/login");
@@ -584,12 +611,23 @@ export default function KanbanPage() {
           ref={topScrollRef}
           className="hidden md:block overflow-x-auto h-2 bg-white/[0.02] border-y border-white/[0.05] rounded-full mx-auto max-w-[80%] transition-all hover:bg-white/[0.05]"
           onScroll={() => {
+            if (isSyncingTop.current) {
+              isSyncingTop.current = false;
+              return;
+            }
             if (boardRef.current && topScrollRef.current) {
-              boardRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+              const topMax = topScrollRef.current.scrollWidth - topScrollRef.current.clientWidth;
+              const boardMax = boardRef.current.scrollWidth - boardRef.current.clientWidth;
+              
+              if (topMax > 0 && boardMax > 0) {
+                const percentage = topScrollRef.current.scrollLeft / topMax;
+                isSyncingBoard.current = true;
+                boardRef.current.scrollLeft = percentage * boardMax;
+              }
             }
           }}
         >
-          <div style={{ width: `${columns.length * 400}px` }} className="h-full" />
+          <div style={{ width: `${boardScrollWidth || (columns.length * 400)}px` }} className="h-full" />
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
@@ -597,10 +635,21 @@ export default function KanbanPage() {
             <div 
               ref={boardRef}
               id="kanban-board"
-              className="flex gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide min-h-[65vh] -mx-2 px-2 md:mx-0 snap-x snap-mandatory cursor-grab active:cursor-grabbing"
+              className="flex gap-6 md:gap-10 overflow-x-auto pb-4 scrollbar-hide min-h-[65vh] -mx-2 px-2 md:mx-0 snap-x snap-mandatory md:snap-none cursor-grab active:cursor-grabbing"
               onScroll={() => {
-                if (topScrollRef.current && boardRef.current) {
-                  topScrollRef.current.scrollLeft = boardRef.current.scrollLeft;
+                if (isSyncingBoard.current) {
+                  isSyncingBoard.current = false;
+                  return;
+                }
+                if (boardRef.current && topScrollRef.current) {
+                  const topMax = topScrollRef.current.scrollWidth - topScrollRef.current.clientWidth;
+                  const boardMax = boardRef.current.scrollWidth - boardRef.current.clientWidth;
+                  
+                  if (topMax > 0 && boardMax > 0) {
+                    const percentage = boardRef.current.scrollLeft / boardMax;
+                    isSyncingTop.current = true;
+                    topScrollRef.current.scrollLeft = percentage * topMax;
+                  }
                 }
               }}
             >

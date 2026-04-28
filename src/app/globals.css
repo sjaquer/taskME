@@ -147,7 +147,7 @@
 /* ═══════════════════════════════
    Scrollbar — Minimal Tactical
    ═══════════════════════════════ */
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   @apply bg-white/[0.06] rounded-full;
