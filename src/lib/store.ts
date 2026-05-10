@@ -12,11 +12,15 @@ interface ModuleFlags {
   calendar: boolean;
 }
 
+export type ColorMode = 'dark' | 'light';
+
 interface AppState {
   context: AppContext;
   setContext: (context: AppContext) => void;
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
+  colorMode: ColorMode;
+  setColorMode: (mode: ColorMode) => void;
   activeModules: ModuleFlags;
   toggleModule: (module: keyof ModuleFlags) => void;
   highPerformanceMode: boolean;
@@ -36,6 +40,8 @@ export const useAppContextStore = create<AppState>()(
       setContext: (context) => set({ context }),
       theme: 'neon',
       setTheme: (theme) => set({ theme }),
+      colorMode: 'dark',
+      setColorMode: (colorMode) => set({ colorMode }),
       activeModules: {
         dashboard: true,
         kanban: true,

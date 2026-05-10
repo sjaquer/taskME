@@ -13,24 +13,21 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, icon, subValue, color }: MetricCardProps) {
   return (
-    <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-0 transition-all duration-300">
-      <div className="absolute -right-8 -top-8 w-24 h-24 bg-primary/[0.03] rounded-full blur-[40px] group-hover:bg-primary/[0.06] transition-colors" />
-      <CardHeader className="pb-2 relative px-6 pt-6">
-        <CardTitle className="text-[9px] text-white/40 flex items-center gap-3 uppercase tracking-[0.3em] font-black">
-          <div className="p-1.5 bg-white/[0.03] rounded-lg border border-white/[0.06] group-hover:bg-primary/10 transition-colors">
-            {icon}
-          </div>
+    <Card className="glass-card hover:border-primary/30 group relative overflow-hidden p-6 transition-all duration-300 flex flex-col justify-between min-h-[120px]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          {icon}
           {label}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="relative px-6 pb-6 space-y-2">
-        <div className={cn('text-3xl md:text-5xl font-black tracking-tighter leading-none italic font-data', color)}>
+        </span>
+      </div>
+      <div className="space-y-1 mt-4">
+        <div className={cn('text-2xl md:text-3xl font-bold tracking-tight font-sans', color)}>
           {value}
         </div>
-        <p className="text-[11px] text-white/30 font-black uppercase tracking-[0.2em] pt-2 border-t border-white/[0.06]">
+        <p className="text-xs text-muted-foreground/70 font-medium pt-1 border-t border-white/[0.06]">
           {subValue}
         </p>
-      </CardContent>
+      </div>
     </Card>
   );
 }

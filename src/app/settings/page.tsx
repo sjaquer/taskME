@@ -342,15 +342,35 @@ export default function SettingsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+          <div className="flex flex-wrap gap-3">
             {THEME_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setTheme(option.value)}
-                className={`rounded-xl border p-3 text-left transition-all ${theme === option.value ? "border-primary/50 bg-primary/[0.08]" : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04]"}`}
+                className={`relative flex items-center gap-2.5 rounded-full border py-2 px-4 transition-all ${
+                  theme === option.value
+                    ? "border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.1)]"
+                    : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06]"
+                }`}
+                title={option.hint}
               >
-                <p className="text-[10px] font-black uppercase tracking-widest text-white/80">{option.label}</p>
-                <p className="text-[10px] text-white/40 mt-1">{option.hint}</p>
+                <div 
+                  className="w-3 h-3 rounded-full shadow-inner" 
+                  style={{ 
+                    backgroundColor: 
+                      option.value === 'neon' ? '#22c55e' : 
+                      option.value === 'cyan' ? '#06b6d4' : 
+                      option.value === 'amber' ? '#f59e0b' : 
+                      option.value === 'rose' ? '#f43f5e' : 
+                      option.value === 'violet' ? '#8b5cf6' : '#ffffff'
+                  }} 
+                />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-white/70'}`}>
+                  {option.label}
+                </span>
+                {theme === option.value && (
+                  <Check className="w-3 h-3 text-primary ml-1" />
+                )}
               </button>
             ))}
           </div>

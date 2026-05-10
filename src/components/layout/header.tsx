@@ -2,7 +2,7 @@
 "use client";
 
 import { useAppContextStore } from "@/lib/store";
-import { Briefcase, GraduationCap } from "lucide-react";
+import { Briefcase, GraduationCap, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppContext } from "@/types/task";
 import Image from "next/image";
@@ -13,7 +13,7 @@ const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] =
 ];
 
 export function Header() {
-  const { context, setContext } = useAppContextStore();
+  const { context, setContext, colorMode, setColorMode } = useAppContextStore();
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 glass-blur gpu-blur px-4 safe-top safe-x flex items-center justify-between border-b border-white/[0.06] md:px-8 min-h-16">
@@ -35,7 +35,7 @@ export function Header() {
               className={cn(
                 "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all",
                 context === value
-                  ? "bg-primary text-primary-foreground neon-glow"
+                  ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -44,6 +44,14 @@ export function Header() {
             </button>
           ))}
         </div>
+
+        <button
+          onClick={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
+          className="p-2.5 rounded-full bg-white/[0.03] border border-white/[0.06] text-muted-foreground hover:text-foreground transition-all"
+          aria-label="Toggle theme"
+        >
+          {colorMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </button>
       </div>
     </header>
   );

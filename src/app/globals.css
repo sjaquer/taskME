@@ -11,58 +11,82 @@
 
 @layer base {
   :root {
-    /* OLED Deep Black — strict #050505 */
-    --background: 0 0% 2%;
-    --foreground: 0 0% 96%;
-    --card: 0 0% 2.5%;
-    --card-foreground: 0 0% 96%;
-    --popover: 0 0% 2%;
-    --popover-foreground: 0 0% 96%;
-    /* Neon Systems #39FF14 = hsl(111, 100%, 54%) */
-    --primary: 111 100% 54%;
-    --primary-foreground: 0 0% 2%;
-    --secondary: 0 0% 5%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 0 0% 8%;
-    --muted-foreground: 0 0% 55%;
-    --accent: 111 100% 54%;
-    --accent-foreground: 0 0% 2%;
-    --destructive: 0 84% 60%;
+    /* Dark Mode — Refined Carbon */
+    --background: 220 15% 6%;
+    --foreground: 220 10% 93%;
+    --card: 220 15% 8%;
+    --card-foreground: 220 10% 93%;
+    --popover: 220 15% 10%;
+    --popover-foreground: 220 10% 93%;
+    
+    --primary: 152 60% 52%;
+    --primary-foreground: 220 15% 6%;
+    --secondary: 220 12% 12%;
+    --secondary-foreground: 220 10% 80%;
+    --muted: 220 12% 14%;
+    --muted-foreground: 220 8% 50%;
+    --accent: 152 60% 52%;
+    --accent-foreground: 220 15% 6%;
+    --destructive: 0 72% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 8%;
-    --input: 0 0% 8%;
-    --ring: 111 100% 54%;
+    --border: 220 12% 14%;
+    --input: 220 12% 12%;
+    --ring: 152 60% 52%;
     --radius: 1rem;
   }
 
+  :root[data-mode='light'] {
+    /* Light Mode */
+    --background: 220 20% 97%;
+    --foreground: 220 20% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 12%;
+    
+    --primary: 152 55% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 93%;
+    --secondary-foreground: 220 15% 30%;
+    --muted: 220 15% 90%;
+    --muted-foreground: 220 8% 45%;
+    --accent: 152 55% 42%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 88%;
+    --input: 220 15% 93%;
+    --ring: 152 55% 42%;
+  }
+
   :root[data-theme='neon'] {
-    --primary: 111 100% 54%;
-    --accent: 111 100% 54%;
-    --ring: 111 100% 54%;
+    --primary: 152 60% 52%;
+    --accent: 152 60% 52%;
+    --ring: 152 60% 52%;
   }
 
   :root[data-theme='cyan'] {
-    --primary: 188 100% 56%;
-    --accent: 188 100% 56%;
-    --ring: 188 100% 56%;
+    --primary: 188 80% 45%;
+    --accent: 188 80% 45%;
+    --ring: 188 80% 45%;
   }
 
   :root[data-theme='amber'] {
-    --primary: 43 100% 54%;
-    --accent: 43 100% 54%;
-    --ring: 43 100% 54%;
+    --primary: 38 90% 50%;
+    --accent: 38 90% 50%;
+    --ring: 38 90% 50%;
   }
 
   :root[data-theme='rose'] {
-    --primary: 348 100% 64%;
-    --accent: 348 100% 64%;
-    --ring: 348 100% 64%;
+    --primary: 348 85% 55%;
+    --accent: 348 85% 55%;
+    --ring: 348 85% 55%;
   }
 
   :root[data-theme='violet'] {
-    --primary: 263 90% 67%;
-    --accent: 263 90% 67%;
-    --ring: 263 90% 67%;
+    --primary: 263 75% 60%;
+    --accent: 263 75% 60%;
+    --ring: 263 75% 60%;
   }
 }
 
@@ -71,11 +95,10 @@
     @apply border-border;
   }
   body {
-    @apply bg-[#050505] text-foreground selection:bg-primary/20 antialiased;
+    @apply bg-background text-foreground selection:bg-primary/20 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
     background-image:
-      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(var(--primary) / 0.08), transparent),
-      url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.015' fill-rule='evenodd'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E");
+      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(var(--primary) / 0.08), transparent);
   }
 }
 

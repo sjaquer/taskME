@@ -34,10 +34,23 @@ const DESKTOP_NAV = [
 export function ClientShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const theme = useAppContextStore((state) => state.theme);
+  const colorMode = useAppContextStore((state) => state.colorMode);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  useEffect(() => {
+    document.documentElement.dataset.mode = colorMode;
+    // También actualizar la clase para Tailwind dark mode (si usa class)
+    if (colorMode === 'dark') {
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light');
+    } else {
+      document.documentElement.classList.add('light');
+      document.documentElement.classList.remove('dark');
+    }
+  }, [colorMode]);
 
   useEffect(() => {
     if (isNativeAndroidContainer()) {

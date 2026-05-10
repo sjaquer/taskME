@@ -81,73 +81,80 @@ export default function Home() {
     toast({ variant: "success", title: "Nodo Finalizado", description: "Operación completada." });
   };
 
-  if (isUserLoading || !user)
-    return (
-      <div className="space-y-8 pb-24 px-4">
-        <Skeleton className="h-20 w-full md:w-2/3 bg-white/[0.03]" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-44 rounded-2xl bg-white/[0.03]" />
-          ))}
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="space-y-4 max-w-2xl w-full">
+          <div className="flex flex-wrap items-center gap-3">
+             <Skeleton className="h-7 w-28 bg-white/[0.03] rounded-md" />
+             <Skeleton className="h-7 w-20 bg-white/[0.03] rounded-md" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-12 md:h-16 w-3/4 max-w-md bg-white/[0.03] rounded-lg" />
+            <Skeleton className="h-4 w-64 bg-white/[0.03] rounded-full" />
+          </div>
+        </div>
+        <Skeleton className="h-16 w-full lg:w-48 bg-white/[0.03] rounded-2xl" />
+      </div>
+
+      {/* Metrics Skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl bg-white/[0.03]" />)}
+      </div>
+
+      {/* Quick Orientation Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-white/[0.03]" />)}
+      </div>
+
+      {/* Main Content Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-8">
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+             <Skeleton className="h-6 w-48 bg-white/[0.03] rounded-md" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl bg-white/[0.03]" />)}
+          </div>
+        </div>
+        <div className="lg:col-span-4 space-y-6">
+          <Skeleton className="h-[26rem] rounded-2xl bg-white/[0.03] w-full" />
         </div>
       </div>
-    );
+    </div>
+  );
+}
+
+  if (isUserLoading || !user || isTasksLoading) return <DashboardSkeleton />;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-24">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 px-2">
-        <div className="space-y-4 max-w-2xl">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md">
-              <span className="text-primary text-[11px] font-black uppercase tracking-[0.4em] flex items-center gap-2">
-                <Terminal className="w-3 h-3" /> Cabine Grid
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <StatusIndicator active label="Active" />
-              <div className="flex items-center gap-1.5 border-l border-white/[0.06] pl-3">
-                <ShieldCheck className="w-3 h-3 text-blue-500" />
-                <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">Secure</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter leading-none text-white">
-              Panel <span className="text-primary italic glow-text">{context}</span>
-            </h2>
-            {isTasksLoading ? (
-              <Skeleton className="h-4 w-64 bg-white/[0.03] rounded-full" />
-            ) : (
-              <p className="text-white/40 text-[10px] md:text-xs font-black uppercase tracking-widest">
-                {metrics.pendingTasksCount > 0
-                  ? `Tienes ${metrics.pendingTasksCount} tareas pendientes. Empieza por: ${metrics.nextPendingTask?.title ?? "tu tablero"}.`
-                  : "Todo al día. Puedes planificar la siguiente semana."}
-              </p>
-            )}
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+            Panel <span className="text-primary">{context}</span>
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {metrics.pendingTasksCount > 0
+              ? `Tienes ${metrics.pendingTasksCount} tareas pendientes. Empieza por: ${metrics.nextPendingTask?.title ?? "tu tablero"}.`
+              : "Todo al día. Puedes planificar la siguiente semana."}
+          </p>
         </div>
 
-        <Link href="/kanban" className="group w-full md:w-auto">
-          <div className="glass-card px-6 py-4 flex items-center justify-between md:justify-start gap-5 group-hover:border-primary/30 group-hover:scale-105 active:scale-95 transition-all cursor-pointer relative overflow-hidden">
-            <div className="absolute inset-0 bg-primary/[0.03] opacity-0 group-hover:opacity-100 transition-opacity" />
-            <div className="space-y-0.5">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] relative z-10 block text-primary">Acceso</span>
-              <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-white/40 relative z-10">Abrir Kanban</span>
-            </div>
-            <ArrowUpRight className="w-6 h-6 text-primary group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform relative z-10" />
-          </div>
+        <Link href="/kanban">
+          <Button variant="outline" className="rounded-xl border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] gap-2">
+            <span className="text-xs font-semibold">Abrir Kanban</span>
+            <ArrowUpRight className="w-4 h-4 text-primary" />
+          </Button>
         </Link>
       </div>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 px-2">
-        {isTasksLoading ? (
-          [...Array(4)].map((_, i) => <Skeleton key={i} className="h-40 rounded-2xl bg-white/[0.03]" />)
-        ) : (
-          <>
-            <MetricCard
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <MetricCard
               label="Eficiencia"
               value={`${metrics.progressPercent}%`}
               icon={<Target className="w-5 h-5 text-primary" />}
@@ -175,40 +182,38 @@ export default function Home() {
               subValue="Servicios Activos"
               color="text-yellow-500"
             />
-          </>
-        )}
       </div>
 
       {/* Quick Orientation */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 px-2">
-        <Link href="/kanban" className="glass-card p-5 hover:border-primary/30 transition-colors group">
-          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Siguiente Paso</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <Link href="/kanban" className="glass-card p-4 hover:border-primary/30 transition-colors group flex flex-col justify-between min-h-[100px]">
+          <p className="text-xs font-semibold tracking-wider text-primary mb-2">Siguiente Paso</p>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-wider">Mover y priorizar tareas</p>
-              <p className="text-[11px] text-white/40 mt-1">Reordena estados y resuelve bloqueos críticos.</p>
+              <p className="text-sm font-bold uppercase tracking-wider">Mover y priorizar tareas</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Reordena estados y resuelve bloqueos críticos.</p>
             </div>
             <Compass className="w-5 h-5 text-primary/70 group-hover:text-primary" />
           </div>
         </Link>
 
-        <Link href="/schedule" className="glass-card p-5 hover:border-primary/30 transition-colors group">
-          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Plan Diario</p>
+        <Link href="/schedule" className="glass-card p-4 hover:border-primary/30 transition-colors group flex flex-col justify-between min-h-[100px]">
+          <p className="text-xs font-semibold tracking-wider text-primary mb-2">Plan Diario</p>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-wider">Bloques de enfoque</p>
-              <p className="text-[11px] text-white/40 mt-1">Reserva tiempo para tareas de mayor impacto.</p>
+              <p className="text-sm font-bold uppercase tracking-wider">Bloques de enfoque</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Reserva tiempo para tareas de mayor impacto.</p>
             </div>
             <ListTodo className="w-5 h-5 text-primary/70 group-hover:text-primary" />
           </div>
         </Link>
 
-        <Link href="/calendar" className="glass-card p-5 hover:border-primary/30 transition-colors group">
-          <p className="text-[10px] uppercase font-black tracking-[0.25em] text-primary mb-2">Agenda</p>
+        <Link href="/calendar" className="glass-card p-4 hover:border-primary/30 transition-colors group flex flex-col justify-between min-h-[100px]">
+          <p className="text-xs font-semibold tracking-wider text-primary mb-2">Agenda</p>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-black uppercase tracking-wider">Revisa próximos eventos</p>
-              <p className="text-[11px] text-white/40 mt-1">Coordina entregas y reuniones en un solo lugar.</p>
+              <p className="text-sm font-bold uppercase tracking-wider">Revisa próximos eventos</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Coordina entregas y reuniones en un solo lugar.</p>
             </div>
             <CalendarDays className="w-5 h-5 text-primary/70 group-hover:text-primary" />
           </div>
@@ -216,7 +221,7 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 px-2">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
             <SectionLabel icon={<Layers className="w-5 h-5 text-primary" />}>Lo Más Urgente Hoy</SectionLabel>
@@ -226,43 +231,40 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <div className="flex flex-col gap-4">
             <AnimatePresence mode="popLayout">
-              {isTasksLoading ? (
-                [...Array(2)].map((_, i) => <Skeleton key={i} className="h-64 rounded-2xl bg-white/[0.03]" />)
-              ) : metrics.highPriorityTasks.length > 0 ? (
+              {metrics.highPriorityTasks.length > 0 ? (
                 metrics.highPriorityTasks.map((task, i) => (
                   <motion.div
                     key={task.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className="glass-card p-6 md:p-8 flex flex-col gap-6 hover:scale-[1.02] active:scale-95 group relative hover:border-primary/30"
+                    transition={{ delay: i * 0.05 }}
+                    className="glass-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/30 transition-all group relative"
                   >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/[0.03] rounded-full -mr-16 -mt-16 blur-[60px] group-hover:bg-primary/[0.06] transition-colors duration-500" />
-                    <div className="flex items-center justify-between relative">
-                      <div className="w-12 h-12 rounded-xl bg-white/[0.03] flex items-center justify-center border border-white/[0.06] group-hover:bg-primary/10 transition-colors">
-                        <Activity className="w-5 h-5 text-primary group-hover:scale-110 transition-transform" />
+                    <div className="space-y-1 relative flex-1">
+                      <h4 className="font-bold text-base md:text-lg tracking-tight group-hover:text-primary transition-colors duration-300">
+                        {task.title}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-500/10 text-red-500 border border-red-500/20 uppercase">
+                          CRÍTICO
+                        </span>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-primary" />
+                          <span>Prioridad Alta</span>
+                        </p>
                       </div>
-                      <span className="text-[11px] font-black text-red-500 px-2 py-1 rounded-full bg-red-500/10 border border-red-500/20 font-data">CRÍTICO</span>
                     </div>
-                    <div className="space-y-3 relative">
-                      <h4 className="font-black text-xl md:text-2xl tracking-tighter leading-none group-hover:text-primary transition-colors duration-300">{task.title}</h4>
-                      <p className="text-[9px] text-white/40 uppercase font-black tracking-widest flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-primary" />
-                        <span className="font-data">Prioridad: Alta</span>
-                      </p>
-                    </div>
-                    <div className="mt-auto pt-4 border-t border-white/[0.06] flex items-center justify-between">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-white/[0.06]">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleQuickComplete(task.id)}
-                        className="text-[9px] font-black uppercase tracking-widest text-primary/60 hover:text-primary hover:bg-primary/5 h-9 px-3 rounded-lg"
+                        className="text-xs font-semibold text-primary/80 hover:text-primary hover:bg-primary/5 h-9 px-3 rounded-lg flex items-center gap-1.5"
                       >
-                        <Check className="w-3.5 h-3.5 mr-2" /> Finalizar
+                        <Check className="w-3.5 h-3.5" /> Finalizar
                       </Button>
-                      <span className="text-[11px] font-black text-white/10 tracking-widest uppercase font-data">NODE_{task.id.slice(0, 4)}</span>
                     </div>
                   </motion.div>
                 ))
@@ -270,10 +272,10 @@ export default function Home() {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="col-span-full py-16 glass-card border-dashed flex flex-col items-center justify-center"
+                  className="py-12 glass-card border-dashed flex flex-col items-center justify-center"
                 >
-                  <CheckCircle2 className="w-12 h-12 mb-4 stroke-[0.5] text-primary/30 animate-float" />
-                  <p className="text-sm font-black uppercase tracking-[0.5em] text-center text-white/20">Protocolos OK</p>
+                  <CheckCircle2 className="w-12 h-12 mb-3 stroke-[0.5] text-primary/30" />
+                  <p className="text-xs font-semibold tracking-wider text-muted-foreground/60">Todo al día</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -281,21 +283,58 @@ export default function Home() {
         </div>
 
         <div className="lg:col-span-4 space-y-6">
-          <div className="glass-card p-6 space-y-6 h-full">
-            <SectionLabel icon={<Zap className="w-4 h-4 text-yellow-500" />} className="text-white/30 mb-4">Resumen Operativo</SectionLabel>
-            <div className="space-y-4">
-              <SystemFeature label="Contexto" value={context} icon={<Target className="w-4 h-4" />} />
-              <SystemFeature label="Pendientes" value={metrics.pendingTasksCount.toString()} icon={<Layers className="w-4 h-4" />} />
-              <SystemFeature label="Cuenta" value={user.displayName || "Operador"} icon={<ShieldCheck className="w-4 h-4" />} />
-            </div>
+          <div className="glass-card p-6 space-y-6">
+            <SectionLabel icon={<Zap className="w-4 h-4 text-yellow-500" />} className="text-foreground mb-4">Acción Rápida</SectionLabel>
+            
+            {metrics.nextPendingTask ? (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground">⚡ Próxima Tarea</p>
+                <div className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] space-y-3">
+                  <p className="text-sm font-bold">{metrics.nextPendingTask.title}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 uppercase">
+                      {metrics.nextPendingTask.priority}
+                    </span>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleQuickComplete(metrics.nextPendingTask!.id)}
+                      className="w-full rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 h-8 shadow-sm"
+                    >
+                      <Check className="w-3.5 h-3.5 mr-1.5" /> Completar
+                    </Button>
+                    <Link href="/kanban" className="w-full">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full rounded-lg text-xs font-semibold border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] h-8"
+                      >
+                        Ver Kanban
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground/70">No hay tareas pendientes.</p>
+            )}
+
             <div className="pt-6 border-t border-white/[0.06] space-y-3">
-              <p className="text-[11px] font-black text-white/20 uppercase tracking-[0.2em]">Estado Rápido</p>
-              <div className="bg-[#050505] rounded-xl p-4 border border-white/[0.06] font-mono text-[9px] text-primary/60 space-y-1">
-                <p>{">"} Sesión iniciada correctamente.</p>
-                <p>{">"} Contexto activo: {context}.</p>
-                <p>{">"} Tareas registradas: <span className="font-data">{metrics.allTasks.length}</span>.</p>
-                <p>{">"} Completadas: <span className="font-data">{metrics.completedCount}</span>.</p>
-                <p className="text-white/40 animate-pulse">{">"} Listo para continuar.</p>
+              <p className="text-xs font-semibold text-muted-foreground">📊 Resumen del Día</p>
+              <div className="space-y-2 text-xs text-muted-foreground/80">
+                <p className="flex justify-between">
+                  <span>Contexto Activo</span>
+                  <span className="font-semibold text-foreground">{context}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Tareas Pendientes</span>
+                  <span className="font-semibold text-foreground">{metrics.pendingTasksCount}</span>
+                </p>
+                <p className="flex justify-between">
+                  <span>Completadas</span>
+                  <span className="font-semibold text-foreground">{metrics.completedCount}</span>
+                </p>
               </div>
             </div>
           </div>
