@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, ChevronRight, ChevronLeft } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, ChevronDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
@@ -17,18 +17,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToastAction } from "@/components/ui/toast";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { z } from "zod";
-import { format, isValid, parseISO } from "date-fns";
+import { differenceInCalendarDays, format, isToday, isValid, parseISO } from "date-fns";
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { toast } from "@/hooks/use-toast";
 import { TacticalButton, OutlineButton } from "@/components/atoms";
 import { TaskCard } from "@/components/molecules";
 import { KanbanColumn } from "@/components/organisms";
-import { buildTasksQuery, createTask, updateTask, deleteTask } from "@/services/task-service";
+import { buildTasksQuery, createTask, deleteTask } from "@/services/task-service";
 import type { Task, Priority, AppContext } from "@/types/task";
 
 import {
   DndContext,
-  closestCorners,
+  pointerWithin,
+  rectIntersection,
+  type CollisionDetection,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
@@ -52,10 +57,107 @@ const TaskSchema = z.object({
   userId: z.string(),
 });
 
+const MAX_TAGS_PER_TASK = 5;
+const KANBAN_FILTERS_STORAGE_KEY = "taskme:kanban:filters";
+const KANBAN_CLEANUP_STORAGE_KEY = "taskme:kanban:cleanup";
+const BULK_UNDO_WINDOW_MS = 8000;
+
+interface BulkUndoState {
+  beforeById: Map<string, Task>;
+  afterById: Map<string, Task>;
+}
+
+interface PendingTaskUpdate {
+  taskId: string;
+  data: Record<string, unknown>;
+  queuedAt: number;
+}
+
+function normalizeTag(tag: string) {
+  return tag.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function parseTagInput(input: string) {
+  const uniqueTags = new Set<string>();
+
+  input
+    .split(",")
+    .map(normalizeTag)
+    .filter((tag) => tag.length > 0)
+    .forEach((tag) => {
+      if (uniqueTags.size < MAX_TAGS_PER_TASK) {
+        uniqueTags.add(tag);
+      }
+    });
+
+  return Array.from(uniqueTags);
+}
+
 function toInputDateValue(value: string | Date | undefined) {
   if (!value) return "";
   const parsed = typeof value === "string" ? parseISO(value) : value;
   return isValid(parsed) ? format(parsed, "yyyy-MM-dd") : "";
+}
+
+function toTaskDate(value: string | Date | undefined) {
+  if (!value) return null;
+  const parsed = typeof value === "string" ? parseISO(value) : value;
+  return isValid(parsed) ? parsed : null;
+}
+
+function toDateFromUnknown(value: unknown): Date | null {
+  if (!value) return null;
+
+  if (value instanceof Date) {
+    return isValid(value) ? value : null;
+  }
+
+  if (typeof value === "string") {
+    const parsed = parseISO(value);
+    return isValid(parsed) ? parsed : null;
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const candidate = value as { toDate?: () => Date; seconds?: number; nanoseconds?: number };
+
+    if (typeof candidate.toDate === "function") {
+      const asDate = candidate.toDate();
+      return isValid(asDate) ? asDate : null;
+    }
+
+    if (typeof candidate.seconds === "number") {
+      const ms = candidate.seconds * 1000 + (candidate.nanoseconds ? Math.floor(candidate.nanoseconds / 1_000_000) : 0);
+      const asDate = new Date(ms);
+      return isValid(asDate) ? asDate : null;
+    }
+  }
+
+  return null;
+}
+
+function toTaskUpdatePayload(task: Task) {
+  return {
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: task.status,
+    tags: task.tags || [],
+    dueDate: task.dueDate ?? null,
+    context: task.context,
+    userId: task.userId,
+  };
+}
+
+function sanitizeUpdateData(data: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+}
+
+function getPendingQueueStorageKey(userId: string) {
+  return `taskme:kanban:pending-updates:${userId}`;
+}
+
+function getCleanupStorageKey(userId: string, context: AppContext) {
+  return `${KANBAN_CLEANUP_STORAGE_KEY}:${userId}:${context}`;
 }
 
 export default function KanbanPage() {
@@ -66,6 +168,12 @@ export default function KanbanPage() {
 
   const boardRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
+  const dragOriginStatusRef = useRef<string | null>(null);
+  const dragActiveTaskIdRef = useRef<string | null>(null);
+  const bulkUndoRef = useRef<BulkUndoState | null>(null);
+  const bulkUndoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRetryAttemptRef = useRef(0);
   const isSyncingTop = useRef(false);
   const isSyncingBoard = useRef(false);
   const [boardScrollWidth, setBoardScrollWidth] = useState(0);
@@ -86,6 +194,93 @@ export default function KanbanPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [bulkTagInput, setBulkTagInput] = useState("");
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
+  const [isSyncingPending, setIsSyncingPending] = useState(false);
+  const [lastSyncAttemptAt, setLastSyncAttemptAt] = useState<number | null>(null);
+  const [cleanupEveryDays, setCleanupEveryDays] = useState("15");
+  const [lastCleanupAt, setLastCleanupAt] = useState<number | null>(null);
+  const [isRunningCleanup, setIsRunningCleanup] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    query: "",
+    priority: "all",
+    status: "all",
+    tag: "all",
+    due: "all",
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(KANBAN_FILTERS_STORAGE_KEY);
+      if (!raw) return;
+
+      const allFilters = JSON.parse(raw) as Record<string, typeof filters>;
+      const stored = allFilters[context];
+      if (!stored) return;
+
+      setFilters({
+        query: typeof stored.query === "string" ? stored.query : "",
+        priority: typeof stored.priority === "string" ? stored.priority : "all",
+        status: typeof stored.status === "string" ? stored.status : "all",
+        tag: typeof stored.tag === "string" ? stored.tag : "all",
+        due: typeof stored.due === "string" ? stored.due : "all",
+      });
+    } catch {
+      // Ignore malformed local data and keep defaults.
+    }
+  }, [context]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = window.localStorage.getItem(KANBAN_FILTERS_STORAGE_KEY);
+      const allFilters = raw ? (JSON.parse(raw) as Record<string, typeof filters>) : {};
+      allFilters[context] = filters;
+      window.localStorage.setItem(KANBAN_FILTERS_STORAGE_KEY, JSON.stringify(allFilters));
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [context, filters]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+
+    try {
+      const raw = window.localStorage.getItem(getCleanupStorageKey(user.uid, context));
+      if (!raw) {
+        setCleanupEveryDays("15");
+        setLastCleanupAt(null);
+        return;
+      }
+
+      const parsed = JSON.parse(raw) as { cleanupEveryDays?: string; lastCleanupAt?: number | null };
+      setCleanupEveryDays(typeof parsed.cleanupEveryDays === "string" ? parsed.cleanupEveryDays : "15");
+      setLastCleanupAt(typeof parsed.lastCleanupAt === "number" ? parsed.lastCleanupAt : null);
+    } catch {
+      setCleanupEveryDays("15");
+      setLastCleanupAt(null);
+    }
+  }, [context, user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+
+    try {
+      window.localStorage.setItem(
+        getCleanupStorageKey(user.uid, context),
+        JSON.stringify({ cleanupEveryDays, lastCleanupAt })
+      );
+    } catch {
+      // Ignore storage failures.
+    }
+  }, [cleanupEveryDays, context, lastCleanupAt, user]);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -95,22 +290,348 @@ export default function KanbanPage() {
   const { data: firestoreTasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
   const [tasks, setTasks] = useState<Task[]>([]);
 
+  const readPendingQueue = (userId: string): PendingTaskUpdate[] => {
+    if (typeof window === "undefined") return [];
+
+    try {
+      const raw = window.localStorage.getItem(getPendingQueueStorageKey(userId));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as PendingTaskUpdate[];
+      if (!Array.isArray(parsed)) return [];
+      return parsed;
+    } catch {
+      return [];
+    }
+  };
+
+  const setPendingSyncState = (queue: PendingTaskUpdate[]) => {
+    setPendingSyncCount(queue.length);
+    setPendingTaskIds(new Set(queue.map((entry) => entry.taskId)));
+  };
+
+  const writePendingQueue = (userId: string, queue: PendingTaskUpdate[]) => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(getPendingQueueStorageKey(userId), JSON.stringify(queue));
+    } catch {
+      // Ignore storage failures.
+    }
+    setPendingSyncState(queue);
+  };
+
+  const enqueuePendingTaskUpdate = (userId: string, taskId: string, data: Record<string, unknown>) => {
+    const sanitized = sanitizeUpdateData(data);
+    const queue = readPendingQueue(userId);
+    const existingIndex = queue.findIndex((entry) => entry.taskId === taskId);
+
+    if (existingIndex >= 0) {
+      queue[existingIndex] = {
+        ...queue[existingIndex],
+        data: { ...queue[existingIndex].data, ...sanitized },
+        queuedAt: Date.now(),
+      };
+    } else {
+      queue.push({ taskId, data: sanitized, queuedAt: Date.now() });
+    }
+
+    writePendingQueue(userId, queue);
+  };
+
+  const clearPendingRetry = () => {
+    if (pendingRetryTimerRef.current) {
+      clearTimeout(pendingRetryTimerRef.current);
+      pendingRetryTimerRef.current = null;
+    }
+  };
+
+  const schedulePendingRetry = () => {
+    if (!user || pendingSyncCount === 0 || !navigator.onLine) return;
+
+    clearPendingRetry();
+
+    const attempt = pendingRetryAttemptRef.current;
+    const delayMs = Math.min(30000, 1000 * (2 ** attempt));
+    pendingRetryAttemptRef.current = Math.min(attempt + 1, 5);
+
+    pendingRetryTimerRef.current = setTimeout(() => {
+      void flushPendingTaskUpdates({ silent: true });
+    }, delayMs);
+  };
+
+  const persistTaskUpdate = async (
+    taskId: string,
+    data: Record<string, unknown>,
+    options?: { notifyOnQueue?: boolean }
+  ) => {
+    if (!user || !firestore) return;
+
+    const sanitized = sanitizeUpdateData(data);
+    const notifyOnQueue = options?.notifyOnQueue ?? true;
+
+    if (!navigator.onLine) {
+      enqueuePendingTaskUpdate(user.uid, taskId, sanitized);
+      if (notifyOnQueue) {
+        toast({ variant: "warning", title: "Sin conexión", description: "Cambio en cola para sincronizar." });
+      }
+      return;
+    }
+
+    try {
+      const taskRef = doc(firestore, "users", user.uid, "tasks", taskId);
+      await updateDoc(taskRef, {
+        ...sanitized,
+        updatedAt: serverTimestamp(),
+      });
+    } catch {
+      enqueuePendingTaskUpdate(user.uid, taskId, sanitized);
+      if (notifyOnQueue) {
+        toast({ variant: "warning", title: "Sincronización pendiente", description: "Cambio guardado para reintentar." });
+      }
+    }
+  };
+
+  const flushPendingTaskUpdates = async (options?: { silent?: boolean }) => {
+    if (!user || !firestore || !navigator.onLine) return;
+
+    setLastSyncAttemptAt(Date.now());
+    setIsSyncingPending(true);
+
+    const queue = readPendingQueue(user.uid);
+    if (queue.length === 0) {
+      pendingRetryAttemptRef.current = 0;
+      clearPendingRetry();
+      setIsSyncingPending(false);
+      if (!options?.silent) {
+        toast({ variant: "info", title: "Sin pendientes", description: "Todo está sincronizado." });
+      }
+      return;
+    }
+
+    const remaining: PendingTaskUpdate[] = [];
+
+    for (const entry of queue) {
+      try {
+        const taskRef = doc(firestore, "users", user.uid, "tasks", entry.taskId);
+        await updateDoc(taskRef, {
+          ...sanitizeUpdateData(entry.data),
+          updatedAt: serverTimestamp(),
+        });
+      } catch {
+        remaining.push(entry);
+      }
+    }
+
+    writePendingQueue(user.uid, remaining);
+
+    if (remaining.length === 0) {
+      pendingRetryAttemptRef.current = 0;
+      clearPendingRetry();
+    } else {
+      schedulePendingRetry();
+    }
+
+    setIsSyncingPending(false);
+
+    if (!options?.silent) {
+      if (remaining.length === 0) {
+        toast({ variant: "success", title: "Sincronización completada", description: "Todos los cambios pendientes fueron enviados." });
+      } else {
+        toast({ variant: "warning", title: "Sincronización parcial", description: `${remaining.length} cambios siguen pendientes.` });
+      }
+    }
+  };
+
   useEffect(() => {
     if (firestoreTasks) {
       setTasks(firestoreTasks);
     }
   }, [firestoreTasks]);
 
+  useEffect(() => {
+    if (!user) {
+      setPendingSyncCount(0);
+      setPendingTaskIds(new Set());
+      setIsSyncingPending(false);
+      setLastSyncAttemptAt(null);
+      pendingRetryAttemptRef.current = 0;
+      clearPendingRetry();
+      return;
+    }
+
+    const queue = readPendingQueue(user.uid);
+    setPendingSyncState(queue);
+
+    void flushPendingTaskUpdates({ silent: true });
+  }, [user, firestore]);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      pendingRetryAttemptRef.current = 0;
+      void flushPendingTaskUpdates({ silent: false });
+    };
+
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [user, firestore]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    if (pendingSyncCount > 0 && navigator.onLine) {
+      schedulePendingRetry();
+      return;
+    }
+
+    if (pendingSyncCount === 0) {
+      pendingRetryAttemptRef.current = 0;
+      clearPendingRetry();
+    }
+  }, [pendingSyncCount, user]);
+
+  useEffect(() => {
+    setSelectedTaskIds((prev) => {
+      const existingIds = new Set(tasks.map((task) => task.id));
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (existingIds.has(id)) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [tasks]);
+
   const totalTasks = tasks?.length || 0;
   const completedTasks = tasks?.filter((t) => t.status === "Hecho").length || 0;
   const inProgressTasks = tasks?.filter((t) => t.status === "Haciendo").length || 0;
   const criticalTasks = tasks?.filter((t) => t.priority === "alta" && t.status !== "Hecho").length || 0;
+  const doneTasks = useMemo(() => tasks.filter((task) => task.status === "Hecho"), [tasks]);
+
+  const cleanupEligibleCount = useMemo(() => {
+    if (cleanupEveryDays === "disabled") return 0;
+
+    const days = Number.parseInt(cleanupEveryDays, 10);
+    if (!Number.isFinite(days) || days <= 0) return 0;
+
+    return doneTasks.filter((task) => {
+      const referenceDate = toDateFromUnknown(task.updatedAt) || toDateFromUnknown(task.createdAt);
+      if (!referenceDate) return false;
+      const age = differenceInCalendarDays(new Date(), referenceDate);
+      return age >= days;
+    }).length;
+  }, [cleanupEveryDays, doneTasks]);
+
+  const filteredTasks = useMemo(() => {
+    const query = filters.query.trim().toLowerCase();
+
+    return tasks.filter((task) => {
+      if (filters.priority !== "all" && task.priority !== filters.priority) {
+        return false;
+      }
+
+      if (filters.status !== "all" && task.status !== filters.status) {
+        return false;
+      }
+
+      if (filters.tag !== "all") {
+        const normalizedTaskTags = (task.tags || []).map(normalizeTag);
+        if (!normalizedTaskTags.includes(filters.tag)) {
+          return false;
+        }
+      }
+
+      if (query) {
+        const titleMatch = task.title.toLowerCase().includes(query);
+        const descriptionMatch = (task.description || "").toLowerCase().includes(query);
+        const tagsMatch = (task.tags || []).some((tag) => normalizeTag(tag).includes(query));
+
+        if (!titleMatch && !descriptionMatch && !tagsMatch) {
+          return false;
+        }
+      }
+
+      if (filters.due !== "all") {
+        const dueDate = toTaskDate(task.dueDate);
+
+        if (filters.due === "none") {
+          return dueDate === null;
+        }
+
+        if (!dueDate) {
+          return false;
+        }
+
+        const dayDelta = differenceInCalendarDays(dueDate, new Date());
+
+        if (filters.due === "overdue" && dayDelta >= 0) {
+          return false;
+        }
+
+        if (filters.due === "today" && !isToday(dueDate)) {
+          return false;
+        }
+
+        if (filters.due === "next7" && (dayDelta < 0 || dayDelta > 7)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [filters, tasks]);
+
+  const tasksByStatus = useMemo(() => {
+    const grouped = new Map<string, Task[]>();
+    columns.forEach((column) => grouped.set(column, []));
+
+    filteredTasks.forEach((task) => {
+      if (!grouped.has(task.status)) {
+        grouped.set(task.status, []);
+      }
+      grouped.get(task.status)?.push(task);
+    });
+
+    return grouped;
+  }, [columns, filteredTasks]);
+
+  const hasActiveFilters =
+    filters.query.trim().length > 0 ||
+    filters.priority !== "all" ||
+    filters.status !== "all" ||
+    filters.tag !== "all" ||
+    filters.due !== "all";
+  const hasSelection = selectedTaskIds.size > 0;
+
+  const suggestedTags = useMemo(() => {
+    const frequency = new Map<string, number>();
+
+    tasks.forEach((task) => {
+      (task.tags || []).forEach((tag) => {
+        const normalized = normalizeTag(tag);
+        if (!normalized) return;
+        frequency.set(normalized, (frequency.get(normalized) || 0) + 1);
+      });
+    });
+
+    return Array.from(frequency.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([tag]) => tag);
+  }, [tasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  const collisionDetectionStrategy: CollisionDetection = (args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) {
+      return pointerCollisions;
+    }
+    return rectIntersection(args);
+  };
 
   useEffect(() => {
     if (columns.length > 0 && !taskForm.status) {
@@ -161,10 +682,7 @@ export default function KanbanPage() {
       description: taskForm.description,
       priority: taskForm.priority,
       status: taskForm.status || columns[0],
-      tags: taskForm.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter((t) => t !== ""),
+      tags: parseTagInput(taskForm.tags),
       ...(taskForm.dueDate && { dueDate: taskForm.dueDate }),
       context: context as AppContext,
       userId: user.uid,
@@ -186,7 +704,7 @@ export default function KanbanPage() {
     if (editingTask) {
       // Optimistic Update
       setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...taskData } : t));
-      updateTask(firestore, user.uid, editingTask.id, taskData);
+      void persistTaskUpdate(editingTask.id, taskData);
       toast({ variant: "success", title: "Actualizado" });
     } else {
       // Optimistic Update (Temporary ID)
@@ -287,10 +805,221 @@ export default function KanbanPage() {
     setColumns(columns.filter((c) => c !== col));
   };
 
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllVisibleTasks = () => {
+    setSelectedTaskIds(new Set(filteredTasks.map((task) => task.id)));
+  };
+
+  const clearSelectedTasks = () => {
+    setSelectedTaskIds(new Set());
+  };
+
+  const clearBulkUndo = () => {
+    bulkUndoRef.current = null;
+    if (bulkUndoTimeoutRef.current) {
+      clearTimeout(bulkUndoTimeoutRef.current);
+      bulkUndoTimeoutRef.current = null;
+    }
+  };
+
+  const undoLastBulkChange = () => {
+    if (!user || !firestore) return;
+    const snapshot = bulkUndoRef.current;
+    if (!snapshot) return;
+
+    const beforeById = snapshot.beforeById;
+
+    setTasks((prev) =>
+      prev.map((task) => {
+        const restored = beforeById.get(task.id);
+        return restored ? restored : task;
+      })
+    );
+
+    beforeById.forEach((task, taskId) => {
+      void persistTaskUpdate(taskId, toTaskUpdatePayload(task), { notifyOnQueue: false });
+    });
+
+    clearBulkUndo();
+    toast({ variant: "success", title: "Cambios revertidos", description: "Se restauró la selección masiva." });
+  };
+
+  const registerBulkUndo = (beforeById: Map<string, Task>, afterById: Map<string, Task>, label: string) => {
+    clearBulkUndo();
+    bulkUndoRef.current = { beforeById, afterById };
+    bulkUndoTimeoutRef.current = setTimeout(() => {
+      bulkUndoRef.current = null;
+      bulkUndoTimeoutRef.current = null;
+    }, BULK_UNDO_WINDOW_MS);
+
+    toast({
+      variant: "info",
+      title: label,
+      description: `Puedes deshacer durante ${BULK_UNDO_WINDOW_MS / 1000}s.`,
+      action: (
+        <ToastAction altText="Deshacer cambios masivos" onClick={undoLastBulkChange}>
+          Deshacer
+        </ToastAction>
+      ),
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      clearBulkUndo();
+      clearPendingRetry();
+    };
+  }, []);
+
+  const applyBulkTransform = (successLabel: string, transform: (task: Task) => Task) => {
+    if (!user || !firestore || selectedTaskIds.size === 0) return;
+
+    const selectedIds = new Set(selectedTaskIds);
+    const beforeById = new Map<string, Task>();
+    const afterById = new Map<string, Task>();
+
+    setTasks((prev) =>
+      prev.map((task) => {
+        if (!selectedIds.has(task.id)) return task;
+        const before = { ...task };
+        const after = transform(task);
+        beforeById.set(task.id, before);
+        afterById.set(task.id, after);
+        return after;
+      })
+    );
+
+    afterById.forEach((task, taskId) => {
+      void persistTaskUpdate(taskId, toTaskUpdatePayload(task), { notifyOnQueue: false });
+    });
+
+    registerBulkUndo(beforeById, afterById, successLabel);
+    setSelectedTaskIds(new Set());
+  };
+
+  const updateSelectedTasks = (data: Record<string, unknown>, successLabel: string) => {
+    applyBulkTransform(successLabel, (task) => ({ ...task, ...data }));
+  };
+
+  const runCompletedTasksCleanup = (options?: { mode?: "auto" | "manual"; force?: boolean }) => {
+    if (!user || !firestore) return;
+
+    const mode = options?.mode || "auto";
+    const force = options?.force ?? false;
+
+    if (mode === "auto" && cleanupEveryDays === "disabled") {
+      return;
+    }
+
+    if (mode === "auto" && !force && lastCleanupAt) {
+      const hoursSinceLastRun = (Date.now() - lastCleanupAt) / (1000 * 60 * 60);
+      if (hoursSinceLastRun < 24) {
+        return;
+      }
+    }
+
+    const doneTaskIds = doneTasks.map((task) => task.id);
+    let targetIds: string[] = [];
+
+    if (mode === "manual") {
+      targetIds = doneTaskIds;
+    } else {
+      const days = Number.parseInt(cleanupEveryDays, 10);
+      if (!Number.isFinite(days) || days <= 0) return;
+
+      targetIds = doneTasks
+        .filter((task) => {
+          const referenceDate = toDateFromUnknown(task.updatedAt) || toDateFromUnknown(task.createdAt);
+          if (!referenceDate) return false;
+          const age = differenceInCalendarDays(new Date(), referenceDate);
+          return age >= days;
+        })
+        .map((task) => task.id);
+    }
+
+    if (targetIds.length === 0) {
+      if (mode === "manual") {
+        toast({ variant: "info", title: "Sin tareas hechas", description: "No hay tareas completadas para borrar." });
+      }
+      setLastCleanupAt(Date.now());
+      return;
+    }
+
+    setIsRunningCleanup(true);
+    setTasks((prev) => prev.filter((task) => !targetIds.includes(task.id)));
+    targetIds.forEach((taskId) => deleteTask(firestore, user.uid, taskId));
+    setLastCleanupAt(Date.now());
+    setIsRunningCleanup(false);
+
+    toast({
+      variant: "success",
+      title: mode === "manual" ? "Tareas hechas eliminadas" : "Limpieza automática aplicada",
+      description: `${targetIds.length} tareas completadas fueron eliminadas.`,
+    });
+  };
+
+  const updateSelectedTaskTags = (mode: "add" | "remove") => {
+    if (!user || !firestore || selectedTaskIds.size === 0) return;
+
+    const requestedTags = parseTagInput(bulkTagInput);
+    if (requestedTags.length === 0) {
+      toast({ variant: "warning", title: "Sin etiquetas", description: "Ingresa una o más etiquetas separadas por coma." });
+      return;
+    }
+
+    const selectedIds = new Set(selectedTaskIds);
+    const nextTagsById = new Map<string, string[]>();
+
+    tasks.forEach((task) => {
+      if (!selectedIds.has(task.id)) return;
+
+      const currentTags = new Set((task.tags || []).map(normalizeTag));
+
+      if (mode === "add") {
+        requestedTags.forEach((tag) => {
+          if (currentTags.size < MAX_TAGS_PER_TASK) {
+            currentTags.add(tag);
+          }
+        });
+      } else {
+        requestedTags.forEach((tag) => currentTags.delete(tag));
+      }
+
+      nextTagsById.set(task.id, Array.from(currentTags));
+    });
+
+    applyBulkTransform(mode === "add" ? "Etiquetas agregadas" : "Etiquetas eliminadas", (task) => {
+      const nextTags = nextTagsById.get(task.id);
+      return nextTags ? { ...task, tags: nextTags } : task;
+    });
+
+    setBulkTagInput("");
+  };
+
   function handleDragStart(event: DragStartEvent) {
     const task = tasks?.find((t) => t.id === event.active.id);
-    if (task) setActiveTask(task);
+    if (task) {
+      dragOriginStatusRef.current = task.status;
+      dragActiveTaskIdRef.current = task.id;
+      setActiveTask(task);
+    }
   }
+
+  useEffect(() => {
+    if (!user || !firestore || doneTasks.length === 0) return;
+    runCompletedTasksCleanup({ mode: "auto" });
+  }, [cleanupEveryDays, context, doneTasks, firestore, user]);
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
@@ -326,30 +1055,58 @@ export default function KanbanPage() {
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
+    const originalStatus = dragOriginStatusRef.current;
+    dragOriginStatusRef.current = null;
+    dragActiveTaskIdRef.current = null;
     setActiveTask(null);
-    
-    if (!over) return;
+
+    if (!over) {
+      if (originalStatus) {
+        setTasks((prev) => prev.map((task) => (task.id === active.id ? { ...task, status: originalStatus } : task)));
+      }
+      return;
+    }
 
     const overId = over.id;
-    const overData = over.data.current;
+    const overData = over.data.current as
+      | {
+          type?: string;
+          status?: string;
+          task?: Task;
+          sortable?: { containerId?: string };
+        }
+      | undefined;
     let overStatus: string | undefined;
 
     if (overData?.type === 'Column') {
       overStatus = overData.status;
     } else if (overData?.type === 'Task') {
-      overStatus = overData.task.status;
+      overStatus = overData.task?.status;
     } else if (columns.includes(overId as string)) {
       overStatus = overId as string;
+    } else if (overData?.sortable?.containerId && columns.includes(overData.sortable.containerId)) {
+      overStatus = overData.sortable.containerId;
     }
 
-    if (overStatus && user) {
-      // Sincronizar con Firestore
-      updateTask(firestore, user.uid, active.id as string, { status: overStatus });
+    if (!overStatus) {
+      if (originalStatus) {
+        setTasks((prev) => prev.map((task) => (task.id === active.id ? { ...task, status: originalStatus } : task)));
+      }
+      return;
+    }
+
+    if (originalStatus && overStatus !== originalStatus && user && firestore) {
+      void persistTaskUpdate(active.id as string, { status: overStatus });
       toast({ 
         title: "Nodo Sincronizado", 
         description: `Estado ${overStatus} persistido.`,
         variant: "success" 
       });
+      return;
+    }
+
+    if (originalStatus) {
+      setTasks((prev) => prev.map((task) => (task.id === active.id ? { ...task, status: originalStatus } : task)));
     }
   }
 
@@ -365,9 +1122,24 @@ export default function KanbanPage() {
             <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-2 h-5 font-black text-[11px] font-data">
               {totalTasks} TAREAS
             </Badge>
+            {pendingSyncCount > 0 && (
+              <Badge variant="outline" className="rounded-full border-yellow-500/30 text-yellow-300 bg-yellow-500/10 px-2 h-5 font-black text-[10px] font-data">
+                {pendingSyncCount} PENDIENTES
+              </Badge>
+            )}
           </div>
           <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] flex items-center gap-3">
             <Database className="w-3 h-3 text-primary/40" /> {columns.length} ESTADOS • {totalTasks} NODOS ACTIVOS
+            {lastSyncAttemptAt && (
+              <span className="text-[9px] font-data tracking-normal normal-case text-white/45">
+                Ult. sync: {format(new Date(lastSyncAttemptAt), "HH:mm:ss")}
+              </span>
+            )}
+            {isSyncingPending && (
+              <span className="text-[9px] font-data tracking-normal normal-case text-yellow-300/80">
+                sincronizando...
+              </span>
+            )}
           </p>
         </div>
 
@@ -375,7 +1147,7 @@ export default function KanbanPage() {
           {/* Mobile Column Navigator */}
           <div className="flex md:hidden overflow-x-auto scrollbar-hide gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.06] w-full">
             {columns.map((col) => {
-              const count = tasks?.filter((t) => t.status === col).length || 0;
+              const count = tasksByStatus.get(col)?.length || 0;
               return (
                 <button
                   key={col}
@@ -396,6 +1168,17 @@ export default function KanbanPage() {
             <span className="text-[9px] font-black uppercase tracking-widest">Config</span>
           </OutlineButton>
 
+          {pendingSyncCount > 0 && (
+            <Button
+              variant="outline"
+              disabled={isSyncingPending}
+              onClick={() => void flushPendingTaskUpdates({ silent: false })}
+              className="h-10 rounded-lg border-yellow-500/30 bg-yellow-500/10 text-[10px] font-black uppercase tracking-widest text-yellow-300 hover:bg-yellow-500/20"
+            >
+              {isSyncingPending ? "Sincronizando" : "Sincronizar"}
+            </Button>
+          )}
+
           <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
             <DialogTrigger asChild>
               <TacticalButton className="flex-1 md:flex-none">
@@ -403,6 +1186,11 @@ export default function KanbanPage() {
               </TacticalButton>
             </DialogTrigger>
             <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+              <datalist id="task-tag-suggestions">
+                {suggestedTags.map((tag) => (
+                  <option key={tag} value={tag} />
+                ))}
+              </datalist>
               <DialogHeader>
                 <DialogTitle className="text-2xl font-black tracking-tighter uppercase flex items-center gap-3">
                   <Layers className="w-6 h-6 text-primary" />
@@ -444,6 +1232,17 @@ export default function KanbanPage() {
                           </SelectContent>
                         </Select>
                       </div>
+                    </div>
+                    <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                      <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Etiquetas (Opcional)</Label>
+                      <Input
+                        value={taskForm.tags}
+                        list="task-tag-suggestions"
+                        onChange={(e) => setTaskForm({ ...taskForm, tags: e.target.value })}
+                        placeholder="cliente, urgente, backend"
+                        className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"
+                      />
+                      <p className="text-[10px] text-white/45">Separa por comas. Máximo {MAX_TAGS_PER_TASK} etiquetas por tarea.</p>
                     </div>
                     <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
                       <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Vencimiento (Opcional)</Label>
@@ -504,6 +1303,17 @@ export default function KanbanPage() {
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+                      <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
+                        <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Etiquetas (Opcional)</Label>
+                        <Input
+                          value={taskForm.tags}
+                          list="task-tag-suggestions"
+                          onChange={(e) => setTaskForm({ ...taskForm, tags: e.target.value })}
+                          placeholder="cliente, urgente, backend"
+                          className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"
+                        />
+                        <p className="text-[10px] text-white/45">Separa por comas. Máximo {MAX_TAGS_PER_TASK} etiquetas por tarea.</p>
                       </div>
                       <div className="space-y-1.5 rounded-lg border border-white/[0.08] bg-white/[0.02] p-3">
                         <Label className="text-[9px] uppercase font-black tracking-widest text-primary">Vencimiento (Opcional)</Label>
@@ -580,6 +1390,251 @@ export default function KanbanPage() {
         </div>
       </div>
 
+      <div className="glass-card p-3 md:p-4 space-y-3 border-white/[0.08]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Mantenimiento de tareas hechas</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={cleanupEveryDays} onValueChange={setCleanupEveryDays}>
+              <SelectTrigger className="h-9 w-[220px] bg-white/[0.03] border-white/[0.08] rounded-lg text-[10px] font-black uppercase tracking-widest">
+                <SelectValue placeholder="Frecuencia" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="disabled">No borrar automáticamente</SelectItem>
+                <SelectItem value="7">Cada 7 días</SelectItem>
+                <SelectItem value="15">Cada 15 días</SelectItem>
+                <SelectItem value="30">Cada 30 días</SelectItem>
+                <SelectItem value="60">Cada 60 días</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              disabled={isRunningCleanup || completedTasks === 0}
+              onClick={() => runCompletedTasksCleanup({ mode: "manual", force: true })}
+              className="h-9 rounded-lg border-red-500/30 bg-red-500/10 text-[10px] font-black uppercase tracking-widest text-red-300 hover:bg-red-500/20"
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Borrar todas las hechas
+            </Button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/55">
+          <Badge variant="outline" className="rounded-full border-white/[0.12] bg-white/[0.03] text-white/70 h-5 px-2 font-black">
+            Hechas: {completedTasks}
+          </Badge>
+          <Badge variant="outline" className="rounded-full border-yellow-500/30 bg-yellow-500/10 text-yellow-300 h-5 px-2 font-black">
+            Para limpieza: {cleanupEligibleCount}
+          </Badge>
+          <span>
+            {lastCleanupAt
+              ? `Última limpieza: ${format(new Date(lastCleanupAt), "dd/MM HH:mm")}`
+              : "Aún no se ejecutó limpieza"}
+          </span>
+        </div>
+      </div>
+
+      <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="glass-card p-3 md:p-4 border-white/[0.08]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Filtros de tablero</p>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/70 bg-white/[0.03] px-2 h-5 font-black text-[10px]">
+              {filteredTasks.length}/{totalTasks}
+            </Badge>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setFilters({ query: "", priority: "all", status: "all", tag: "all", due: "all" })}
+                className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
+              >
+                Limpiar
+              </Button>
+            )}
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-white/60 hover:text-white">
+                <ChevronDown className={cn("w-4 h-4 transition-transform", isFiltersOpen && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+
+        <CollapsibleContent className="pt-3">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
+            <Input
+              value={filters.query}
+              onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
+              placeholder="Buscar..."
+              className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg"
+            />
+
+            <Select value={filters.priority} onValueChange={(value) => setFilters((prev) => ({ ...prev, priority: value }))}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
+                <SelectValue placeholder="Prioridad" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="all">Toda prioridad</SelectItem>
+                <SelectItem value="alta">Alta</SelectItem>
+                <SelectItem value="media">Media</SelectItem>
+                <SelectItem value="baja">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="all">Todos los estados</SelectItem>
+                {columns.map((status) => (
+                  <SelectItem key={`filter-status-${status}`} value={status}>{status}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.tag} onValueChange={(value) => setFilters((prev) => ({ ...prev, tag: value }))}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
+                <SelectValue placeholder="Etiqueta" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="all">Todas las etiquetas</SelectItem>
+                {suggestedTags.map((tag) => (
+                  <SelectItem key={`filter-tag-${tag}`} value={tag}>{tag}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filters.due} onValueChange={(value) => setFilters((prev) => ({ ...prev, due: value }))}>
+              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
+                <SelectValue placeholder="Vencimiento" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="today">Hoy</SelectItem>
+                <SelectItem value="next7">Próximos 7 días</SelectItem>
+                <SelectItem value="overdue">Vencidas</SelectItem>
+                <SelectItem value="none">Sin fecha</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible open={isBulkOpen} onOpenChange={setIsBulkOpen} className="glass-card p-3 md:p-4 border-white/[0.08]">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Acciones masivas</p>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/70 bg-white/[0.03] px-2 h-5 font-black text-[10px]">
+              Seleccionadas: {selectedTaskIds.size}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={selectAllVisibleTasks}
+              className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
+            >
+              Seleccionar visibles
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearSelectedTasks}
+              disabled={!hasSelection}
+              className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
+            >
+              Limpiar
+            </Button>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-white/60 hover:text-white">
+                <ChevronDown className={cn("w-4 h-4 transition-transform", isBulkOpen && "rotate-180")} />
+              </Button>
+            </CollapsibleTrigger>
+          </div>
+        </div>
+
+        <CollapsibleContent className="pt-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Mover a estado</p>
+              <div className="flex flex-wrap gap-2">
+                {columns.map((status) => (
+                  <Button
+                    key={`bulk-status-${status}`}
+                    variant="outline"
+                    disabled={!hasSelection}
+                    onClick={() => updateSelectedTasks({ status }, `Estado masivo: ${status}`)}
+                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+                  >
+                    {status}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Cambiar prioridad</p>
+              <div className="flex flex-wrap gap-2">
+                {(["alta", "media", "baja"] as Priority[]).map((priority) => (
+                  <Button
+                    key={`bulk-priority-${priority}`}
+                    variant="outline"
+                    disabled={!hasSelection}
+                    onClick={() => updateSelectedTasks({ priority }, `Prioridad masiva: ${priority}`)}
+                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+                  >
+                    {priority}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Etiquetas en lote</p>
+              <div className="space-y-2">
+                <Input
+                  value={bulkTagInput}
+                  list="task-tag-suggestions"
+                  onChange={(e) => setBulkTagInput(e.target.value)}
+                  placeholder="cliente, urgente"
+                  className="bg-white/[0.03] border-white/[0.08] h-8 rounded-lg text-[11px]"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={!hasSelection}
+                    onClick={() => updateSelectedTaskTags("add")}
+                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Agregar tags
+                  </Button>
+                  <Button
+                    variant="outline"
+                    disabled={!hasSelection}
+                    onClick={() => updateSelectedTaskTags("remove")}
+                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+                  >
+                    Quitar tags
+                  </Button>
+                </div>
+                <p className="text-[10px] text-white/45">Máximo {MAX_TAGS_PER_TASK} etiquetas por tarea.</p>
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {hasActiveFilters && filteredTasks.length === 0 && (
+        <div className="glass-card p-4 border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <p className="text-[11px] text-white/65">
+            No se encontraron tareas con los filtros actuales. Ajusta criterios o limpia filtros para volver a ver todo el tablero.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => setFilters({ query: "", priority: "all", status: "all", tag: "all", due: "all" })}
+            className="h-9 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+          >
+            Limpiar filtros
+          </Button>
+        </div>
+      )}
+
       {/* Column Management */}
       <AnimatePresence>
         {isManagingColumns && (
@@ -630,7 +1685,22 @@ export default function KanbanPage() {
           <div style={{ width: `${boardScrollWidth || (columns.length * 400)}px` }} className="h-full" />
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={collisionDetectionStrategy}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDragCancel={() => {
+            const originalStatus = dragOriginStatusRef.current;
+            const activeTaskId = dragActiveTaskIdRef.current;
+            dragOriginStatusRef.current = null;
+            dragActiveTaskIdRef.current = null;
+            setActiveTask(null);
+            if (!originalStatus || !activeTaskId) return;
+            setTasks((prev) => prev.map((task) => (task.id === activeTaskId ? { ...task, status: originalStatus } : task)));
+          }}
+          onDragEnd={handleDragEnd}
+        >
           <div className="glass-card-elevated p-3 md:p-6 border-white/[0.08] relative">
             <div 
               ref={boardRef}
@@ -666,9 +1736,13 @@ export default function KanbanPage() {
                     <KanbanColumn
                       key={status}
                       status={status}
-                      tasks={tasks?.filter((t) => t.status === status) || []}
+                      tasks={tasksByStatus.get(status) || []}
                       onDelete={handleDeleteTask}
                       onEdit={openEditDialog}
+                      selectedTaskIds={selectedTaskIds}
+                      onToggleTaskSelection={toggleTaskSelection}
+                      disableDrag={hasSelection}
+                      pendingTaskIds={pendingTaskIds}
                     />
                   ))
                 )}

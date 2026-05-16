@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar } from 'lucide-react';
 import { differenceInDays, isAfter, parseISO } from 'date-fns';
 import { PriorityBadge, NodeId } from '@/components/atoms';
+import { cn } from '@/lib/utils';
 import type { Task } from '@/types/task';
 
 interface TaskCardProps {
@@ -13,6 +14,11 @@ interface TaskCardProps {
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
   isOverlay?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (taskId: string) => void;
+  dragDisabled?: boolean;
+  pendingSync?: boolean;
 }
 
 interface DueStatus {
@@ -48,11 +54,12 @@ function getDueStatus(dueDate: string | Date | undefined): DueStatus | null {
   }
 }
 
-export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
+export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, selected, onToggleSelect, dragDisabled, pendingSync }: TaskCardProps) {
   const dueStatus = getDueStatus(task.dueDate);
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: task.id,
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: isOverlay ? `${task.id}-overlay` : task.id,
     data: { type: 'Task', task },
+    disabled: Boolean(isOverlay || dragDisabled),
   });
 
   const style = {
@@ -64,13 +71,32 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
   return (
     <motion.div
       ref={setNodeRef}
-      {...attributes}
-      {...listeners}
       style={style}
       layoutId={task.id}
       whileHover={{ y: -2, scale: 1.01 }}
-      className="group relative glass-card p-4 md:p-5 hover:border-primary/50 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all duration-300 cursor-grab active:cursor-grabbing"
+      className={cn(
+        'group relative glass-card p-4 md:p-5 hover:border-primary/50 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)] transition-all duration-300',
+        selected && 'border-primary/70 bg-primary/[0.08]'
+      )}
     >
+      {!isOverlay && selectable && onToggleSelect && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleSelect(task.id);
+          }}
+          aria-label={selected ? `Deseleccionar tarea ${task.title}` : `Seleccionar tarea ${task.title}`}
+          className={cn(
+            'absolute top-2 left-2 z-20 h-5 w-5 rounded-md border transition-colors',
+            selected
+              ? 'border-primary bg-primary/40 shadow-[0_0_10px_rgba(var(--primary-rgb),0.25)]'
+              : 'border-white/[0.25] bg-[#0a0a0a]/70 hover:border-white/[0.45]'
+          )}
+        />
+      )}
+
       <div className="md:hidden absolute top-2 right-2 z-10 flex gap-2">
         <button
           onPointerDown={(e) => e.stopPropagation()}
@@ -91,6 +117,11 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
       <div className="space-y-3.5">
         <div className="flex items-center gap-2">
           <PriorityBadge priority={task.priority} />
+          {pendingSync && (
+            <span className="text-[8px] px-1.5 py-0.5 rounded-md border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 uppercase tracking-widest font-black">
+              Sync pendiente
+            </span>
+          )}
           
           <div className="ml-auto flex items-center gap-1">
             <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-1">
@@ -109,9 +140,24 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay }: TaskCardProps) {
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-            <div className="p-1.5 hover:bg-white/[0.03] rounded-lg opacity-20 group-hover:opacity-100 transition-opacity">
-              <GripVertical className="w-3 h-3 text-white/40" />
-            </div>
+            {!isOverlay && (
+              <button
+                type="button"
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                disabled={Boolean(dragDisabled)}
+                className={cn(
+                  'p-1.5 hover:bg-white/[0.03] rounded-lg opacity-40 md:opacity-20 group-hover:opacity-100 transition-opacity touch-none',
+                  dragDisabled
+                    ? 'cursor-not-allowed opacity-20 hover:bg-transparent'
+                    : 'cursor-grab active:cursor-grabbing'
+                )}
+                aria-label={`Arrastrar tarea ${task.title}`}
+              >
+                <GripVertical className="w-3 h-3 text-white/40" />
+              </button>
+            )}
           </div>
         </div>
 

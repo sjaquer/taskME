@@ -12,9 +12,13 @@ interface KanbanColumnProps {
   tasks: Task[];
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
+  selectedTaskIds: Set<string>;
+  onToggleTaskSelection: (taskId: string) => void;
+  disableDrag?: boolean;
+  pendingTaskIds?: Set<string>;
 }
 
-export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnProps) {
+export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds, onToggleTaskSelection, disableDrag, pendingTaskIds }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
     data: { type: 'Column', status },
@@ -40,7 +44,17 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit }: KanbanColumnPr
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           <div className="space-y-4 relative z-10">
             {tasks.map((task) => (
-              <TaskCard key={task.id} task={task} onDelete={onDelete} onEdit={onEdit} />
+              <TaskCard
+                key={task.id}
+                task={task}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                selectable
+                selected={selectedTaskIds.has(task.id)}
+                onToggleSelect={onToggleTaskSelection}
+                dragDisabled={disableDrag}
+                pendingSync={pendingTaskIds?.has(task.id)}
+              />
             ))}
             
             {/* Ghost Card Preview */}
