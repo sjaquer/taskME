@@ -9,9 +9,9 @@ interface PriorityBadgeProps {
 }
 
 const priorityStyles: Record<Priority, string> = {
-  alta: 'border-red-500/30 text-red-500 bg-red-500/5',
-  media: 'border-primary/30 text-primary bg-primary/5',
-  baja: 'border-white/10 text-muted-foreground bg-white/[0.03]',
+  alta: 'border-red-500/40 text-red-500 bg-red-500/10 shadow-[0_0_8px_rgba(239,68,68,0.15)]',
+  media: 'border-amber-500/40 text-amber-500 bg-amber-500/10 shadow-[0_0_8px_rgba(245,158,11,0.15)]',
+  baja: 'border-blue-500/40 text-blue-400 bg-blue-500/10 shadow-[0_0_8px_rgba(59,130,246,0.15)]',
 };
 
 export function PriorityBadge({ priority, className }: PriorityBadgeProps) {
@@ -60,8 +60,9 @@ interface NodeIdProps {
 
 export function NodeId({ id, className }: NodeIdProps) {
   return (
-    <span className={cn('text-[10px] font-black text-white/10 tracking-widest uppercase font-mono', className)}>
-      NODE_{id.slice(0, 4)}
+    <span className={cn('text-[9px] font-black text-white/20 tracking-widest uppercase font-data flex items-center gap-1.5', className)}>
+      <span className="w-1.5 h-[1px] bg-white/10" />
+      NODE_{id.slice(0, 4).toUpperCase()}
     </span>
   );
 }

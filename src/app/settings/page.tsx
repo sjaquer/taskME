@@ -28,19 +28,31 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NotificationSetup } from "@/components/notification-setup";
 
-const THEME_OPTIONS: { value: AppTheme; label: string; hint: string }[] = [
-  { value: "neon", label: "Neon Verde", hint: "Modo original" },
-  { value: "cyan", label: "Cyan", hint: "Frío y técnico" },
-  { value: "amber", label: "Amber", hint: "Cálido y enfocado" },
-  { value: "rose", label: "Rose", hint: "Alto contraste" },
-  { value: "violet", label: "Violet", hint: "Profundo y suave" },
+const THEME_OPTIONS: { value: AppTheme; label: string; hint: string; color: string }[] = [
+  { value: "neon", label: "Neon Verde", hint: "Modo original", color: "#22c55e" },
+  { value: "cyan", label: "Cyan", hint: "Frío y técnico", color: "#06b6d4" },
+  { value: "amber", label: "Amber", hint: "Cálido y enfocado", color: "#f59e0b" },
+  { value: "rose", label: "Rose", hint: "Alto contraste", color: "#f43f5e" },
+  { value: "violet", label: "Violet", hint: "Profundo y suave", color: "#8b5cf6" },
+  { value: "emerald", label: "Emerald", hint: "Naturaleza digital", color: "#10b981" },
+  { value: "indigo", label: "Indigo", hint: "Elegancia nocturna", color: "#6366f1" },
+  { value: "crimson", label: "Crimson", hint: "Poder y energía", color: "#dc2626" },
+  { value: "slate", label: "Slate", hint: "Neutral y sobrio", color: "#64748b" },
 ];
 
 export default function SettingsPage() {
   const { user } = useUser();
   const auth = useAuth();
   const firestore = useFirestore();
-  const { activeModules, toggleModule, theme, setTheme, hourFormat, setHourFormat, defaultPage, setDefaultPage } = useAppContextStore();
+  const { 
+    activeModules, toggleModule, 
+    theme, setTheme, 
+    colorMode, setColorMode,
+    visualConfig, updateVisualConfig,
+    hourFormat, setHourFormat, 
+    defaultPage, setDefaultPage, 
+    autoDeleteDoneDays, setAutoDeleteDoneDays 
+  } = useAppContextStore();
 
   const [newName, setNewName] = useState(user?.displayName || "");
   const [isUpdatingName, setIsUpdatingName] = useState(false);
@@ -324,103 +336,189 @@ export default function SettingsPage() {
 
       <section className="space-y-3">
         <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-          <Palette className="w-3.5 h-3.5 text-primary" /> Apariencia
+          <Palette className="w-3.5 h-3.5 text-primary" /> Apariencia y Estilo
         </h3>
-        <div className="glass-card p-5 space-y-6">
-          <div className="space-y-1.5">
-            <Label className="text-[11px] uppercase font-black text-primary">Tema de Color</Label>
-            <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                {THEME_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value} className="text-[11px] font-black uppercase tracking-wider">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {THEME_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setTheme(option.value)}
-                className={`relative flex items-center gap-2.5 rounded-full border py-2 px-4 transition-all ${
-                  theme === option.value
-                    ? "border-primary bg-primary/10 shadow-[0_0_15px_rgba(var(--primary),0.1)]"
-                    : "border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.06]"
-                }`}
-                title={option.hint}
-              >
-                <div 
-                  className="w-3 h-3 rounded-full shadow-inner" 
-                  style={{ 
-                    backgroundColor: 
-                      option.value === 'neon' ? '#22c55e' : 
-                      option.value === 'cyan' ? '#06b6d4' : 
-                      option.value === 'amber' ? '#f59e0b' : 
-                      option.value === 'rose' ? '#f43f5e' : 
-                      option.value === 'violet' ? '#8b5cf6' : '#ffffff'
-                  }} 
-                />
-                <span className={`text-[10px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-white/70'}`}>
-                  {option.label}
-                </span>
-                {theme === option.value && (
-                  <Check className="w-3 h-3 text-primary ml-1" />
-                )}
-              </button>
-            ))}
+        <div className="glass-card p-5 space-y-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-4">
+              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Modo de Color</Label>
+              <div className="flex p-1 bg-white/[0.03] border border-white/[0.08] rounded-2xl h-14">
+                <button
+                  onClick={() => setColorMode("dark")}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    colorMode === "dark" ? "bg-primary text-black shadow-lg" : "text-white/40 hover:text-white"
+                  }`}
+                >
+                  <Fingerprint className="w-4 h-4" /> Dark Mode
+                </button>
+                <button
+                  onClick={() => setColorMode("light")}
+                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    colorMode === "light" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"
+                  }`}
+                >
+                  <Zap className="w-4 h-4" /> Light Mode
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Tema del Sistema</Label>
+              <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-14 rounded-2xl text-[11px] font-black uppercase tracking-wider px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: THEME_OPTIONS.find(o => o.value === theme)?.color }} />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                  {THEME_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value} className="text-[11px] font-black uppercase tracking-wider py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: option.color }} />
+                        {option.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="border-t border-white/[0.06] pt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <Label className="text-[11px] uppercase font-black text-white/30 tracking-widest">Paleta de Colores Expandida</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setTheme(option.value)}
+                  className={`relative flex flex-col items-center gap-3 rounded-2xl border p-4 transition-all ${
+                    theme === option.value
+                      ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
+                      : "border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.04]"
+                  }`}
+                >
+                  <div 
+                    className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center border-4 border-white/[0.05]" 
+                    style={{ backgroundColor: option.color }}
+                  >
+                    {theme === option.value && <Check className="w-4 h-4 text-black font-bold" />}
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-[9px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-white/70'}`}>
+                      {option.label}
+                    </p>
+                    <p className="text-[8px] text-white/20 lowercase tracking-normal mt-0.5">{option.hint}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-white/[0.06] pt-6 space-y-6">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              <h4 className="text-[11px] uppercase font-black tracking-widest">Preferencias Visuales</h4>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
+              <PreferenceToggle 
+                label="Efectos de Brillo (Glow)" 
+                description="Habilita resplandores neón en tarjetas e indicadores."
+                active={visualConfig.glowEnabled}
+                onToggle={() => updateVisualConfig({ glowEnabled: !visualConfig.glowEnabled })}
+              />
+              <PreferenceToggle 
+                label="Rejilla de Fondo" 
+                description="Muestra un patrón técnico de red en el fondo."
+                active={visualConfig.showGrid}
+                onToggle={() => updateVisualConfig({ showGrid: !visualConfig.showGrid })}
+              />
+              <PreferenceToggle 
+                label="Modo Compacto" 
+                description="Reduce espaciado para ver más contenido a la vez."
+                active={visualConfig.compactMode}
+                onToggle={() => updateVisualConfig({ compactMode: !visualConfig.compactMode })}
+              />
+              <div className="flex items-center justify-between group">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-bold">Opacidad Glass</p>
+                  <p className="text-[10px] text-muted-foreground">Controla la transparencia de las tarjetas.</p>
+                </div>
+                <div className="flex items-center gap-3 bg-white/[0.03] p-1.5 rounded-xl border border-white/[0.08]">
+                   {[0.4, 0.6, 0.8, 1.0].map((v) => (
+                     <button
+                       key={v}
+                       onClick={() => updateVisualConfig({ glassIntensity: v })}
+                       className={`w-8 h-8 rounded-lg text-[9px] font-black transition-all ${
+                         visualConfig.glassIntensity === v ? "bg-primary text-black" : "hover:bg-white/5 text-white/40"
+                       }`}
+                     >
+                       {v * 100}%
+                     </button>
+                   ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-white/[0.06] pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-primary">Formato de Hora</Label>
+              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Formato de Hora</Label>
               <Select value={hourFormat} onValueChange={(value) => setHourFormat(value as any)}>
-                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-12 rounded-xl text-[11px] font-black uppercase tracking-wider">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                  <SelectItem value="24h" className="text-[11px] font-black uppercase tracking-wider">
-                    24 Horas
-                  </SelectItem>
-                  <SelectItem value="12h" className="text-[11px] font-black uppercase tracking-wider">
-                    12 Horas (AM/PM)
-                  </SelectItem>
+                  <SelectItem value="24h" className="text-[11px] font-black uppercase tracking-wider">24 Horas</SelectItem>
+                  <SelectItem value="12h" className="text-[11px] font-black uppercase tracking-wider">12 Horas (AM/PM)</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-white/40 mt-2">
-                {hourFormat === '24h' ? 'Formato: 14:30' : 'Formato: 02:30 PM'}
-              </p>
             </div>
             
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-primary">Página de Inicio</Label>
+              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Página de Inicio</Label>
               <Select value={defaultPage} onValueChange={(value) => setDefaultPage(value)}>
-                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg text-[11px] font-black uppercase tracking-wider">
+                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-12 rounded-xl text-[11px] font-black uppercase tracking-wider">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                  <SelectItem value="/" className="text-[11px] font-black uppercase tracking-wider">
-                    Dashboard
-                  </SelectItem>
-                  <SelectItem value="/kanban" className="text-[11px] font-black uppercase tracking-wider">
-                    Tablero Kanban
-                  </SelectItem>
-                  <SelectItem value="/schedule" className="text-[11px] font-black uppercase tracking-wider">
-                    Horario
-                  </SelectItem>
-                  <SelectItem value="/calendar" className="text-[11px] font-black uppercase tracking-wider">
-                    Calendario
-                  </SelectItem>
+                  <SelectItem value="/" className="text-[11px] font-black uppercase tracking-wider">Dashboard</SelectItem>
+                  <SelectItem value="/kanban" className="text-[11px] font-black uppercase tracking-wider">Kanban</SelectItem>
+                  <SelectItem value="/schedule" className="text-[11px] font-black uppercase tracking-wider">Horario</SelectItem>
+                  <SelectItem value="/calendar" className="text-[11px] font-black uppercase tracking-wider">Calendario</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-white/40 mt-2">
-                Página que se abre al iniciar la aplicación.
-              </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+          <RefreshCcw className="w-3.5 h-3.5 text-primary" /> Mantenimiento
+        </h3>
+        <div className="glass-card p-5 space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-xs font-bold">Limpieza Automática</p>
+              <p className="text-[11px] text-muted-foreground">Elimina automáticamente las tareas en el estado "Hecho" después de cierto tiempo.</p>
+            </div>
+            <Select 
+              value={autoDeleteDoneDays} 
+              onValueChange={(value) => setAutoDeleteDoneDays(value)}
+            >
+              <SelectTrigger className="w-full md:w-[200px] bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[10px] font-black uppercase tracking-widest">
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectItem value="disabled" className="text-[10px] font-black uppercase">No borrar nunca</SelectItem>
+                <SelectItem value="7" className="text-[10px] font-black uppercase">Cada 7 días</SelectItem>
+                <SelectItem value="15" className="text-[10px] font-black uppercase">Cada 15 días</SelectItem>
+                <SelectItem value="30" className="text-[10px] font-black uppercase">Cada 30 días</SelectItem>
+                <SelectItem value="60" className="text-[10px] font-black uppercase">Cada 60 días</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </section>
@@ -495,6 +593,18 @@ function ModuleToggle({ label, active, onToggle }: { label: string; active: bool
       <div className="space-y-0.5">
         <p className="text-xs font-bold group-hover:text-primary transition-colors">{label}</p>
         <p className="text-[11px] text-muted-foreground uppercase font-data">{active ? "En línea" : "Desconectado"}</p>
+      </div>
+      <Switch checked={active} onCheckedChange={onToggle} className="scale-75" />
+    </div>
+  );
+}
+
+function PreferenceToggle({ label, description, active, onToggle }: { label: string; description: string; active: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between group">
+      <div className="space-y-0.5">
+        <p className="text-xs font-bold group-hover:text-primary transition-colors">{label}</p>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
       </div>
       <Switch checked={active} onCheckedChange={onToggle} className="scale-75" />
     </div>

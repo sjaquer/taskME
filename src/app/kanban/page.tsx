@@ -3,12 +3,13 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, ChevronDown, Trash2 } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, Trash2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -161,7 +162,7 @@ function getCleanupStorageKey(userId: string, context: AppContext) {
 }
 
 export default function KanbanPage() {
-  const { context, kanbanColumns: columns, setKanbanColumns: setColumns } = useAppContextStore();
+  const { context, kanbanColumns: columns, setKanbanColumns: setColumns, autoDeleteDoneDays, setAutoDeleteDoneDays } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -200,11 +201,8 @@ export default function KanbanPage() {
   const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(new Set());
   const [isSyncingPending, setIsSyncingPending] = useState(false);
   const [lastSyncAttemptAt, setLastSyncAttemptAt] = useState<number | null>(null);
-  const [cleanupEveryDays, setCleanupEveryDays] = useState("15");
   const [lastCleanupAt, setLastCleanupAt] = useState<number | null>(null);
   const [isRunningCleanup, setIsRunningCleanup] = useState(false);
-  const [isFiltersOpen, setIsFiltersOpen] = useState(true);
-  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [filters, setFilters] = useState({
     query: "",
     priority: "all",
@@ -255,16 +253,13 @@ export default function KanbanPage() {
     try {
       const raw = window.localStorage.getItem(getCleanupStorageKey(user.uid, context));
       if (!raw) {
-        setCleanupEveryDays("15");
         setLastCleanupAt(null);
         return;
       }
 
-      const parsed = JSON.parse(raw) as { cleanupEveryDays?: string; lastCleanupAt?: number | null };
-      setCleanupEveryDays(typeof parsed.cleanupEveryDays === "string" ? parsed.cleanupEveryDays : "15");
+      const parsed = JSON.parse(raw) as { lastCleanupAt?: number | null };
       setLastCleanupAt(typeof parsed.lastCleanupAt === "number" ? parsed.lastCleanupAt : null);
     } catch {
-      setCleanupEveryDays("15");
       setLastCleanupAt(null);
     }
   }, [context, user]);
@@ -275,12 +270,12 @@ export default function KanbanPage() {
     try {
       window.localStorage.setItem(
         getCleanupStorageKey(user.uid, context),
-        JSON.stringify({ cleanupEveryDays, lastCleanupAt })
+        JSON.stringify({ lastCleanupAt })
       );
     } catch {
       // Ignore storage failures.
     }
-  }, [cleanupEveryDays, context, lastCleanupAt, user]);
+  }, [context, lastCleanupAt, user]);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -508,9 +503,9 @@ export default function KanbanPage() {
   const doneTasks = useMemo(() => tasks.filter((task) => task.status === "Hecho"), [tasks]);
 
   const cleanupEligibleCount = useMemo(() => {
-    if (cleanupEveryDays === "disabled") return 0;
+    if (autoDeleteDoneDays === "disabled") return 0;
 
-    const days = Number.parseInt(cleanupEveryDays, 10);
+    const days = Number.parseInt(autoDeleteDoneDays, 10);
     if (!Number.isFinite(days) || days <= 0) return 0;
 
     return doneTasks.filter((task) => {
@@ -519,7 +514,7 @@ export default function KanbanPage() {
       const age = differenceInCalendarDays(new Date(), referenceDate);
       return age >= days;
     }).length;
-  }, [cleanupEveryDays, doneTasks]);
+  }, [autoDeleteDoneDays, doneTasks]);
 
   const filteredTasks = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
@@ -673,6 +668,83 @@ export default function KanbanPage() {
     if (!isUserLoading && !user) router.push("/login");
   }, [user, isUserLoading, router]);
 
+  const clearBulkUndo = () => {
+    bulkUndoRef.current = null;
+    if (bulkUndoTimeoutRef.current) {
+      clearTimeout(bulkUndoTimeoutRef.current);
+      bulkUndoTimeoutRef.current = null;
+    }
+  };
+
+  const runCompletedTasksCleanup = (options?: { mode?: "auto" | "manual"; force?: boolean }) => {
+    if (!user || !firestore) return;
+
+    const mode = options?.mode || "auto";
+    const force = options?.force ?? false;
+
+    if (mode === "auto" && autoDeleteDoneDays === "disabled") {
+      return;
+    }
+
+    if (mode === "auto" && !force && lastCleanupAt) {
+      const hoursSinceLastRun = (Date.now() - lastCleanupAt) / (1000 * 60 * 60);
+      if (hoursSinceLastRun < 24) {
+        return;
+      }
+    }
+
+    const doneTaskIds = doneTasks.map((task) => task.id);
+    let targetIds: string[] = [];
+
+    if (mode === "manual") {
+      targetIds = doneTaskIds;
+    } else {
+      const days = Number.parseInt(autoDeleteDoneDays, 10);
+      if (!Number.isFinite(days) || days <= 0) return;
+
+      targetIds = doneTasks
+        .filter((task) => {
+          const referenceDate = toDateFromUnknown(task.updatedAt) || toDateFromUnknown(task.createdAt);
+          if (!referenceDate) return false;
+          const age = differenceInCalendarDays(new Date(), referenceDate);
+          return age >= days;
+        })
+        .map((task) => task.id);
+    }
+
+    if (targetIds.length === 0) {
+      if (mode === "manual") {
+        toast({ variant: "info", title: "Sin tareas hechas", description: "No hay tareas completadas para borrar." });
+      }
+      setLastCleanupAt(Date.now());
+      return;
+    }
+
+    setIsRunningCleanup(true);
+    setTasks((prev) => prev.filter((task) => !targetIds.includes(task.id)));
+    targetIds.forEach((taskId) => deleteTask(firestore, user.uid, taskId));
+    setLastCleanupAt(Date.now());
+    setIsRunningCleanup(false);
+
+    toast({
+      variant: "success",
+      title: mode === "manual" ? "Tareas hechas eliminadas" : "Limpieza automática aplicada",
+      description: `${targetIds.length} tareas completadas fueron eliminadas.`,
+    });
+  };
+
+  useEffect(() => {
+    return () => {
+      clearBulkUndo();
+      clearPendingRetry();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!user || !firestore || doneTasks.length === 0) return;
+    runCompletedTasksCleanup({ mode: "auto" });
+  }, [autoDeleteDoneDays, context, doneTasks, firestore, user]);
+
   if (isUserLoading || !user) return null;
 
   const handleSaveTask = () => {
@@ -825,13 +897,7 @@ export default function KanbanPage() {
     setSelectedTaskIds(new Set());
   };
 
-  const clearBulkUndo = () => {
-    bulkUndoRef.current = null;
-    if (bulkUndoTimeoutRef.current) {
-      clearTimeout(bulkUndoTimeoutRef.current);
-      bulkUndoTimeoutRef.current = null;
-    }
-  };
+
 
   const undoLastBulkChange = () => {
     if (!user || !firestore) return;
@@ -875,12 +941,7 @@ export default function KanbanPage() {
     });
   };
 
-  useEffect(() => {
-    return () => {
-      clearBulkUndo();
-      clearPendingRetry();
-    };
-  }, []);
+
 
   const applyBulkTransform = (successLabel: string, transform: (task: Task) => Task) => {
     if (!user || !firestore || selectedTaskIds.size === 0) return;
@@ -912,61 +973,14 @@ export default function KanbanPage() {
     applyBulkTransform(successLabel, (task) => ({ ...task, ...data }));
   };
 
-  const runCompletedTasksCleanup = (options?: { mode?: "auto" | "manual"; force?: boolean }) => {
-    if (!user || !firestore) return;
 
-    const mode = options?.mode || "auto";
-    const force = options?.force ?? false;
 
-    if (mode === "auto" && cleanupEveryDays === "disabled") {
-      return;
-    }
+  const updateSelectedTaskPriority = (priority: Priority) => {
+    applyBulkTransform(`Prioridad cambiada a ${priority}`, (task) => ({ ...task, priority }));
+  };
 
-    if (mode === "auto" && !force && lastCleanupAt) {
-      const hoursSinceLastRun = (Date.now() - lastCleanupAt) / (1000 * 60 * 60);
-      if (hoursSinceLastRun < 24) {
-        return;
-      }
-    }
-
-    const doneTaskIds = doneTasks.map((task) => task.id);
-    let targetIds: string[] = [];
-
-    if (mode === "manual") {
-      targetIds = doneTaskIds;
-    } else {
-      const days = Number.parseInt(cleanupEveryDays, 10);
-      if (!Number.isFinite(days) || days <= 0) return;
-
-      targetIds = doneTasks
-        .filter((task) => {
-          const referenceDate = toDateFromUnknown(task.updatedAt) || toDateFromUnknown(task.createdAt);
-          if (!referenceDate) return false;
-          const age = differenceInCalendarDays(new Date(), referenceDate);
-          return age >= days;
-        })
-        .map((task) => task.id);
-    }
-
-    if (targetIds.length === 0) {
-      if (mode === "manual") {
-        toast({ variant: "info", title: "Sin tareas hechas", description: "No hay tareas completadas para borrar." });
-      }
-      setLastCleanupAt(Date.now());
-      return;
-    }
-
-    setIsRunningCleanup(true);
-    setTasks((prev) => prev.filter((task) => !targetIds.includes(task.id)));
-    targetIds.forEach((taskId) => deleteTask(firestore, user.uid, taskId));
-    setLastCleanupAt(Date.now());
-    setIsRunningCleanup(false);
-
-    toast({
-      variant: "success",
-      title: mode === "manual" ? "Tareas hechas eliminadas" : "Limpieza automática aplicada",
-      description: `${targetIds.length} tareas completadas fueron eliminadas.`,
-    });
+  const updateSelectedTaskStatus = (status: string) => {
+    applyBulkTransform(`Estado cambiado a ${status}`, (task) => ({ ...task, status }));
   };
 
   const updateSelectedTaskTags = (mode: "add" | "remove") => {
@@ -1016,10 +1030,7 @@ export default function KanbanPage() {
     }
   }
 
-  useEffect(() => {
-    if (!user || !firestore || doneTasks.length === 0) return;
-    runCompletedTasksCleanup({ mode: "auto" });
-  }, [cleanupEveryDays, context, doneTasks, firestore, user]);
+
 
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event;
@@ -1365,260 +1376,226 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="glass-card p-3 md:p-4">
-          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Total</p>
-          <p className="text-xl md:text-2xl font-black mt-1 font-data">{totalTasks}</p>
-        </div>
-        <div className="glass-card p-3 md:p-4">
-          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">En Progreso</p>
-          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2">
-            <Clock3 className="w-4 h-4 text-primary" /> {inProgressTasks}
-          </p>
-        </div>
-        <div className="glass-card p-3 md:p-4">
-          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Críticas</p>
-          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2 text-red-400">
-            <Flame className="w-4 h-4" /> {criticalTasks}
-          </p>
-        </div>
-        <div className="glass-card p-3 md:p-4">
-          <p className="text-[9px] uppercase tracking-[0.25em] text-white/40 font-black">Completadas</p>
-          <p className="text-xl md:text-2xl font-black mt-1 font-data flex items-center gap-2 text-primary">
-            <CircleCheckBig className="w-4 h-4" /> {completedTasks}
-          </p>
-        </div>
+      {/* Metrics Overhaul */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: "Total", value: totalTasks, icon: Layers, color: "from-blue-500/20 to-transparent", textColor: "text-blue-400" },
+          { label: "En Progreso", value: inProgressTasks, icon: Clock3, color: "from-primary/20 to-transparent", textColor: "text-primary" },
+          { label: "Críticas", value: criticalTasks, icon: Flame, color: "from-red-500/20 to-transparent", textColor: "text-red-400" },
+          { label: "Completadas", value: completedTasks, icon: CircleCheckBig, color: "from-emerald-500/20 to-transparent", textColor: "text-emerald-400" },
+        ].map(({ label, value, icon: Icon, color, textColor }, i) => (
+          <div key={i} className={cn("relative overflow-hidden glass-card p-5 group transition-all duration-500 hover:scale-[1.02] border-white/[0.05]")}>
+            <div className={cn("absolute inset-0 bg-gradient-to-br opacity-30", color)} />
+            <div className="relative flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{label}</p>
+                <p className={cn("text-3xl font-black font-data tracking-tight", textColor)}>{value}</p>
+              </div>
+              <Icon className={cn("w-8 h-8 opacity-20 group-hover:opacity-40 transition-opacity", textColor)} />
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="glass-card p-3 md:p-4 space-y-3 border-white/[0.08]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Mantenimiento de tareas hechas</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <Select value={cleanupEveryDays} onValueChange={setCleanupEveryDays}>
-              <SelectTrigger className="h-9 w-[220px] bg-white/[0.03] border-white/[0.08] rounded-lg text-[10px] font-black uppercase tracking-widest">
-                <SelectValue placeholder="Frecuencia" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                <SelectItem value="disabled">No borrar automáticamente</SelectItem>
-                <SelectItem value="7">Cada 7 días</SelectItem>
-                <SelectItem value="15">Cada 15 días</SelectItem>
-                <SelectItem value="30">Cada 30 días</SelectItem>
-                <SelectItem value="60">Cada 60 días</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              disabled={isRunningCleanup || completedTasks === 0}
-              onClick={() => runCompletedTasksCleanup({ mode: "manual", force: true })}
-              className="h-9 rounded-lg border-red-500/30 bg-red-500/10 text-[10px] font-black uppercase tracking-widest text-red-300 hover:bg-red-500/20"
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1.5" /> Borrar todas las hechas
-            </Button>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-[10px] text-white/55">
-          <Badge variant="outline" className="rounded-full border-white/[0.12] bg-white/[0.03] text-white/70 h-5 px-2 font-black">
-            Hechas: {completedTasks}
-          </Badge>
-          <Badge variant="outline" className="rounded-full border-yellow-500/30 bg-yellow-500/10 text-yellow-300 h-5 px-2 font-black">
-            Para limpieza: {cleanupEligibleCount}
-          </Badge>
-          <span>
-            {lastCleanupAt
-              ? `Última limpieza: ${format(new Date(lastCleanupAt), "dd/MM HH:mm")}`
-              : "Aún no se ejecutó limpieza"}
-          </span>
-        </div>
-      </div>
-
-      <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen} className="glass-card p-3 md:p-4 border-white/[0.08]">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Filtros de tablero</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/70 bg-white/[0.03] px-2 h-5 font-black text-[10px]">
-              {filteredTasks.length}/{totalTasks}
-            </Badge>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setFilters({ query: "", priority: "all", status: "all", tag: "all", due: "all" })}
-                className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
-              >
-                Limpiar
-              </Button>
-            )}
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-white/60 hover:text-white">
-                <ChevronDown className={cn("w-4 h-4 transition-transform", isFiltersOpen && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-        </div>
-
-        <CollapsibleContent className="pt-3">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-2">
-            <Input
-              value={filters.query}
-              onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
-              placeholder="Buscar..."
-              className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg"
-            />
-
-            <Select value={filters.priority} onValueChange={(value) => setFilters((prev) => ({ ...prev, priority: value }))}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
-                <SelectValue placeholder="Prioridad" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                <SelectItem value="all">Toda prioridad</SelectItem>
-                <SelectItem value="alta">Alta</SelectItem>
-                <SelectItem value="media">Media</SelectItem>
-                <SelectItem value="baja">Baja</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.status} onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                <SelectItem value="all">Todos los estados</SelectItem>
-                {columns.map((status) => (
-                  <SelectItem key={`filter-status-${status}`} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.tag} onValueChange={(value) => setFilters((prev) => ({ ...prev, tag: value }))}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
-                <SelectValue placeholder="Etiqueta" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                <SelectItem value="all">Todas las etiquetas</SelectItem>
-                {suggestedTags.map((tag) => (
-                  <SelectItem key={`filter-tag-${tag}`} value={tag}>{tag}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={filters.due} onValueChange={(value) => setFilters((prev) => ({ ...prev, due: value }))}>
-              <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg text-[11px] uppercase font-black tracking-wider">
-                <SelectValue placeholder="Vencimiento" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="today">Hoy</SelectItem>
-                <SelectItem value="next7">Próximos 7 días</SelectItem>
-                <SelectItem value="overdue">Vencidas</SelectItem>
-                <SelectItem value="none">Sin fecha</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      <Collapsible open={isBulkOpen} onOpenChange={setIsBulkOpen} className="glass-card p-3 md:p-4 border-white/[0.08]">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <p className="text-[9px] uppercase font-black tracking-[0.35em] text-white/45">Acciones masivas</p>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/70 bg-white/[0.03] px-2 h-5 font-black text-[10px]">
-              Seleccionadas: {selectedTaskIds.size}
-            </Badge>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={selectAllVisibleTasks}
-              className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
-            >
-              Seleccionar visibles
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearSelectedTasks}
-              disabled={!hasSelection}
-              className="h-7 rounded-lg text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white"
-            >
-              Limpiar
-            </Button>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-white/60 hover:text-white">
-                <ChevronDown className={cn("w-4 h-4 transition-transform", isBulkOpen && "rotate-180")} />
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-        </div>
-
-        <CollapsibleContent className="pt-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Mover a estado</p>
-              <div className="flex flex-wrap gap-2">
-                {columns.map((status) => (
-                  <Button
-                    key={`bulk-status-${status}`}
-                    variant="outline"
-                    disabled={!hasSelection}
-                    onClick={() => updateSelectedTasks({ status }, `Estado masivo: ${status}`)}
-                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
-                  >
-                    {status}
-                  </Button>
-                ))}
-              </div>
+      {/* Quantum Control Bar */}
+      <div className="glass-card overflow-hidden border-white/[0.08] bg-white/[0.01]">
+        <Tabs defaultValue="filters" className="w-full">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4">
+            <TabsList className="bg-transparent h-12 gap-6 p-0 border-none">
+              <TabsTrigger value="filters" className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_0_0_#39FF14] rounded-none px-0 text-[10px] uppercase font-black tracking-widest transition-all gap-2 h-full">
+                <Settings2 className="w-3.5 h-3.5" /> Filtros
+              </TabsTrigger>
+              <TabsTrigger value="bulk" className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_0_0_#39FF14] rounded-none px-0 text-[10px] uppercase font-black tracking-widest transition-all gap-2 h-full">
+                <Layers className="w-3.5 h-3.5" /> Acciones {selectedTaskIds.size > 0 && <Badge className="h-4 px-1.5 min-w-[1.2rem] bg-primary text-black text-[9px] font-black">{selectedTaskIds.size}</Badge>}
+              </TabsTrigger>
+              <TabsTrigger value="maintenance" className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_0_0_#39FF14] rounded-none px-0 text-[10px] uppercase font-black tracking-widest transition-all gap-2 h-full">
+                <RefreshCcw className="w-3.5 h-3.5" /> Limpieza
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="flex items-center gap-4 h-12 md:h-auto py-2 md:py-0">
+              {hasActiveFilters && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setFilters({ query: "", priority: "all", status: "all", tag: "all", due: "all" })}
+                  className="h-8 text-[9px] font-black uppercase tracking-widest text-red-400/70 hover:text-red-400 hover:bg-red-400/10"
+                >
+                  Limpiar Filtros
+                </Button>
+              )}
+              <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/50 bg-white/[0.03] px-3 h-6 font-black text-[10px] font-data">
+                {filteredTasks.length}/{totalTasks} NODOS
+              </Badge>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Cambiar prioridad</p>
-              <div className="flex flex-wrap gap-2">
-                {(["alta", "media", "baja"] as Priority[]).map((priority) => (
-                  <Button
-                    key={`bulk-priority-${priority}`}
-                    variant="outline"
-                    disabled={!hasSelection}
-                    onClick={() => updateSelectedTasks({ priority }, `Prioridad masiva: ${priority}`)}
-                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
-                  >
-                    {priority}
-                  </Button>
-                ))}
+          <div className="p-5">
+            <TabsContent value="filters" className="mt-0 outline-none">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className="relative col-span-1 sm:col-span-2">
+                  <Input
+                    value={filters.query}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
+                    placeholder="Filtrar por título, descripción o etiqueta..."
+                    className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl pl-4 text-sm"
+                  />
+                </div>
+                <Select value={filters.priority} onValueChange={(value) => setFilters((prev) => ({ ...prev, priority: value }))}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
+                    <SelectValue placeholder="Prioridad" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                    <SelectItem value="all">Toda prioridad</SelectItem>
+                    <SelectItem value="alta">Alta</SelectItem>
+                    <SelectItem value="media">Media</SelectItem>
+                    <SelectItem value="baja">Baja</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filters.tag} onValueChange={(value) => setFilters((prev) => ({ ...prev, tag: value }))}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
+                    <SelectValue placeholder="Etiqueta" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                    <SelectItem value="all">Todas las etiquetas</SelectItem>
+                    {suggestedTags.map((tag) => (
+                      <SelectItem key={`filter-tag-${tag}`} value={tag}>{tag}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={filters.due} onValueChange={(value) => setFilters((prev) => ({ ...prev, due: value }))}>
+                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
+                    <SelectValue placeholder="Vencimiento" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="today">Hoy</SelectItem>
+                    <SelectItem value="next7">Próximos 7 días</SelectItem>
+                    <SelectItem value="overdue">Vencidas</SelectItem>
+                    <SelectItem value="none">Sin fecha</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
+            </TabsContent>
 
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase font-black tracking-widest text-white/50">Etiquetas en lote</p>
-              <div className="space-y-2">
-                <Input
-                  value={bulkTagInput}
-                  list="task-tag-suggestions"
-                  onChange={(e) => setBulkTagInput(e.target.value)}
-                  placeholder="cliente, urgente"
-                  className="bg-white/[0.03] border-white/[0.08] h-8 rounded-lg text-[11px]"
-                />
-                <div className="flex flex-wrap gap-2">
+            <TabsContent value="bulk" className="mt-0 outline-none">
+              <div className="flex flex-col lg:flex-row gap-6">
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Modificadores de Lote</p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllVisibleTasks} className="h-7 text-[9px] font-black uppercase rounded-lg border-white/[0.1] hover:bg-primary/10 hover:text-primary">Visibles</Button>
+                      <Button variant="outline" size="sm" onClick={clearSelectedTasks} disabled={!hasSelection} className="h-7 text-[9px] font-black uppercase rounded-lg border-white/[0.1] hover:bg-red-400/10 hover:text-red-400">Limpiar</Button>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-[9px] uppercase font-black text-white/25">Estado</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {columns.map((status) => (
+                          <Button
+                            key={`bulk-status-${status}`}
+                            variant="outline"
+                            disabled={!hasSelection}
+                            onClick={() => updateSelectedTasks({ status }, `Estado masivo: ${status}`)}
+                            className="h-8 px-3 rounded-lg border-white/[0.08] bg-white/[0.02] text-[9px] font-black uppercase tracking-widest hover:border-primary/40 hover:text-primary"
+                          >
+                            {status}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-[9px] uppercase font-black text-white/25">Prioridad</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["alta", "media", "baja"] as Priority[]).map((p) => (
+                          <Button
+                            key={`bulk-p-${p}`}
+                            variant="outline"
+                            disabled={!hasSelection}
+                            onClick={() => updateSelectedTasks({ priority: p }, `Prioridad masiva: ${p}`)}
+                            className="h-8 px-3 rounded-lg border-white/[0.08] bg-white/[0.02] text-[9px] font-black uppercase tracking-widest hover:border-primary/40 hover:text-primary"
+                          >
+                            {p}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-full lg:w-80 space-y-4 border-t lg:border-t-0 lg:border-l border-white/[0.08] pt-4 lg:pt-0 lg:pl-6">
+                  <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Etiquetas en Lote</p>
+                  <div className="space-y-3">
+                    <Input
+                      value={bulkTagInput}
+                      onChange={(e) => setBulkTagInput(e.target.value)}
+                      placeholder="tag1, tag2..."
+                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        onClick={() => updateSelectedTaskTags("add")} 
+                        disabled={!hasSelection || !bulkTagInput.trim()}
+                        className="flex-1 h-9 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[10px] font-black uppercase"
+                      >
+                        Agregar
+                      </Button>
+                      <Button 
+                        onClick={() => updateSelectedTaskTags("remove")} 
+                        disabled={!hasSelection || !bulkTagInput.trim()}
+                        className="flex-1 h-9 rounded-xl bg-red-400/10 text-red-400 border border-red-400/20 text-[10px] font-black uppercase"
+                      >
+                        Quitar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="maintenance" className="mt-0 outline-none">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 py-2">
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                      <Trash2 className="w-5 h-5 text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-tight">Purgar Tareas Completadas</p>
+                      <p className="text-[11px] text-white/40">Elimina instantáneamente todos los nodos en la columna "Hecho".</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                  <div className="text-center md:text-right">
+                    <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">Para limpieza</p>
+                    <p className="text-lg font-black font-data text-yellow-400">{cleanupEligibleCount} NODOS</p>
+                  </div>
                   <Button
-                    variant="outline"
-                    disabled={!hasSelection}
-                    onClick={() => updateSelectedTaskTags("add")}
-                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+                    variant="destructive"
+                    disabled={isRunningCleanup || completedTasks === 0}
+                    onClick={() => runCompletedTasksCleanup({ mode: "manual", force: true })}
+                    className="w-full sm:w-auto h-12 px-8 rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all duration-300 font-black uppercase tracking-widest text-[10px]"
                   >
-                    Agregar tags
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled={!hasSelection}
-                    onClick={() => updateSelectedTaskTags("remove")}
-                    className="h-8 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
-                  >
-                    Quitar tags
+                    {isRunningCleanup ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                    Ejecutar Purga Manual
                   </Button>
                 </div>
-                <p className="text-[10px] text-white/45">Máximo {MAX_TAGS_PER_TASK} etiquetas por tarea.</p>
               </div>
-            </div>
+              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-4 text-[10px] font-black uppercase text-white/30 tracking-widest">
+                  <span>Auto-limpieza: <span className="text-primary">{autoDeleteDoneDays === "disabled" ? "OFF" : `${autoDeleteDoneDays} DÍAS`}</span></span>
+                  {lastCleanupAt && <span>Última: {format(new Date(lastCleanupAt), "dd/MM HH:mm")}</span>}
+                </div>
+                <Link href="/settings" className="text-[9px] font-black uppercase text-white/40 hover:text-primary transition-colors">Configurar Frecuencia →</Link>
+              </div>
+            </TabsContent>
           </div>
-        </CollapsibleContent>
-      </Collapsible>
+        </Tabs>
+      </div>
 
       {hasActiveFilters && filteredTasks.length === 0 && (
         <div className="glass-card p-4 border-white/[0.08] flex flex-col md:flex-row md:items-center justify-between gap-3">
