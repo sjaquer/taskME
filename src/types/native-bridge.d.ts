@@ -10,10 +10,16 @@ declare global {
       showToast: (message: string) => void;
       startVoiceRecognition: () => void;
     };
+
+    // Legacy Bridge (Compatibilidad)
+    AndroidBridge?: {
+      postMessage: (message: string) => void;
+    };
     
     // Callbacks que la APK llama en la Web
     onNativeTokenReceived?: (token: string) => void;
     onGoogleLoginSuccess?: (idToken: string) => void;
     onVoiceResult?: (text: string) => void;
+    onNativeMessage?: (raw: string) => void;
   }
 }
