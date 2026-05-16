@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: 'TaskMe',
   },
+  verification: {
+    google: 'XXXcSKs9hnuQpt4nxbfKDzlXRvZMPRmHXZMO2zgQmEc',
+  },
 };
 
 export const viewport: Viewport = {
