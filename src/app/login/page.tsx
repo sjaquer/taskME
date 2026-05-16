@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Zap, Mail, Lock, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
 import { TacticalButton, OutlineButton } from "@/components/atoms";
 
