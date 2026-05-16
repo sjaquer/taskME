@@ -40,7 +40,7 @@ service cloud.firestore {
     function isValidTaskDoc(data, userId) {
       return data.keys().hasOnly([
                'userId', 'title', 'description', 'priority', 'status', 'tags',
-               'context', 'createdAt', 'updatedAt'
+               'dueDate', 'context', 'createdAt', 'updatedAt'
              ])
              && data.userId == userId
              && data.title is string
@@ -52,6 +52,7 @@ service cloud.firestore {
              && isValidContext(data)
              && isValidPriority(data)
              && (!('tags' in data) || isValidTags(data.tags))
+             && (!('dueDate' in data) || (data.dueDate is string || isValidTimestampField(data.dueDate)))
              && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }
@@ -95,9 +96,23 @@ service cloud.firestore {
     }
 
     function isValidSettingsDoc(data) {
-      return data.keys().hasOnly(['activeModules', 'theme', 'updatedAt'])
+      return data.keys().hasOnly([
+               'context', 'theme', 'colorMode', 'activeModules', 'highPerformanceMode',
+               'kanbanColumns', 'hourFormat', 'defaultPage', 'autoDeleteDoneDays',
+               'visualConfig', 'updatedAt'
+             ])
+             && (!('context' in data) || isValidContext(data))
+             && (!('theme' in data) || (data.theme is string && data.theme in [
+                  'neon', 'cyan', 'amber', 'rose', 'violet', 'emerald', 'indigo', 'crimson', 'slate'
+                ]))
+             && (!('colorMode' in data) || (data.colorMode is string && data.colorMode in ['dark', 'light']))
              && (!('activeModules' in data) || data.activeModules is map)
-             && (!('theme' in data) || (data.theme is string && data.theme in ['neon', 'cyan', 'amber', 'rose', 'violet']))
+             && (!('highPerformanceMode' in data) || data.highPerformanceMode is bool)
+             && (!('kanbanColumns' in data) || data.kanbanColumns is list)
+             && (!('hourFormat' in data) || (data.hourFormat is string && data.hourFormat in ['24h', '12h']))
+             && (!('defaultPage' in data) || data.defaultPage is string)
+             && (!('autoDeleteDoneDays' in data) || data.autoDeleteDoneDays is string)
+             && (!('visualConfig' in data) || data.visualConfig is map)
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }
 
