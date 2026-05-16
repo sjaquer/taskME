@@ -13,7 +13,8 @@ const TaskSchema = z.object({
   description: z.string().describe('Descripción detallada de la tarea a realizar').optional(),
   priority: z.enum(['baja', 'media', 'alta']).describe('Prioridad sugerida de la tarea'),
   context: z.enum(['Trabajo', 'Estudio']).describe('Contexto o área al que pertenece la tarea'),
-  tags: z.array(z.string()).describe('Lista de etiquetas cortas para clasificar la tarea (ej. "lectura", "desarrollo")'),
+  tags: z.array(z.string()).describe('Lista de etiquetas cortas y precisas para clasificar la tarea (ej. "diseño", "bug", "examen")'),
+  dueDate: z.string().describe('Fecha de vencimiento en formato ISO 8601 (YYYY-MM-DD). Solo si se menciona una fecha, plazo o día específico.').optional(),
 });
 
 const TaskListSchema = z.array(TaskSchema);
@@ -34,14 +35,26 @@ export async function POST(req: NextRequest) {
   try {
     const { prompt } = requestSchema.parse(await req.json());
     const ai = getAiClient();
-    const preferredModel = process.env.GEMINI_MODEL?.trim() || 'googleai/gemini-2.5-flash';
-    const fallbackModel = 'googleai/gemini-2.0-flash';
+    const preferredModel = process.env.GEMINI_MODEL?.trim() || 'googleai/gemini-2.0-flash'; // Optimized model choice
+    const fallbackModel = 'googleai/gemini-1.5-flash';
 
-    const generationPrompt = `Actuas como un asistente organizador de tareas altamente eficiente.
-A partir del siguiente texto del usuario, extrae y organiza las tareas a realizar.
-Genera una lista de tareas estructuradas. Clasifica cada tarea en el contexto "Trabajo" o "Estudio" segun corresponda. Si no esta claro, asume el contexto que mejor encaje.
-Prioridad: alta, media, o baja.
-Crea etiquetas (tags) utiles (maximo 3 por tarea).
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const dayOfWeek = now.toLocaleDateString('es-ES', { weekday: 'long' });
+
+    const generationPrompt = `Actuas como un asistente organizador de tareas experto en productividad.
+Fecha actual: ${dateStr} (${dayOfWeek})
+
+A partir del siguiente texto del usuario, extrae y organiza las tareas a realizar con máxima precisión.
+
+REGLAS DE CLASIFICACIÓN:
+1. Contexto: Clasifica rigurosamente en "Trabajo" (tareas profesionales, proyectos, oficina) o "Estudio" (clases, exámenes, investigación académica, aprendizaje).
+2. Etiquetas (Tags): Genera hasta 3 etiquetas que describan la NATURALEZA de la tarea (ej. "urgente", "reunión", "código", "lectura"). Deben ser consistentes y útiles para filtrar.
+3. Fecha de Vencimiento (dueDate): 
+   - Si el usuario dice "mañana", "lunes", "en 3 días", calcula la fecha exacta basada en la fecha actual (${dateStr}).
+   - Si no hay mención de tiempo, deja el campo vacío.
+   - Formato requerido: YYYY-MM-DD.
+4. Prioridad: Evalúa el tono y la urgencia del texto para asignar baja, media o alta.
 
 Texto del usuario:
 "${prompt}"`;

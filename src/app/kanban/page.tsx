@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAppContextStore } from "@/lib/store";
-import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, Trash2, RefreshCcw } from "lucide-react";
+import { Plus, Settings2, X, Loader2, Layers, Database, CircleCheckBig, Clock3, Flame, Sparkles, Trash2, RefreshCcw, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
@@ -204,6 +204,7 @@ export default function KanbanPage() {
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
   const [bulkTagInput, setBulkTagInput] = useState("");
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
@@ -840,6 +841,7 @@ export default function KanbanPage() {
           priority: task.priority as Priority,
           status: columns[0],
           tags: task.tags || [],
+          dueDate: task.dueDate || null,
           context: task.context as AppContext,
           userId: user.uid,
         };
@@ -854,6 +856,60 @@ export default function KanbanPage() {
       toast({ variant: "destructive", title: "Error Cuántico", description: error.message });
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleStartListening = () => {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      toast({ 
+        variant: "destructive", 
+        title: "No soportado", 
+        description: "Tu navegador no soporta el reconocimiento de voz nativo." 
+      });
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      if (transcript) {
+        setAiPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      if (event.error !== 'no-speech') {
+        toast({ 
+          variant: "destructive", 
+          title: "Error de Audio", 
+          description: "Hubo un problema al capturar tu voz." 
+        });
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      setIsListening(false);
     }
   };
 
@@ -1378,12 +1434,25 @@ export default function KanbanPage() {
                       <Label className="text-[9px] uppercase font-black text-purple-400 tracking-widest flex items-center gap-2">
                         <Sparkles className="w-3 h-3" /> Instrucciones Cuánticas
                       </Label>
-                      <Textarea 
-                        placeholder="Ej: Mañana tengo que enviar el reporte mensual y también ir a comprar el pan..."
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        className="bg-white/[0.03] border-white/[0.08] min-h-[160px] rounded-lg text-sm resize-none focus-visible:ring-purple-500/50"
-                      />
+                      <div className="relative">
+                        <Textarea 
+                          placeholder="Ej: Mañana tengo que enviar el reporte mensual y también ir a comprar el pan..."
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          className="bg-white/[0.03] border-white/[0.08] min-h-[160px] rounded-lg text-sm resize-none focus-visible:ring-purple-500/50 pr-12"
+                        />
+                        <button
+                          onClick={handleStartListening}
+                          className={cn(
+                            "absolute right-3 bottom-3 p-2.5 rounded-full transition-all duration-300",
+                            isListening 
+                              ? "bg-red-500 text-white animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.5)]" 
+                              : "bg-purple-500/10 text-purple-400 hover:bg-purple-500/20"
+                          )}
+                        >
+                          <Mic className={cn("w-4 h-4", isListening && "animate-bounce")} />
+                        </button>
+                      </div>
                       <p className="text-[10px] text-white/40 leading-relaxed">
                         Escribe tus ideas libremente. La IA analizará el texto, separará las tareas, priorizará y asignará etiquetas automáticamente, inyectándolas en la columna <span className="text-white font-bold">{columns[0]}</span>.
                       </p>
