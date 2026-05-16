@@ -25,7 +25,8 @@ function parseNativeMessage(raw: string): NativeBridgeResponse | null {
 }
 
 export function isNativeAndroidContainer(): boolean {
-  return typeof window !== 'undefined' && typeof window.AndroidBridge?.postMessage === 'function';
+  if (typeof window === 'undefined') return false;
+  return !!(window.AndroidNative || (window.AndroidBridge && typeof window.AndroidBridge.postMessage === 'function'));
 }
 
 export function initializeNativeBridgeListener() {

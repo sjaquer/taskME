@@ -29,6 +29,7 @@ import { TaskCard } from "@/components/molecules";
 import { KanbanColumn } from "@/components/organisms";
 import { buildTasksQuery, createTask, deleteTask } from "@/services/task-service";
 import type { Task, Priority, AppContext } from "@/types/task";
+import { useNativeBridge } from "@/hooks/use-native-bridge";
 
 import {
   DndContext,
@@ -175,6 +176,7 @@ export default function KanbanPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const { vibrate, isNative, callNative } = useNativeBridge();
 
   const boardRef = useRef<HTMLDivElement>(null);
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -503,6 +505,18 @@ export default function KanbanPage() {
       clearPendingRetry();
     }
   }, [pendingSyncCount, user]);
+
+  // Escuchar dictado de voz nativo desde la APK
+  useEffect(() => {
+    const handleNativeVoice = (e: any) => {
+      const text = e.detail;
+      if (text) {
+        setAiPrompt(prev => prev ? `${prev} ${text}` : text);
+      }
+    };
+    window.addEventListener('nativeVoiceResult', handleNativeVoice);
+    return () => window.removeEventListener('nativeVoiceResult', handleNativeVoice);
+  }, []);
 
   useEffect(() => {
     setSelectedTaskIds((prev) => {
@@ -862,6 +876,11 @@ export default function KanbanPage() {
   const handleStartListening = () => {
     if (typeof window === "undefined") return;
 
+    if (isNative) {
+      callNative('startVoiceRecognition');
+      return;
+    }
+
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -1103,6 +1122,7 @@ export default function KanbanPage() {
       dragOriginStatusRef.current = task.status;
       dragActiveTaskIdRef.current = task.id;
       setActiveTask(task);
+      vibrate(30); // Feedback al iniciar arrastre
     }
   }
 
@@ -1184,6 +1204,7 @@ export default function KanbanPage() {
 
     if (originalStatus && overStatus !== originalStatus && user && firestore) {
       void persistTaskUpdate(active.id as string, { status: overStatus });
+      vibrate(50); // Feedback al soltar en nueva columna
       toast({ 
         title: "Nodo Sincronizado", 
         description: `Estado ${overStatus} persistido.`,

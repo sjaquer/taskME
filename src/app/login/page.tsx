@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Zap, Mail, Lock, LogOut, AlertCircle, CheckCircle2 } from "lucide-react";
 import { TacticalButton, OutlineButton } from "@/components/atoms";
+import { useNativeBridge } from "@/hooks/use-native-bridge";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -29,6 +30,30 @@ export default function LoginPage() {
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const { isNative, callNative } = useNativeBridge();
+
+  // Escuchar login exitoso desde Android
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.onGoogleLoginSuccess = async (idToken: string) => {
+        setIsLoading(true);
+        try {
+          const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
+          const credential = GoogleAuthProvider.credential(idToken);
+          await signInWithCredential(auth, credential);
+        } catch (err: any) {
+          setErrorMsg("Error de sincronización nativa: " + err.message);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.onGoogleLoginSuccess = undefined;
+      }
+    };
+  }, [auth]);
 
   // If user is logged in AND verified (or anonymous), go to app.
   useEffect(() => {
@@ -67,11 +92,15 @@ export default function LoginPage() {
     setErrorMsg("");
     setIsLoading(true);
     try {
-      await initiateGoogleSignIn(auth);
+      if (isNative) {
+        callNative('googleLogin');
+      } else {
+        await initiateGoogleSignIn(auth);
+      }
     } catch (err: any) {
       setErrorMsg(err.message || "Ocurrió un error con Google.");
     } finally {
-      setIsLoading(false);
+      if (!isNative) setIsLoading(false);
     }
   };
 
