@@ -30,8 +30,6 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-import { NativeBridgeProvider } from '@/components/native-bridge-provider';
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -46,9 +44,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#3dbd7d" />
       </head>
       <body className="font-body antialiased min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-primary/30">
-        <NativeBridgeProvider>
-          <ClientShell>{children}</ClientShell>
-        </NativeBridgeProvider>
+        <ClientShell>{children}</ClientShell>
       </body>
     </html>
   );

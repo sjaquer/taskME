@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
 import { NotificationMonitor } from './notification-monitor';
 import { isNativeAndroidContainer } from '@/lib/native-bridge';
+import { NativeBridgeProvider } from './native-bridge-provider';
 
 const DESKTOP_NAV = [
   { icon: Home, label: "Inicio", href: "/" },
@@ -70,78 +71,80 @@ export function ClientShell({ children }: { children: ReactNode }) {
   return (
     <>
       <FirebaseClientProvider>
-        <SidebarProvider defaultOpen={true}>
-          <div className={cn(
-            "flex min-h-[100dvh] w-full relative transition-colors duration-500 bg-background",
-            visualConfig.showGrid && "bg-grid-pattern"
-          )}>
-            {/* Ambient glows — gpu accelerated */}
+        <NativeBridgeProvider>
+          <SidebarProvider defaultOpen={true}>
             <div className={cn(
-              "fixed inset-0 pointer-events-none overflow-hidden opacity-20 gpu-blur z-0 transition-opacity duration-700",
-              !visualConfig.glowEnabled && "opacity-0"
+              "flex min-h-[100dvh] w-full relative transition-colors duration-500 bg-background",
+              visualConfig.showGrid && "bg-grid-pattern"
             )}>
-              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[100px] rounded-full" />
-            </div>
-
-            {/* Desktop Sidebar */}
-            <Sidebar className="hidden md:flex border-r border-border bg-card/60 backdrop-blur-2xl z-40 transition-all duration-500">
-              <SidebarHeader className="p-8">
-                <div className="flex items-center gap-4 group cursor-pointer">
-                  <div className={cn(
-                    "w-12 h-12 rounded-2xl overflow-hidden group-hover:scale-110 transition-transform duration-500 shrink-0 bg-background/50",
-                    visualConfig.glowEnabled && "neon-glow"
-                  )}>
-                    <Image src="/isotipo.svg" alt="TaskMe" width={48} height={48} className="w-full h-full object-contain" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className={cn("text-2xl font-black tracking-tighter leading-none transition-all", visualConfig.glowEnabled && "glow-text")}>TaskMe</span>
-                  </div>
-                </div>
-              </SidebarHeader>
-              <SidebarContent className="px-6 py-8">
-                <SidebarMenu className="gap-3">
-                  {DESKTOP_NAV.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                      <SidebarMenuItem key={item.href}>
-                        <SidebarMenuButton
-                          asChild
-                          isActive={isActive}
-                          className={cn(
-                            "rounded-2xl py-8 px-6 transition-all duration-500 active:scale-95 group",
-                            isActive
-                              ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
-                              : "hover:bg-primary/5 text-muted-foreground hover:text-foreground border border-transparent"
-                          )}
-                        >
-                          <Link href={item.href} className="flex items-center gap-5">
-                            <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && visualConfig.glowEnabled && "drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]")} />
-                            <span className="font-black uppercase tracking-[0.2em] text-[10px]">{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarContent>
-            </Sidebar>
-
-            <div className="flex-1 flex flex-col min-w-0 z-10">
-              <Header />
-              <main className={cn(
-                "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
-                visualConfig.compactMode ? "space-y-4" : "space-y-8"
+              {/* Ambient glows — gpu accelerated */}
+              <div className={cn(
+                "fixed inset-0 pointer-events-none overflow-hidden opacity-20 gpu-blur z-0 transition-opacity duration-700",
+                !visualConfig.glowEnabled && "opacity-0"
               )}>
-                {children}
-              </main>
-              <BottomNav />
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[100px] rounded-full" />
+              </div>
+
+              {/* Desktop Sidebar */}
+              <Sidebar className="hidden md:flex border-r border-border bg-card/60 backdrop-blur-2xl z-40 transition-all duration-500">
+                <SidebarHeader className="p-8">
+                  <div className="flex items-center gap-4 group cursor-pointer">
+                    <div className={cn(
+                      "w-12 h-12 rounded-2xl overflow-hidden group-hover:scale-110 transition-transform duration-500 shrink-0 bg-background/50",
+                      visualConfig.glowEnabled && "neon-glow"
+                    )}>
+                      <Image src="/isotipo.svg" alt="TaskMe" width={48} height={48} className="w-full h-full object-contain" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className={cn("text-2xl font-black tracking-tighter leading-none transition-all", visualConfig.glowEnabled && "glow-text")}>TaskMe</span>
+                    </div>
+                  </div>
+                </SidebarHeader>
+                <SidebarContent className="px-6 py-8">
+                  <SidebarMenu className="gap-3">
+                    {DESKTOP_NAV.map((item) => {
+                      const isActive = pathname === item.href;
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={isActive}
+                            className={cn(
+                              "rounded-2xl py-8 px-6 transition-all duration-500 active:scale-95 group",
+                              isActive
+                                ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
+                                : "hover:bg-primary/5 text-muted-foreground hover:text-foreground border border-transparent"
+                            )}
+                          >
+                            <Link href={item.href} className="flex items-center gap-5">
+                              <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && visualConfig.glowEnabled && "drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]")} />
+                              <span className="font-black uppercase tracking-[0.2em] text-[10px]">{item.label}</span>
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarContent>
+              </Sidebar>
+
+              <div className="flex-1 flex flex-col min-w-0 z-10">
+                <Header />
+                <main className={cn(
+                  "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
+                  visualConfig.compactMode ? "space-y-4" : "space-y-8"
+                )}>
+                  {children}
+                </main>
+                <BottomNav />
+              </div>
             </div>
-          </div>
-        </SidebarProvider>
-        <Suspense fallback={null}>
-          <NotificationMonitor />
-        </Suspense>
+          </SidebarProvider>
+          <Suspense fallback={null}>
+            <NotificationMonitor />
+          </Suspense>
+        </NativeBridgeProvider>
       </FirebaseClientProvider>
       <Toaster />
     </>
