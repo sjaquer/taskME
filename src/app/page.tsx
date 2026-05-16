@@ -39,7 +39,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push("/login");
+      router.push("/welcome");
     } else if (!isUserLoading && user) {
       if (defaultPage && defaultPage !== "/" && !sessionStorage.getItem("hasRedirectedToDefault")) {
         sessionStorage.setItem("hasRedirectedToDefault", "true");

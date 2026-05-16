@@ -41,10 +41,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <Card className="glass-card-elevated border-white/[0.08] bg-[#050505]/60 backdrop-blur-2xl">
+        <Card className="glass-card-elevated border-border bg-card/60 backdrop-blur-2xl">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center neon-glow">
-              <Zap className="w-10 h-10 text-primary-foreground" />
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(57,255,20,0.3)]">
+              <Zap className="w-10 h-10 text-black" />
             </div>
             <div>
               <CardTitle className="text-3xl font-black tracking-tighter">
@@ -61,14 +61,14 @@ export default function LoginPage() {
                 <Label htmlFor="email">Correo Electrónico</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input id="email" type="email" placeholder="alex@rivera.com" className="pl-10 bg-white/[0.03] border-white/[0.08] focus:border-primary/50" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  <Input id="email" type="email" placeholder="alex@rivera.com" className="pl-10 bg-muted/30 border-border focus:border-primary/50" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Contraseña</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input id="password" type="password" placeholder="••••••••" minLength={6} className="pl-10 bg-white/[0.03] border-white/[0.08] focus:border-primary/50" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  <Input id="password" type="password" placeholder="••••••••" minLength={6} className="pl-10 bg-muted/30 border-border focus:border-primary/50" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               </div>
               <TacticalButton type="submit" className="w-full">
@@ -78,10 +78,10 @@ export default function LoginPage() {
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-white/[0.06]" />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#050505] px-2 text-muted-foreground">O continúa con</span>
+                <span className="bg-card px-2 text-muted-foreground">O continúa con</span>
               </div>
             </div>
 
@@ -95,6 +95,12 @@ export default function LoginPage() {
                 {isRegistering ? "Inicia sesión aquí" : "Regístrate ahora"}
               </button>
             </p>
+
+            <div className="pt-6 border-t border-border flex justify-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground/40">
+              <a href="/privacy" className="hover:text-primary transition-colors">Privacidad</a>
+              <span>•</span>
+              <a href="/terms" className="hover:text-primary transition-colors">Términos</a>
+            </div>
           </CardContent>
         </Card>
       </motion.div>
