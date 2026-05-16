@@ -35,6 +35,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const theme = useAppContextStore((state) => state.theme);
   const colorMode = useAppContextStore((state) => state.colorMode);
+  const visualConfig = useAppContextStore((state) => state.visualConfig);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -42,7 +43,6 @@ export function ClientShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.documentElement.dataset.mode = colorMode;
-    // También actualizar la clase para Tailwind dark mode (si usa class)
     if (colorMode === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');
@@ -51,6 +51,13 @@ export function ClientShell({ children }: { children: ReactNode }) {
       document.documentElement.classList.remove('dark');
     }
   }, [colorMode]);
+
+  useEffect(() => {
+    document.documentElement.dataset.grid = String(visualConfig.showGrid);
+    document.documentElement.dataset.glow = String(visualConfig.glowEnabled);
+    document.documentElement.dataset.compact = String(visualConfig.compactMode);
+    document.documentElement.style.setProperty('--glass-intensity', String(visualConfig.glassIntensity));
+  }, [visualConfig]);
 
   useEffect(() => {
     if (isNativeAndroidContainer()) {
@@ -64,23 +71,31 @@ export function ClientShell({ children }: { children: ReactNode }) {
     <>
       <FirebaseClientProvider>
         <SidebarProvider defaultOpen={true}>
-          <div className="flex min-h-[100dvh] w-full relative bg-[#050505]">
-            {/* Subtle ambient glow — GPU composited */}
-            <div className="fixed inset-0 pointer-events-none overflow-hidden opacity-15 gpu-blur">
-              <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/15 blur-[120px] rounded-full" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-500/5 blur-[100px] rounded-full" />
+          <div className={cn(
+            "flex min-h-[100dvh] w-full relative transition-colors duration-500 bg-background",
+            visualConfig.showGrid && "bg-grid-pattern"
+          )}>
+            {/* Ambient glows — gpu accelerated */}
+            <div className={cn(
+              "fixed inset-0 pointer-events-none overflow-hidden opacity-20 gpu-blur z-0 transition-opacity duration-700",
+              !visualConfig.glowEnabled && "opacity-0"
+            )}>
+              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[100px] rounded-full" />
             </div>
 
             {/* Desktop Sidebar */}
-            <Sidebar className="hidden md:flex border-r border-white/[0.06] bg-[#050505]/80 backdrop-blur-2xl z-40">
+            <Sidebar className="hidden md:flex border-r border-border bg-card/60 backdrop-blur-2xl z-40 transition-all duration-500">
               <SidebarHeader className="p-8">
                 <div className="flex items-center gap-4 group cursor-pointer">
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden neon-glow group-hover:scale-110 transition-transform duration-500 shrink-0">
+                  <div className={cn(
+                    "w-12 h-12 rounded-2xl overflow-hidden group-hover:scale-110 transition-transform duration-500 shrink-0 bg-background/50",
+                    visualConfig.glowEnabled && "neon-glow"
+                  )}>
                     <Image src="/isotipo.svg" alt="TaskMe" width={48} height={48} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-2xl font-black tracking-tighter leading-none glow-text">TaskMe</span>
-
+                    <span className={cn("text-2xl font-black tracking-tighter leading-none transition-all", visualConfig.glowEnabled && "glow-text")}>TaskMe</span>
                   </div>
                 </div>
               </SidebarHeader>
@@ -96,12 +111,12 @@ export function ClientShell({ children }: { children: ReactNode }) {
                           className={cn(
                             "rounded-2xl py-8 px-6 transition-all duration-500 active:scale-95 group",
                             isActive
-                              ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_15px_rgba(57,255,20,0.1)]"
-                              : "hover:bg-white/[0.03] text-muted-foreground hover:text-white border border-transparent"
+                              ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
+                              : "hover:bg-primary/5 text-muted-foreground hover:text-foreground border border-transparent"
                           )}
                         >
                           <Link href={item.href} className="flex items-center gap-5">
-                            <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && "drop-shadow-[0_0_6px_rgba(57,255,20,0.4)]")} />
+                            <item.icon className={cn("w-6 h-6 transition-transform duration-300 group-hover:scale-110", isActive && visualConfig.glowEnabled && "drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]")} />
                             <span className="font-black uppercase tracking-[0.2em] text-[10px]">{item.label}</span>
                           </Link>
                         </SidebarMenuButton>
@@ -114,7 +129,10 @@ export function ClientShell({ children }: { children: ReactNode }) {
 
             <div className="flex-1 flex flex-col min-w-0 z-10">
               <Header />
-              <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x">
+              <main className={cn(
+                "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
+                visualConfig.compactMode ? "space-y-4" : "space-y-8"
+              )}>
                 {children}
               </main>
               <BottomNav />

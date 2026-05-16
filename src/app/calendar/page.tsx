@@ -157,10 +157,10 @@ export default function CalendarPage() {
   }, [events, googleEvents, context]);
 
   if (!mounted || isUserLoading || !user) return (
-    <div className="min-h-screen bg-[#050505] p-4">
-      <Skeleton className="h-12 w-2/3 bg-white/[0.03] rounded-2xl mb-6" />
-      <Skeleton className="h-80 w-full bg-white/[0.03] rounded-2xl mb-4" />
-      <Skeleton className="h-40 w-full bg-white/[0.03] rounded-2xl" />
+    <div className="min-h-screen bg-background p-4">
+      <Skeleton className="h-12 w-2/3 bg-muted/30 rounded-2xl mb-6" />
+      <Skeleton className="h-80 w-full bg-muted/30 rounded-2xl mb-4" />
+      <Skeleton className="h-40 w-full bg-muted/30 rounded-2xl" />
     </div>
   );
 
@@ -296,14 +296,14 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] pb-28">
+    <div className="min-h-screen bg-background pb-28">
       {/* Header con mes y navegación */}
-      <div className="sticky top-0 z-20 bg-[#050505]/95 backdrop-blur-xl border-b border-white/[0.04]">
+      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border">
         <div className="px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={goToPrevMonth}
-              className="h-10 w-10 rounded-xl border border-white/[0.08] bg-white/[0.02] flex items-center justify-center text-white/60 hover:text-white hover:bg-white/[0.06] active:scale-95 transition-all"
+              className="h-10 w-10 rounded-xl border border-border bg-muted/30 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 active:scale-95 transition-all"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -335,13 +335,13 @@ export default function CalendarPage() {
 
       {/* Calendario mensual compacto */}
       <div className="px-4 pt-4">
-        <div className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a]/80 overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
           {/* Header días de la semana */}
-          <div className="grid grid-cols-7 border-b border-white/[0.06]">
+          <div className="grid grid-cols-7 border-b border-border">
             {WEEKDAYS.map((day, i) => (
               <div key={day} className={cn(
                 "py-3 text-center text-[11px] font-black uppercase tracking-wider",
-                i >= 5 ? "text-white/30" : "text-primary/70"
+                i >= 5 ? "text-muted-foreground/40" : "text-primary/70"
               )}>
                 {day}
               </div>
@@ -366,9 +366,9 @@ export default function CalendarPage() {
                   onClick={() => setSelectedDate(day)}
                   className={cn(
                     "relative aspect-square flex flex-col items-center justify-center p-1 transition-all active:scale-95",
-                    "border-b border-r border-white/[0.04]",
+                    "border-b border-r border-border/40",
                     !isCurrentMonth && "opacity-30",
-                    isWeekend && isCurrentMonth && "bg-white/[0.01]",
+                    isWeekend && isCurrentMonth && "bg-muted/10",
                     isSelected && "bg-primary/20",
                     isTodayDate && !isSelected && "bg-primary/10"
                   )}
@@ -415,7 +415,7 @@ export default function CalendarPage() {
               "w-14 h-14 rounded-2xl flex flex-col items-center justify-center",
               isToday(selectedDate) 
                 ? "bg-primary text-primary-foreground shadow-[0_0_25px_rgba(57,255,20,0.4)]" 
-                : "bg-white/[0.05] border border-white/[0.08]"
+                : "bg-muted/30 border border-border"
             )}>
               <span className="text-2xl font-black leading-none">{format(selectedDate, "d")}</span>
               <span className="text-[9px] font-bold uppercase tracking-wider opacity-70">
@@ -456,7 +456,7 @@ export default function CalendarPage() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: (selectedDayEvents.length + idx) * 0.05 }}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 relative overflow-hidden active:scale-[0.98] transition-transform"
+                    className="rounded-xl border border-border bg-muted/20 p-4 relative overflow-hidden active:scale-[0.98] transition-transform"
                   >
                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-xl" />
                     <div className="flex flex-col gap-2 pl-2">
@@ -505,7 +505,7 @@ export default function CalendarPage() {
       {/* Google Calendar Section - Collapsible */}
       <div className="px-4 mt-6">
         <Collapsible open={gcalExpanded} onOpenChange={setGcalExpanded}>
-          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
             <CollapsibleTrigger asChild>
               <button className="w-full p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors">
                 <div className="flex items-center gap-3">
@@ -610,7 +610,7 @@ export default function CalendarPage() {
 
       {/* Dialog para crear/editar evento */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-        <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/98 sm:max-w-[500px] p-5 sm:p-6 sm:max-h-[92dvh] overflow-hidden">
+        <DialogContent className="glass-card-elevated border-border bg-card/98 sm:max-w-[500px] p-5 sm:p-6 sm:max-h-[92dvh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
               <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />

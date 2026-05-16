@@ -43,7 +43,7 @@ export const OutlineButton = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       variant="outline"
       className={cn(
-        'rounded-xl h-12 px-4 border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06]',
+        'rounded-xl h-12 px-4 border-border bg-muted/30 hover:bg-muted/50 transition-colors',
         className
       )}
       {...props}

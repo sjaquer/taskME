@@ -40,12 +40,12 @@ export function StatusIndicator({ active = false, label }: StatusIndicatorProps)
         className={cn(
           'w-1.5 h-1.5 rounded-full transition-colors',
           active
-            ? 'bg-primary animate-pulse shadow-[0_0_6px_rgba(57,255,20,0.6)]'
-            : 'bg-white/20'
+            ? 'bg-primary animate-pulse'
+            : 'bg-muted-foreground/30'
         )}
       />
       {label && (
-        <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">
+        <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
           {label}
         </span>
       )}
@@ -60,8 +60,8 @@ interface NodeIdProps {
 
 export function NodeId({ id, className }: NodeIdProps) {
   return (
-    <span className={cn('text-[9px] font-black text-white/20 tracking-widest uppercase font-data flex items-center gap-1.5', className)}>
-      <span className="w-1.5 h-[1px] bg-white/10" />
+    <span className={cn('text-[9px] font-black text-muted-foreground/40 tracking-widest uppercase font-data flex items-center gap-1.5', className)}>
+      <span className="w-1.5 h-[1px] bg-border" />
       NODE_{id.slice(0, 4).toUpperCase()}
     </span>
   );
@@ -75,7 +75,7 @@ interface SectionLabelProps {
 
 export function SectionLabel({ icon, children, className }: SectionLabelProps) {
   return (
-    <h3 className={cn('text-[9px] font-black uppercase tracking-[0.4em] text-white/40 flex items-center gap-3', className)}>
+    <h3 className={cn('text-[9px] font-black uppercase tracking-[0.4em] text-muted-foreground/60 flex items-center gap-3', className)}>
       {icon}
       {children}
     </h3>

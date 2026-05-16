@@ -46,7 +46,7 @@ export function CalendarEventCard({ event, index, onEdit, onDelete }: CalendarEv
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 group relative overflow-hidden active:scale-[0.98] transition-transform"
+      className="rounded-xl border border-border bg-muted/20 p-4 group relative overflow-hidden active:scale-[0.98] transition-transform"
     >
       <div className={cn('absolute top-0 left-0 w-1 h-full rounded-l-xl', colorClass)} />
       <div className="flex items-start justify-between gap-3">
@@ -54,13 +54,13 @@ export function CalendarEventCard({ event, index, onEdit, onDelete }: CalendarEv
           <div className="flex items-center gap-2 flex-wrap">
             <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', colorClass)} />
             {!event.allDay && (
-              <span className="text-xs text-white/50 font-mono flex items-center gap-1">
+              <span className="text-xs text-muted-foreground/60 font-mono flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatTime(startTimeString, hourFormat)} — {formatTime(endTimeString, hourFormat)}
               </span>
             )}
             {event.allDay && (
-              <Badge className="bg-white/[0.05] text-white/60 border-white/[0.08] text-[10px] px-2 py-0.5 rounded-md">
+              <Badge className="bg-muted/30 text-muted-foreground/80 border-border text-[10px] px-2 py-0.5 rounded-md">
                 Todo el día
               </Badge>
             )}
@@ -69,24 +69,24 @@ export function CalendarEventCard({ event, index, onEdit, onDelete }: CalendarEv
             {event.title}
           </h4>
           {event.description && (
-            <p className="text-xs text-white/40 line-clamp-2">{event.description}</p>
+            <p className="text-xs text-muted-foreground/70 line-clamp-2">{event.description}</p>
           )}
           {event.location && (
-            <p className="text-xs text-white/50 flex items-center gap-2">
+            <p className="text-xs text-muted-foreground/80 flex items-center gap-2">
               <MapPin className="w-3.5 h-3.5" /> {event.location}
             </p>
           )}
         </div>
         {/* Botones siempre visibles en móvil, touch-friendly */}
         <div className="flex items-center gap-1 flex-shrink-0">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(event)} className="h-10 w-10 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-transparent hover:border-white/[0.08]">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(event)} className="h-10 w-10 rounded-xl bg-muted/30 hover:bg-muted/50 border border-border">
             <Edit3 className="w-4 h-4" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onDelete(event.id)}
-            className="h-10 w-10 rounded-xl bg-white/[0.03] hover:bg-red-500/10 hover:text-red-500 border border-transparent hover:border-red-500/20"
+            className="h-10 w-10 rounded-xl bg-muted/30 hover:bg-red-500/10 hover:text-red-500 border border-border"
           >
             <Trash2 className="w-4 h-4" />
           </Button>

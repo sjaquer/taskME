@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AppContext } from '@/types/task';
+import type { AppContext, Task } from '@/types/task';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet' | 'emerald' | 'indigo' | 'crimson' | 'slate';
 export type HourFormat = '24h' | '12h';
@@ -42,6 +42,14 @@ interface AppState {
   setAutoDeleteDoneDays: (days: string) => void;
   visualConfig: VisualConfig;
   updateVisualConfig: (config: Partial<VisualConfig>) => void;
+  
+  // Data Cache (Expert Optimization)
+  cachedTasks: Record<string, Task[]>; // Key: context
+  setCachedTasks: (context: string, tasks: Task[]) => void;
+  cachedRoutines: Record<string, any[]>;
+  setCachedRoutines: (context: string, routines: any[]) => void;
+  cachedEvents: Record<string, any[]>;
+  setCachedEvents: (context: string, events: any[]) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -84,9 +92,23 @@ export const useAppContextStore = create<AppState>()(
       updateVisualConfig: (config) => set((state) => ({
         visualConfig: { ...state.visualConfig, ...config }
       })),
+      
+      // Cache Initial State
+      cachedTasks: {},
+      setCachedTasks: (context, tasks) => set((state) => ({
+        cachedTasks: { ...state.cachedTasks, [context]: tasks }
+      })),
+      cachedRoutines: {},
+      setCachedRoutines: (context, routines) => set((state) => ({
+        cachedRoutines: { ...state.cachedRoutines, [context]: routines }
+      })),
+      cachedEvents: {},
+      setCachedEvents: (context, events) => set((state) => ({
+        cachedEvents: { ...state.cachedEvents, [context]: events }
+      })),
     }),
     {
-      name: 'taskme-app-state-v3',
+      name: 'taskme-app-state-v4',
     }
   )
 );

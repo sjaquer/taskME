@@ -91,9 +91,9 @@ export default function SchedulePage() {
 
   if (isUserLoading || !user) return (
     <div className="max-w-5xl mx-auto space-y-8 p-4">
-      <Skeleton className="h-14 w-1/2 bg-white/[0.03] rounded-2xl" />
-      <Skeleton className="h-20 bg-white/[0.03] rounded-2xl" />
-      <Skeleton className="h-64 bg-white/[0.03] rounded-2xl" />
+      <Skeleton className="h-14 w-1/2 bg-muted/30 rounded-2xl" />
+      <Skeleton className="h-20 bg-muted/30 rounded-2xl" />
+      <Skeleton className="h-64 bg-muted/30 rounded-2xl" />
     </div>
   );
 
@@ -173,7 +173,7 @@ export default function SchedulePage() {
           <DialogTrigger asChild>
             <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Nueva Rutina</TacticalButton>
           </DialogTrigger>
-          <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[450px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+          <DialogContent className="glass-card-elevated border-border bg-card/95 sm:max-w-[450px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase tracking-tighter">
                 {editingRoutine ? "Editar Rutina" : "Nueva Rutina"}
@@ -182,7 +182,7 @@ export default function SchedulePage() {
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
                 <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre</Label>
-                <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Ej: Gimnasio, Estudio, Reunión..." className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg" />
+                <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Ej: Gimnasio, Estudio, Reunión..." className="bg-muted/30 border-border h-11 rounded-lg" />
               </div>
 
               <div className="space-y-1.5">
@@ -197,8 +197,8 @@ export default function SchedulePage() {
                     }))} className={cn(
                       "w-9 h-9 rounded-lg text-[11px] font-black transition-all border",
                       formData.recurringDays.includes(day.value)
-                        ? "bg-primary text-black border-primary"
-                        : "bg-white/[0.03] border-white/[0.08] text-muted-foreground"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted/30 border-border text-muted-foreground"
                     )}>
                       {day.label}
                     </button>
@@ -209,11 +209,11 @@ export default function SchedulePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black tracking-widest">Inicio</Label>
-                  <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg font-data" />
+                  <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black tracking-widest">Fin</Label>
-                  <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg font-data" />
+                  <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
                 </div>
               </div>
 
@@ -221,8 +221,8 @@ export default function SchedulePage() {
                 <div className="space-y-1.5">
                   <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
                   <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as Priority })}>
-                    <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                    <SelectTrigger className="bg-muted/30 border-border h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-card border-border">
                       <SelectItem value="baja">Baja</SelectItem>
                       <SelectItem value="media">Media</SelectItem>
                       <SelectItem value="alta">Alta</SelectItem>
@@ -259,8 +259,8 @@ export default function SchedulePage() {
             <button key={day.toString()} onClick={() => setSelectedDate(day)} className={cn(
               "flex-shrink-0 w-16 py-3 rounded-2xl flex flex-col items-center gap-1 transition-all border",
               isSelected
-                ? "bg-primary text-black border-primary scale-105 shadow-lg"
-                : "glass-card border-white/[0.06]"
+                ? "bg-primary text-primary-foreground border-primary scale-105 shadow-lg"
+                : "glass-card border-border"
             )}>
               <span className={cn("text-[10px] uppercase font-black tracking-widest", isSelected ? "text-black/60" : "text-muted-foreground/50")}>
                 {format(day, "EEE", { locale: es })}
@@ -273,7 +273,7 @@ export default function SchedulePage() {
 
       {/* Timeline */}
       <div className="relative mt-12 ml-4 md:ml-24">
-        <div className="absolute left-[-12px] md:left-[-40px] top-0 bottom-0 w-px bg-white/[0.06]" />
+        <div className="absolute left-[-12px] md:left-[-40px] top-0 bottom-0 w-px bg-border" />
         <div className="space-y-8">
           <AnimatePresence mode="popLayout">
             {dailyRoutines.length > 0 ? (

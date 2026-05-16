@@ -162,7 +162,16 @@ function getCleanupStorageKey(userId: string, context: AppContext) {
 }
 
 export default function KanbanPage() {
-  const { context, kanbanColumns: columns, setKanbanColumns: setColumns, autoDeleteDoneDays, setAutoDeleteDoneDays } = useAppContextStore();
+  const { 
+    context, 
+    kanbanColumns: columns, 
+    setKanbanColumns: setColumns, 
+    autoDeleteDoneDays, 
+    setAutoDeleteDoneDays,
+    cachedTasks,
+    setCachedTasks
+  } = useAppContextStore();
+  
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -203,6 +212,7 @@ export default function KanbanPage() {
   const [lastSyncAttemptAt, setLastSyncAttemptAt] = useState<number | null>(null);
   const [lastCleanupAt, setLastCleanupAt] = useState<number | null>(null);
   const [isRunningCleanup, setIsRunningCleanup] = useState(false);
+  const [isDataFromCache, setIsDataFromCache] = useState(true);
   const [filters, setFilters] = useState({
     query: "",
     priority: "all",
@@ -282,8 +292,18 @@ export default function KanbanPage() {
     return buildTasksQuery(firestore, user.uid, context);
   }, [firestore, user, context]);
 
-  const { data: firestoreTasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Expert Read Optimization: Use local Zustand cache as the primary source
+  // while Firestore is syncing in the background.
+  const { data: firestoreTasks, isLoading: isTasksLoading, fromCache } = useCollection<Task>(tasksQuery);
+  const [tasks, setTasks] = useState<Task[]>(cachedTasks[context] || []);
+
+  useEffect(() => {
+    if (firestoreTasks) {
+      setTasks(firestoreTasks);
+      setCachedTasks(context, firestoreTasks);
+      setIsDataFromCache(fromCache || false);
+    }
+  }, [firestoreTasks, context, setCachedTasks, fromCache]);
 
   const readPendingQueue = (userId: string): PendingTaskUpdate[] => {
     if (typeof window === "undefined") return [];
@@ -1133,6 +1153,15 @@ export default function KanbanPage() {
             <Badge variant="outline" className="rounded-full border-primary/20 text-primary bg-primary/5 px-2 h-5 font-black text-[11px] font-data">
               {totalTasks} TAREAS
             </Badge>
+            <div className={cn(
+              "flex items-center gap-1.5 px-2 h-5 rounded-full border text-[8px] font-black tracking-widest transition-all duration-500",
+              isDataFromCache 
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-500/70"
+                : "bg-primary/10 border-primary/20 text-primary animate-pulse"
+            )}>
+              <span className={cn("w-1 h-1 rounded-full", isDataFromCache ? "bg-amber-500" : "bg-primary")} />
+              {isDataFromCache ? "CACHED" : "LIVE"}
+            </div>
             {pendingSyncCount > 0 && (
               <Badge variant="outline" className="rounded-full border-yellow-500/30 text-yellow-300 bg-yellow-500/10 px-2 h-5 font-black text-[10px] font-data">
                 {pendingSyncCount} PENDIENTES
@@ -1142,12 +1171,12 @@ export default function KanbanPage() {
           <p className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.4em] flex items-center gap-3">
             <Database className="w-3 h-3 text-primary/40" /> {columns.length} ESTADOS • {totalTasks} NODOS ACTIVOS
             {lastSyncAttemptAt && (
-              <span className="text-[9px] font-data tracking-normal normal-case text-white/45">
+              <span className="text-[9px] font-data tracking-normal normal-case text-muted-foreground/70">
                 Ult. sync: {format(new Date(lastSyncAttemptAt), "HH:mm:ss")}
               </span>
             )}
             {isSyncingPending && (
-              <span className="text-[9px] font-data tracking-normal normal-case text-yellow-300/80">
+              <span className="text-[9px] font-data tracking-normal normal-case text-amber-500 animate-pulse">
                 sincronizando...
               </span>
             )}
@@ -1156,7 +1185,7 @@ export default function KanbanPage() {
 
         <div className="flex items-center gap-2 w-full md:w-auto">
           {/* Mobile Column Navigator */}
-          <div className="flex md:hidden overflow-x-auto scrollbar-hide gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/[0.06] w-full">
+          <div className="flex md:hidden overflow-x-auto scrollbar-hide gap-1 bg-muted/30 p-1 rounded-xl border border-border w-full">
             {columns.map((col) => {
               const count = tasksByStatus.get(col)?.length || 0;
               return (
@@ -1166,7 +1195,7 @@ export default function KanbanPage() {
                     const el = document.getElementById(col);
                     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                   }}
-                  className="flex-shrink-0 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap bg-white/[0.05] border border-white/[0.05] active:bg-primary/20 active:text-primary transition-all"
+                  className="flex-shrink-0 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap bg-muted/40 border border-border active:bg-primary/20 active:text-primary transition-all"
                 >
                   {col} <span className="opacity-40 ml-1">({count})</span>
                 </button>
@@ -1196,7 +1225,7 @@ export default function KanbanPage() {
                 <Plus className="w-4 h-4 mr-2" /> Inyectar
               </TacticalButton>
             </DialogTrigger>
-            <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[500px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+            <DialogContent className="glass-card-elevated border-border bg-card/95 sm:max-w-[500px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
               <datalist id="task-tag-suggestions">
                 {suggestedTags.map((tag) => (
                   <option key={tag} value={tag} />
@@ -1224,8 +1253,8 @@ export default function KanbanPage() {
                       <div className="space-y-1.5">
                         <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
                         <Select value={taskForm.priority} onValueChange={(v: Priority) => setTaskForm({ ...taskForm, priority: v })}>
-                          <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                          <SelectTrigger className="bg-muted/30 border-border h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                          <SelectContent className="bg-card border-border">
                             <SelectItem value="baja">BAJA</SelectItem>
                             <SelectItem value="media">MEDIA</SelectItem>
                             <SelectItem value="alta">ALTA</SelectItem>
@@ -1274,7 +1303,7 @@ export default function KanbanPage() {
                 </>
               ) : (
                 <Tabs defaultValue="manual" className="w-full mt-2">
-                  <TabsList className="grid w-full grid-cols-2 bg-white/[0.03] border border-white/[0.08] p-1 h-auto rounded-lg mb-4">
+                  <TabsList className="grid w-full grid-cols-2 bg-muted/30 border border-border p-1 h-auto rounded-lg mb-4">
                     <TabsTrigger value="manual" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary rounded-md py-2 text-[10px] uppercase font-black tracking-widest transition-all">Manual</TabsTrigger>
                     <TabsTrigger value="ai" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400 rounded-md py-2 text-[10px] uppercase font-black tracking-widest transition-all flex items-center gap-2 justify-center">
                       <Sparkles className="w-3 h-3" /> Asistente IA
@@ -1388,7 +1417,7 @@ export default function KanbanPage() {
             <div className={cn("absolute inset-0 bg-gradient-to-br opacity-30", color)} />
             <div className="relative flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">{label}</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50">{label}</p>
                 <p className={cn("text-3xl font-black font-data tracking-tight", textColor)}>{value}</p>
               </div>
               <Icon className={cn("w-8 h-8 opacity-20 group-hover:opacity-40 transition-opacity", textColor)} />
@@ -1398,9 +1427,9 @@ export default function KanbanPage() {
       </div>
 
       {/* Quantum Control Bar */}
-      <div className="glass-card overflow-hidden border-white/[0.08] bg-white/[0.01]">
+      <div className="glass-card overflow-hidden border-border bg-card/5">
         <Tabs defaultValue="filters" className="w-full">
-          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border bg-card/10 px-4">
             <TabsList className="bg-transparent h-12 gap-6 p-0 border-none">
               <TabsTrigger value="filters" className="data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-[0_2px_0_0_#39FF14] rounded-none px-0 text-[10px] uppercase font-black tracking-widest transition-all gap-2 h-full">
                 <Settings2 className="w-3.5 h-3.5" /> Filtros
@@ -1424,7 +1453,7 @@ export default function KanbanPage() {
                   Limpiar Filtros
                 </Button>
               )}
-              <Badge variant="outline" className="rounded-full border-white/[0.12] text-white/50 bg-white/[0.03] px-3 h-6 font-black text-[10px] font-data">
+              <Badge variant="outline" className="rounded-full border-border text-muted-foreground/60 bg-muted/30 px-3 h-6 font-black text-[10px] font-data">
                 {filteredTasks.length}/{totalTasks} NODOS
               </Badge>
             </div>
@@ -1438,14 +1467,14 @@ export default function KanbanPage() {
                     value={filters.query}
                     onChange={(e) => setFilters((prev) => ({ ...prev, query: e.target.value }))}
                     placeholder="Filtrar por título, descripción o etiqueta..."
-                    className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl pl-4 text-sm"
+                    className="bg-muted/30 border-border h-11 rounded-xl pl-4 text-sm"
                   />
                 </div>
                 <Select value={filters.priority} onValueChange={(value) => setFilters((prev) => ({ ...prev, priority: value }))}>
-                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
+                  <SelectTrigger className="bg-muted/30 border-border h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
                     <SelectValue placeholder="Prioridad" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">Toda prioridad</SelectItem>
                     <SelectItem value="alta">Alta</SelectItem>
                     <SelectItem value="media">Media</SelectItem>
@@ -1464,10 +1493,10 @@ export default function KanbanPage() {
                   </SelectContent>
                 </Select>
                 <Select value={filters.due} onValueChange={(value) => setFilters((prev) => ({ ...prev, due: value }))}>
-                  <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
+                  <SelectTrigger className="bg-muted/30 border-border h-11 rounded-xl text-[10px] uppercase font-black tracking-wider">
                     <SelectValue placeholder="Vencimiento" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                  <SelectContent className="bg-card border-border">
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="today">Hoy</SelectItem>
                     <SelectItem value="next7">Próximos 7 días</SelectItem>
@@ -1482,16 +1511,16 @@ export default function KanbanPage() {
               <div className="flex flex-col lg:flex-row gap-6">
                 <div className="flex-1 space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Modificadores de Lote</p>
+                    <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground">Modificadores de Lote</p>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={selectAllVisibleTasks} className="h-7 text-[9px] font-black uppercase rounded-lg border-white/[0.1] hover:bg-primary/10 hover:text-primary">Visibles</Button>
-                      <Button variant="outline" size="sm" onClick={clearSelectedTasks} disabled={!hasSelection} className="h-7 text-[9px] font-black uppercase rounded-lg border-white/[0.1] hover:bg-red-400/10 hover:text-red-400">Limpiar</Button>
+                      <Button variant="outline" size="sm" onClick={selectAllVisibleTasks} className="h-7 text-[9px] font-black uppercase rounded-lg border-border hover:bg-primary/10 hover:text-primary">Visibles</Button>
+                      <Button variant="outline" size="sm" onClick={clearSelectedTasks} disabled={!hasSelection} className="h-7 text-[9px] font-black uppercase rounded-lg border-border hover:bg-red-400/10 hover:text-red-400">Limpiar</Button>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-[9px] uppercase font-black text-white/25">Estado</Label>
+                      <Label className="text-[9px] uppercase font-black text-muted-foreground/30">Estado</Label>
                       <div className="flex flex-wrap gap-1.5">
                         {columns.map((status) => (
                           <Button
@@ -1515,7 +1544,7 @@ export default function KanbanPage() {
                             variant="outline"
                             disabled={!hasSelection}
                             onClick={() => updateSelectedTasks({ priority: p }, `Prioridad masiva: ${p}`)}
-                            className="h-8 px-3 rounded-lg border-white/[0.08] bg-white/[0.02] text-[9px] font-black uppercase tracking-widest hover:border-primary/40 hover:text-primary"
+                            className="h-8 px-3 rounded-lg border-border bg-muted/40 text-[9px] font-black uppercase tracking-widest hover:border-primary/40 hover:text-primary"
                           >
                             {p}
                           </Button>
@@ -1525,14 +1554,14 @@ export default function KanbanPage() {
                   </div>
                 </div>
 
-                <div className="w-full lg:w-80 space-y-4 border-t lg:border-t-0 lg:border-l border-white/[0.08] pt-4 lg:pt-0 lg:pl-6">
-                  <p className="text-[10px] uppercase font-black tracking-widest text-white/40">Etiquetas en Lote</p>
+                <div className="w-full lg:w-80 space-y-4 border-t lg:border-t-0 lg:border-l border-border pt-4 lg:pt-0 lg:pl-6">
+                  <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/40">Etiquetas en Lote</p>
                   <div className="space-y-3">
                     <Input
                       value={bulkTagInput}
                       onChange={(e) => setBulkTagInput(e.target.value)}
                       placeholder="tag1, tag2..."
-                      className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl text-sm"
+                      className="bg-muted/40 border-border h-10 rounded-xl text-sm"
                     />
                     <div className="flex gap-2">
                       <Button 
@@ -1564,7 +1593,7 @@ export default function KanbanPage() {
                     </div>
                     <div>
                       <p className="text-sm font-black uppercase tracking-tight">Purgar Tareas Completadas</p>
-                      <p className="text-[11px] text-white/40">Elimina instantáneamente todos los nodos en la columna "Hecho".</p>
+                      <p className="text-[11px] text-muted-foreground">Elimina instantáneamente todos los nodos en la columna "Hecho".</p>
                     </div>
                   </div>
                 </div>
@@ -1585,12 +1614,12 @@ export default function KanbanPage() {
                   </Button>
                 </div>
               </div>
-              <div className="mt-6 pt-4 border-t border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-4 text-[10px] font-black uppercase text-white/30 tracking-widest">
+              <div className="mt-6 pt-4 border-t border-border flex items-center justify-between">
+                <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                   <span>Auto-limpieza: <span className="text-primary">{autoDeleteDoneDays === "disabled" ? "OFF" : `${autoDeleteDoneDays} DÍAS`}</span></span>
                   {lastCleanupAt && <span>Última: {format(new Date(lastCleanupAt), "dd/MM HH:mm")}</span>}
                 </div>
-                <Link href="/settings" className="text-[9px] font-black uppercase text-white/40 hover:text-primary transition-colors">Configurar Frecuencia →</Link>
+                <Link href="/settings" className="text-[9px] font-black uppercase text-muted-foreground hover:text-primary transition-colors">Configurar Frecuencia →</Link>
               </div>
             </TabsContent>
           </div>
@@ -1605,7 +1634,7 @@ export default function KanbanPage() {
           <Button
             variant="outline"
             onClick={() => setFilters({ query: "", priority: "all", status: "all", tag: "all", due: "all" })}
-            className="h-9 rounded-lg border-white/[0.12] bg-white/[0.03] text-[10px] font-black uppercase tracking-widest"
+            className="h-9 rounded-lg border-border bg-muted/30 text-[10px] font-black uppercase tracking-widest"
           >
             Limpiar filtros
           </Button>
@@ -1622,13 +1651,13 @@ export default function KanbanPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               {columns.map((col) => (
-                <Badge key={col} variant="secondary" className="pl-3 pr-1 py-1 rounded-lg bg-white/[0.03] border-white/[0.06] gap-2">
+                <Badge key={col} variant="secondary" className="pl-3 pr-1 py-1 rounded-lg bg-muted/30 border-border gap-2">
                   <span className="font-black uppercase tracking-widest text-[11px]">{col}</span>
                   <button onClick={() => handleRemoveColumn(col)} className="text-muted-foreground hover:text-red-500"><X className="w-3 h-3" /></button>
                 </Badge>
               ))}
               <div className="flex items-center gap-2">
-                <Input placeholder="Nuevo..." value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} className="bg-white/[0.03] border-white/[0.08] h-8 w-32 rounded-lg text-[11px] font-black uppercase" />
+                <Input placeholder="Nuevo..." value={newColumnName} onChange={(e) => setNewColumnName(e.target.value)} className="bg-muted/30 border-border h-8 w-32 rounded-lg text-[11px] font-black uppercase" />
                 <Button size="icon" onClick={handleAddColumn} className="h-8 w-8 rounded-lg bg-primary text-black"><Plus className="w-3 h-3" /></Button>
               </div>
             </div>
@@ -1641,7 +1670,7 @@ export default function KanbanPage() {
         {/* Top Scrollbar (Desktop Only) */}
         <div 
           ref={topScrollRef}
-          className="hidden md:block overflow-x-auto h-2 bg-white/[0.02] border-y border-white/[0.05] rounded-full mx-auto max-w-[80%] transition-all hover:bg-white/[0.05]"
+          className="hidden md:block overflow-x-auto h-2 bg-muted/20 border-y border-border rounded-full mx-auto max-w-[80%] transition-all hover:bg-muted/40"
           onScroll={() => {
             if (isSyncingTop.current) {
               isSyncingTop.current = false;
@@ -1678,7 +1707,7 @@ export default function KanbanPage() {
           }}
           onDragEnd={handleDragEnd}
         >
-          <div className="glass-card-elevated p-3 md:p-6 border-white/[0.08] relative">
+          <div className="glass-card-elevated p-3 md:p-6 border-border relative">
             <div 
               ref={boardRef}
               id="kanban-board"
@@ -1704,8 +1733,8 @@ export default function KanbanPage() {
                 {isTasksLoading ? (
                   [...Array(3)].map((_, i) => (
                     <div key={i} className="flex-shrink-0 w-[85vw] sm:w-80 md:w-96 space-y-4">
-                      <Skeleton className="h-6 w-24 bg-white/[0.03]" />
-                      <Skeleton className="h-[400px] w-full rounded-2xl bg-white/[0.03]" />
+                      <Skeleton className="h-6 w-24 bg-muted/30" />
+                      <Skeleton className="h-[400px] w-full rounded-2xl bg-muted/30" />
                     </div>
                   ))
                 ) : (
@@ -1727,8 +1756,8 @@ export default function KanbanPage() {
             </div>
 
             {/* Mobile Navigation Arrows (Visual hint) */}
-            <div className="md:hidden absolute inset-y-0 left-0 w-8 pointer-events-none bg-gradient-to-r from-[#050505]/40 to-transparent" />
-            <div className="md:hidden absolute inset-y-0 right-0 w-8 pointer-events-none bg-gradient-to-l from-[#050505]/40 to-transparent" />
+            <div className="md:hidden absolute inset-y-0 left-0 w-8 pointer-events-none bg-gradient-to-r from-background/40 to-transparent" />
+            <div className="md:hidden absolute inset-y-0 right-0 w-8 pointer-events-none bg-gradient-to-l from-background/40 to-transparent" />
           </div>
 
           <DragOverlay>

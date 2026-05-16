@@ -36,27 +36,27 @@
   }
 
   :root[data-mode='light'] {
-    /* Light Mode */
-    --background: 220 20% 97%;
-    --foreground: 220 20% 12%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 20% 12%;
+    /* Light Mode — Crisp Snow & Silk */
+    --background: 220 20% 98%;
+    --foreground: 220 25% 12%;
+    --card: 220 25% 100%;
+    --card-foreground: 220 25% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 220 20% 12%;
+    --popover-foreground: 220 25% 12%;
     
-    --primary: 152 55% 42%;
+    --primary: 152 65% 38%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 220 15% 93%;
-    --secondary-foreground: 220 15% 30%;
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 20% 25%;
     --muted: 220 15% 90%;
-    --muted-foreground: 220 8% 45%;
-    --accent: 152 55% 42%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 152 65% 38%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 72% 60%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 15% 88%;
-    --input: 220 15% 93%;
-    --ring: 152 55% 42%;
+    --border: 220 20% 88%;
+    --input: 220 20% 94%;
+    --ring: 152 65% 38%;
   }
 
   :root[data-theme='neon'] {
@@ -88,17 +88,47 @@
     --accent: 263 75% 60%;
     --ring: 263 75% 60%;
   }
+
+  :root[data-theme='emerald'] {
+    --primary: 160 84% 39%;
+    --accent: 160 84% 39%;
+    --ring: 160 84% 39%;
+  }
+
+  :root[data-theme='indigo'] {
+    --primary: 239 84% 67%;
+    --accent: 239 84% 67%;
+    --ring: 239 84% 67%;
+  }
+
+  :root[data-theme='crimson'] {
+    --primary: 347 77% 50%;
+    --accent: 347 77% 50%;
+    --ring: 347 77% 50%;
+  }
+
+  :root[data-theme='slate'] {
+    --primary: 215 25% 50%;
+    --accent: 215 25% 50%;
+    --ring: 215 25% 50%;
+  }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border transition-colors duration-300;
   }
   body {
     @apply bg-background text-foreground selection:bg-primary/20 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
     background-image:
-      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(var(--primary) / 0.08), transparent);
+      radial-gradient(ellipse 60% 40% at 50% -5%, hsl(var(--primary) / 0.12), transparent);
+  }
+
+  :root[data-mode='light'] body {
+    background-image:
+      linear-gradient(to bottom, hsl(var(--primary) / 0.03), transparent),
+      radial-gradient(circle at 50% -20%, hsl(var(--primary) / 0.08), transparent);
   }
 }
 
@@ -106,9 +136,22 @@
    Tactical Glass — Glassmorphism System
    ═══════════════════════════════════════ */
 @layer utilities {
-  .glass {
-    @apply bg-white/[0.03] border border-white/[0.06] shadow-[0_8px_32px_0_rgba(0,0,0,0.9)];
+  :root {
+    --glass-base: 255, 255, 255;
   }
+  :root[data-mode='dark'] {
+    --glass-base: 20, 20, 20;
+  }
+
+  .glass {
+    background-color: rgba(var(--glass-base), calc(var(--glass-intensity, 0.03)));
+    @apply border border-white/[0.06] shadow-[0_8px_32px_0_rgba(0,0,0,0.4)];
+  }
+  :root[data-mode='light'] .glass {
+    background-color: rgba(var(--glass-base), calc(var(--glass-intensity, 0.7)));
+    @apply border-black/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.05)];
+  }
+
   .glass-blur {
     @apply glass backdrop-blur-xl;
     -webkit-backface-visibility: hidden;
@@ -116,29 +159,71 @@
     will-change: transform;
   }
   .glass-card {
-    @apply bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-300;
+    background-color: rgba(var(--glass-base), calc(var(--glass-intensity, 0.03)));
+    @apply border border-white/[0.06] rounded-2xl overflow-hidden transition-all duration-300;
     border-top-color: rgba(255, 255, 255, 0.1);
   }
+  :root[data-mode='light'] .glass-card {
+    background-color: rgba(var(--glass-base), calc(var(--glass-intensity, 0.8)));
+    @apply border-black/[0.06] shadow-sm;
+    border-top-color: rgba(255, 255, 255, 0.8);
+  }
+
+
   .glass-card-elevated {
     @apply glass-card backdrop-blur-xl;
     border-top-color: rgba(255, 255, 255, 0.12);
     -webkit-backface-visibility: hidden;
     will-change: transform;
   }
+  :root[data-mode='light'] .glass-card-elevated {
+    @apply glass-card shadow-xl;
+    border-top-color: rgba(255, 255, 255, 0.9);
+  }
+
   .neon-glow {
     box-shadow: 0 0 12px hsl(var(--primary) / 0.25);
     transition: box-shadow 300ms;
   }
+  :root[data-glow='false'] .neon-glow {
+    box-shadow: none !important;
+  }
+  :root[data-mode='light'] .neon-glow {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  }
+
   .neon-glow:hover {
     box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
+  :root[data-mode='light'] .neon-glow:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+
   .neon-border {
     @apply border border-primary/30;
     box-shadow: 0 0 8px hsl(var(--primary) / 0.1), inset 0 0 8px hsl(var(--primary) / 0.03);
   }
+  :root[data-glow='false'] .neon-border {
+    box-shadow: none !important;
+    @apply border-primary/20;
+  }
+  :root[data-mode='light'] .neon-border {
+    @apply border-primary/40;
+    box-shadow: none;
+  }
+
   .glow-text {
     text-shadow: 0 0 8px hsl(var(--primary) / 0.4);
   }
+  :root[data-glow='false'] .glow-text {
+    text-shadow: none !important;
+  }
+  :root[data-mode='light'] .glow-text {
+    text-shadow: none;
+    @apply text-foreground;
+  }
+
+
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
@@ -196,4 +281,17 @@
   backface-visibility: hidden;
   will-change: transform;
   transform: translate3d(0, 0, 0);
+}
+
+.bg-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, hsl(var(--foreground) / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--foreground) / 0.03) 1px, transparent 1px);
+}
+
+:root[data-mode='light'] .bg-grid-pattern {
+  background-image: 
+    linear-gradient(to right, hsl(var(--primary) / 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--primary) / 0.05) 1px, transparent 1px);
 }

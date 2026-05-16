@@ -5,6 +5,7 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { AlertCircle } from 'lucide-react';
 import { TaskCard } from '@/components/molecules/task-card';
 import { cn } from '@/lib/utils';
+import { useAppContextStore } from '@/lib/store';
 import type { Task } from '@/types/task';
 
 interface KanbanColumnProps {
@@ -24,12 +25,20 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds,
     data: { type: 'Column', status },
   });
 
+  const { visualConfig } = useAppContextStore();
+
   return (
-    <div className="flex-shrink-0 w-[85vw] sm:w-80 md:w-96 flex flex-col gap-3 snap-center" id={status}>
-      <div className="flex items-center gap-3 px-2 py-1 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-        <div className={cn('w-2 h-2 rounded-full', status === 'Hecho' ? 'bg-primary neon-glow' : 'bg-white/20')} />
-        <h3 className="font-black uppercase tracking-[0.2em] text-[10px] text-white/70">{status}</h3>
-        <span className="ml-auto text-[11px] font-black bg-white/[0.03] px-2 py-0.5 rounded-full border border-white/[0.06] text-muted-foreground/70 font-data">
+    <div className={cn(
+      "flex-shrink-0 w-[85vw] sm:w-80 md:w-96 flex flex-col snap-center",
+      visualConfig.compactMode ? "gap-2" : "gap-3"
+    )} id={status}>
+      <div className="flex items-center gap-3 px-2 py-1 rounded-xl bg-muted/20 border border-border">
+        <div className={cn(
+          'w-2 h-2 rounded-full', 
+          status === 'Hecho' ? (visualConfig.glowEnabled ? 'bg-primary neon-glow' : 'bg-primary') : 'bg-muted-foreground/30'
+        )} />
+        <h3 className="font-black uppercase tracking-[0.2em] text-[10px] text-muted-foreground">{status}</h3>
+        <span className="ml-auto text-[11px] font-black bg-muted/40 px-2 py-0.5 rounded-full border border-border text-muted-foreground font-data">
           {tasks.length}
         </span>
       </div>
@@ -37,12 +46,13 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds,
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 glass-card p-3 md:p-4 border-dashed min-h-[420px] relative transition-colors',
+          'flex-1 glass-card border-dashed min-h-[420px] relative transition-colors',
+          visualConfig.compactMode ? "p-2" : "p-3 md:p-4",
           isOver && 'border-primary/60 bg-primary/[0.06]'
         )}
       >
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-4 relative z-10">
+          <div className={cn("relative z-10", visualConfig.compactMode ? "space-y-2" : "space-y-4")}>
             {tasks.map((task) => (
               <TaskCard
                 key={task.id}
@@ -76,9 +86,9 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds,
         </SortableContext>
         {tasks.length === 0 && !isOver && (
           <div className="flex flex-col items-center justify-center py-24 opacity-60 text-center">
-            <AlertCircle className="w-8 h-8 mb-3 text-white/20" />
-            <p className="text-[9px] font-black uppercase tracking-[0.35em] text-white/30">Sin tareas</p>
-            <p className="text-[10px] text-white/25 mt-1">Arrastra una tarjeta aquí</p>
+            <AlertCircle className="w-8 h-8 mb-3 text-muted-foreground/20" />
+            <p className="text-[9px] font-black uppercase tracking-[0.35em] text-muted-foreground/30">Sin tareas</p>
+            <p className="text-[10px] text-muted-foreground/25 mt-1">Arrastra una tarjeta aquí</p>
           </div>
         )}
       </div>

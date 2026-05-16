@@ -22,6 +22,7 @@ export type WithId<T> = T & { id: string };
 export interface UseCollectionResult<T> {
   data: WithId<T>[] | null; // Document data with ID, or null.
   isLoading: boolean; // True if loading.
+  fromCache: boolean; // True if data is from local cache.
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
@@ -105,6 +106,7 @@ export function useCollection<T = unknown>(
 
   const [data, setData] = useState<StateDataType>(initialCachedData);
   const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery && !initialCachedData);
+  const [fromCache, setFromCache] = useState<boolean>(!!initialCachedData);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -122,8 +124,10 @@ export function useCollection<T = unknown>(
     if (cachedData && cachedData.length > 0) {
       setData(cachedData);
       setIsLoading(false);
+      setFromCache(true);
     } else {
       setIsLoading(true);
+      setFromCache(false);
     }
 
     setError(null);
@@ -137,6 +141,7 @@ export function useCollection<T = unknown>(
         }
         setData(results);
         writeCachedCollection<T>(querySignature, results);
+        setFromCache(snapshot.metadata.fromCache); // Use Firestore's own cache indicator if available
         setError(null);
         setIsLoading(false);
       },
@@ -164,5 +169,5 @@ export function useCollection<T = unknown>(
     throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
   }
 
-  return { data, isLoading, error };
+  return { data, isLoading, fromCache, error };
 }

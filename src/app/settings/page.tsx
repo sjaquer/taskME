@@ -187,7 +187,7 @@ export default function SettingsPage() {
         <div className="relative group">
           <Avatar className="w-24 h-24 md:w-32 md:h-32 border-2 border-primary neon-glow transition-transform group-hover:scale-105">
             <AvatarImage src={`https://picsum.photos/seed/${user?.uid}/400`} />
-            <AvatarFallback className="text-2xl font-black bg-white/[0.03]">
+            <AvatarFallback className="text-2xl font-black bg-muted/40">
               {user?.displayName?.slice(0, 2).toUpperCase() || "OP"}
             </AvatarFallback>
           </Avatar>
@@ -212,24 +212,24 @@ export default function SettingsPage() {
             <div className="space-y-1.5">
               <Label className="text-[11px] uppercase font-black text-primary">Nombre</Label>
               <div className="flex gap-2">
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tu nombre" className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg" />
+                <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Tu nombre" className="bg-muted/30 border-border h-10 rounded-lg" />
                 <Button onClick={handleUpdateName} disabled={isUpdatingName || !newName.trim()} className="h-10 w-10 rounded-lg bg-primary/10 text-primary hover:bg-primary/20">
                   {isUpdatingName ? <RefreshCcw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-white/20">Email</Label>
+              <Label className="text-[11px] uppercase font-black text-muted-foreground/60">Email</Label>
               <div className="flex gap-2">
-                <Input value={user?.email || "Anónimo"} disabled className="bg-white/[0.03] border-white/[0.08] h-10 rounded-lg opacity-40 font-data" />
+                <Input value={user?.email || "Anónimo"} disabled className="bg-muted/30 border-border h-10 rounded-lg opacity-40 font-data" />
                 {isEmailUser && (
                   <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button className="h-10 w-10 rounded-lg bg-white/[0.03] text-white/30 hover:bg-white/[0.06] hover:text-primary">
+                      <Button className="h-10 w-10 rounded-lg bg-muted/30 text-muted-foreground/60 hover:bg-muted/60 hover:text-primary">
                         <Mail className="w-4 h-4" />
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="glass-card-elevated border-white/[0.08] bg-[#050505]/95 sm:max-w-[420px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
+                    <DialogContent className="glass-card-elevated border-border bg-card/95 sm:max-w-[420px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
                       <DialogHeader><DialogTitle className="text-lg font-black uppercase">Cambiar Email</DialogTitle></DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-1.5">
@@ -342,11 +342,11 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
               <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Modo de Color</Label>
-              <div className="flex p-1 bg-white/[0.03] border border-white/[0.08] rounded-2xl h-14">
+              <div className="flex p-1 bg-muted/30 border border-border rounded-2xl h-14">
                 <button
                   onClick={() => setColorMode("dark")}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    colorMode === "dark" ? "bg-primary text-black shadow-lg" : "text-white/40 hover:text-white"
+                    colorMode === "dark" ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Fingerprint className="w-4 h-4" /> Dark Mode
@@ -354,7 +354,7 @@ export default function SettingsPage() {
                 <button
                   onClick={() => setColorMode("light")}
                   className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    colorMode === "light" ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"
+                    colorMode === "light" ? "bg-foreground text-background shadow-lg" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <Zap className="w-4 h-4" /> Light Mode
@@ -365,13 +365,13 @@ export default function SettingsPage() {
             <div className="space-y-4">
               <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Tema del Sistema</Label>
               <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
-                <SelectTrigger className="bg-white/[0.03] border-white/[0.08] h-14 rounded-2xl text-[11px] font-black uppercase tracking-wider px-4">
+                <SelectTrigger className="bg-muted/30 border-border h-14 rounded-2xl text-[11px] font-black uppercase tracking-wider px-4">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: THEME_OPTIONS.find(o => o.value === theme)?.color }} />
                     <SelectValue />
                   </div>
                 </SelectTrigger>
-                <SelectContent className="bg-[#0a0a0a] border-white/[0.08]">
+                <SelectContent className="bg-card border-border">
                   {THEME_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value} className="text-[11px] font-black uppercase tracking-wider py-3">
                       <div className="flex items-center gap-2">
@@ -395,20 +395,20 @@ export default function SettingsPage() {
                   className={`relative flex flex-col items-center gap-3 rounded-2xl border p-4 transition-all ${
                     theme === option.value
                       ? "border-primary bg-primary/10 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
-                      : "border-white/[0.06] bg-white/[0.01] hover:bg-white/[0.04]"
+                      : "border-border bg-muted/20 hover:bg-muted/40"
                   }`}
                 >
                   <div 
-                    className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center border-4 border-white/[0.05]" 
+                    className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center border-4 border-black/5" 
                     style={{ backgroundColor: option.color }}
                   >
                     {theme === option.value && <Check className="w-4 h-4 text-black font-bold" />}
                   </div>
                   <div className="text-center">
-                    <p className={`text-[9px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-white/70'}`}>
+                    <p className={`text-[9px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-muted-foreground'}`}>
                       {option.label}
                     </p>
-                    <p className="text-[8px] text-white/20 lowercase tracking-normal mt-0.5">{option.hint}</p>
+                    <p className="text-[8px] text-muted-foreground/40 lowercase tracking-normal mt-0.5">{option.hint}</p>
                   </div>
                 </button>
               ))}
@@ -445,13 +445,13 @@ export default function SettingsPage() {
                   <p className="text-xs font-bold">Opacidad Glass</p>
                   <p className="text-[10px] text-muted-foreground">Controla la transparencia de las tarjetas.</p>
                 </div>
-                <div className="flex items-center gap-3 bg-white/[0.03] p-1.5 rounded-xl border border-white/[0.08]">
+                <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-xl border border-border">
                    {[0.4, 0.6, 0.8, 1.0].map((v) => (
                      <button
                        key={v}
                        onClick={() => updateVisualConfig({ glassIntensity: v })}
                        className={`w-8 h-8 rounded-lg text-[9px] font-black transition-all ${
-                         visualConfig.glassIntensity === v ? "bg-primary text-black" : "hover:bg-white/5 text-white/40"
+                         visualConfig.glassIntensity === v ? "bg-primary text-primary-foreground" : "hover:bg-primary/10 text-muted-foreground"
                        }`}
                      >
                        {v * 100}%

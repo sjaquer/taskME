@@ -24,7 +24,7 @@ export function MetricCard({ label, value, icon, subValue, color }: MetricCardPr
         <div className={cn('text-2xl md:text-3xl font-bold tracking-tight font-sans', color)}>
           {value}
         </div>
-        <p className="text-xs text-muted-foreground/70 font-medium pt-1 border-t border-white/[0.06]">
+        <p className="text-xs text-muted-foreground/70 font-medium pt-1 border-t border-border">
           {subValue}
         </p>
       </div>
@@ -42,12 +42,12 @@ export function SystemFeature({ label, value, icon }: SystemFeatureProps) {
   return (
     <div className="flex items-center justify-between group">
       <div className="flex items-center gap-2">
-        <div className="p-1.5 rounded-md bg-white/[0.03] text-primary/40 group-hover:text-primary transition-colors">
+        <div className="p-1.5 rounded-md bg-muted/30 text-primary/40 group-hover:text-primary transition-colors">
           {icon}
         </div>
-        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
+        <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest">{label}</span>
       </div>
-      <span className="text-[9px] font-black text-white/80 font-data">{value}</span>
+      <span className="text-[9px] font-black text-foreground/80 font-data">{value}</span>
     </div>
   );
 }

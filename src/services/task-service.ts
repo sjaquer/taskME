@@ -27,9 +27,17 @@ function getTaskDocRef(firestore: Firestore, userId: string, taskId: string): Do
 }
 
 export function buildTasksQuery(firestore: Firestore, userId: string, context: AppContext) {
+  // Optimization: Calculate a "Focus Window" (e.g., 30 days)
+  // Tasks older than this that are already 'Hecho' are not fetched to save reads.
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  // Note: For complex filtering with multiple 'where', Firestore requires a composite index.
+  // If the index doesn't exist, Firebase will throw an error with a link to create it.
   return query(
     getUserTasksRef(firestore, userId),
-    where('context', '==', context)
+    where('context', '==', context),
+    where('updatedAt', '>=', thirtyDaysAgo)
   );
 }
 

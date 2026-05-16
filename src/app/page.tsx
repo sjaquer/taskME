@@ -88,39 +88,39 @@ function DashboardSkeleton() {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div className="space-y-4 max-w-2xl w-full">
           <div className="flex flex-wrap items-center gap-3">
-             <Skeleton className="h-7 w-28 bg-white/[0.03] rounded-md" />
-             <Skeleton className="h-7 w-20 bg-white/[0.03] rounded-md" />
+             <Skeleton className="h-7 w-28 bg-muted/30 rounded-md" />
+             <Skeleton className="h-7 w-20 bg-muted/30 rounded-md" />
           </div>
           <div className="space-y-3">
-            <Skeleton className="h-12 md:h-16 w-3/4 max-w-md bg-white/[0.03] rounded-lg" />
-            <Skeleton className="h-4 w-64 bg-white/[0.03] rounded-full" />
+            <Skeleton className="h-12 md:h-16 w-3/4 max-w-md bg-muted/30 rounded-lg" />
+            <Skeleton className="h-4 w-64 bg-muted/30 rounded-full" />
           </div>
         </div>
-        <Skeleton className="h-16 w-full lg:w-48 bg-white/[0.03] rounded-2xl" />
+        <Skeleton className="h-16 w-full lg:w-48 bg-muted/30 rounded-2xl" />
       </div>
 
       {/* Metrics Skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl bg-white/[0.03]" />)}
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl bg-muted/30" />)}
       </div>
 
       {/* Quick Orientation Skeleton */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-white/[0.03]" />)}
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-muted/30" />)}
       </div>
 
       {/* Main Content Skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
-             <Skeleton className="h-6 w-48 bg-white/[0.03] rounded-md" />
+          <div className="flex items-center justify-between border-b border-border pb-4">
+             <Skeleton className="h-6 w-48 bg-muted/30 rounded-md" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl bg-white/[0.03]" />)}
+            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl bg-muted/30" />)}
           </div>
         </div>
         <div className="lg:col-span-4 space-y-6">
-          <Skeleton className="h-[26rem] rounded-2xl bg-white/[0.03] w-full" />
+          <Skeleton className="h-[26rem] rounded-2xl bg-muted/30 w-full" />
         </div>
       </div>
     </div>
@@ -145,7 +145,7 @@ function DashboardSkeleton() {
         </div>
 
         <Link href="/kanban">
-          <Button variant="outline" className="rounded-xl border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] gap-2">
+          <Button variant="outline" className="rounded-xl border-border bg-muted/30 hover:bg-muted/50 gap-2">
             <span className="text-xs font-semibold">Abrir Kanban</span>
             <ArrowUpRight className="w-4 h-4 text-primary" />
           </Button>
@@ -173,7 +173,7 @@ function DashboardSkeleton() {
               value={metrics.highPriorityTasks.length.toString()}
               icon={<AlertTriangle className="w-5 h-5 text-red-500" />}
               subValue="Intervención Crítica"
-              color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : "text-white/20"}
+              color={metrics.highPriorityTasks.length > 0 ? "text-red-500" : "text-muted-foreground/30"}
             />
             <MetricCard
               label="Integridad"
@@ -223,7 +223,7 @@ function DashboardSkeleton() {
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+          <div className="flex items-center justify-between border-b border-border pb-4">
             <SectionLabel icon={<Layers className="w-5 h-5 text-primary" />}>Lo Más Urgente Hoy</SectionLabel>
             <div className="flex items-center gap-2">
               <div className="w-1.5 h-1.5 rounded-full bg-primary animate-ping" />
@@ -256,7 +256,7 @@ function DashboardSkeleton() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-white/[0.06]">
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-border">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -289,7 +289,7 @@ function DashboardSkeleton() {
             {metrics.nextPendingTask ? (
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground">⚡ Próxima Tarea</p>
-                <div className="p-4 rounded-xl border border-white/[0.06] bg-white/[0.02] space-y-3">
+                <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
                   <p className="text-sm font-bold">{metrics.nextPendingTask.title}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 uppercase">
@@ -308,7 +308,7 @@ function DashboardSkeleton() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="w-full rounded-lg text-xs font-semibold border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] h-8"
+                        className="w-full rounded-lg text-xs font-semibold border-border bg-muted/30 hover:bg-muted/50 h-8"
                       >
                         Ver Kanban
                       </Button>
@@ -320,7 +320,7 @@ function DashboardSkeleton() {
               <p className="text-xs text-muted-foreground/70">No hay tareas pendientes.</p>
             )}
 
-            <div className="pt-6 border-t border-white/[0.06] space-y-3">
+            <div className="pt-6 border-t border-border space-y-3">
               <p className="text-xs font-semibold text-muted-foreground">📊 Resumen del Día</p>
               <div className="space-y-2 text-xs text-muted-foreground/80">
                 <p className="flex justify-between">

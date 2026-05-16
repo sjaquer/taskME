@@ -7,6 +7,7 @@ import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar 
 import { differenceInDays, isAfter, parseISO } from 'date-fns';
 import { PriorityBadge, NodeId } from '@/components/atoms';
 import { cn } from '@/lib/utils';
+import { useAppContextStore } from '@/lib/store';
 import type { Task } from '@/types/task';
 
 interface TaskCardProps {
@@ -74,6 +75,8 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
     baja: 'rgba(59, 130, 246, 0.2)',
   };
 
+  const { visualConfig } = useAppContextStore();
+
   return (
     <motion.div
       ref={setNodeRef}
@@ -85,15 +88,17 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
       transition={{ duration: 0.2 }}
       className={cn(
         'group relative glass-card p-4 transition-all duration-500 overflow-hidden',
-        'hover:border-primary/40 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(var(--primary-rgb),0.1)]',
-        selected && 'border-primary/60 bg-primary/[0.06] shadow-[0_0_30px_rgba(var(--primary-rgb),0.15)]'
+        visualConfig.glowEnabled && 'hover:border-primary/40 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(var(--primary-rgb),0.1)]',
+        selected && 'border-primary/60 bg-primary/[0.06]'
       )}
     >
       {/* Priority Glow */}
-      <div 
-        className="absolute -top-12 -right-12 w-24 h-24 blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none"
-        style={{ backgroundColor: priorityColors[task.priority] }}
-      />
+      {visualConfig.glowEnabled && (
+        <div 
+          className="absolute -top-12 -right-12 w-24 h-24 blur-[40px] opacity-20 group-hover:opacity-40 transition-opacity pointer-events-none"
+          style={{ backgroundColor: priorityColors[task.priority] }}
+        />
+      )}
 
       <div className="relative flex gap-4">
         {/* Left Control Lane (Selection) */}
@@ -109,8 +114,8 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
               className={cn(
                 'h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300',
                 selected
-                  ? 'border-primary bg-primary shadow-[0_0_15px_rgba(57,255,20,0.4)] scale-110'
-                  : 'border-white/[0.15] bg-white/[0.02] hover:border-white/40'
+                  ? 'border-primary bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)] scale-110'
+                  : 'border-border bg-muted/30 hover:border-primary/40'
               )}
             >
               {selected && <CheckCircle2 className="w-4 h-4 text-black stroke-[3px]" />}
@@ -138,14 +143,14 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-                  className="p-1.5 hover:bg-white/10 rounded-lg text-white/40 hover:text-primary transition-all border border-transparent hover:border-white/10"
+                  className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-primary transition-all border border-transparent hover:border-border"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-                  className="p-1.5 hover:bg-red-500/10 rounded-lg text-white/40 hover:text-red-500 transition-all border border-transparent hover:border-red-500/20"
+                  className="p-1.5 hover:bg-red-500/10 rounded-lg text-muted-foreground hover:text-red-500 transition-all border border-transparent hover:border-red-500/20"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -163,7 +168,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
                     dragDisabled ? 'cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'
                   )}
                 >
-                  <GripVertical className="w-3.5 h-3.5 text-white/40" />
+                  <GripVertical className="w-3.5 h-3.5 text-muted-foreground/60" />
                 </button>
               )}
             </div>
@@ -175,7 +180,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
               {task.title}
             </h4>
             {task.description && (
-              <p className="text-[11px] text-white/40 line-clamp-3 font-medium leading-relaxed group-hover/content:text-white/60 transition-colors">
+              <p className="text-[11px] text-muted-foreground line-clamp-3 font-medium leading-relaxed group-hover/content:text-foreground transition-colors">
                 {task.description}
               </p>
             )}
@@ -189,20 +194,20 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
                 {task.tags.slice(0, 3).map((tag) => (
                   <span 
                     key={tag} 
-                    className="text-[9px] px-2.5 py-1 rounded-lg border border-white/[0.06] bg-white/[0.02] text-white/40 uppercase tracking-wider font-black hover:border-primary/20 hover:text-primary/70 transition-colors"
+                    className="text-[9px] px-2.5 py-1 rounded-lg border border-border bg-muted/40 text-muted-foreground uppercase tracking-wider font-black hover:border-primary/20 hover:text-primary/70 transition-colors"
                   >
                     {tag}
                   </span>
                 ))}
                 {task.tags.length > 3 && (
-                  <span className="text-[9px] text-white/20 font-black pt-1">+{task.tags.length - 3}</span>
+                  <span className="text-[9px] text-muted-foreground/30 font-black pt-1">+{task.tags.length - 3}</span>
                 )}
               </div>
             </div>
           )}
 
           {/* Footer Area */}
-          <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.04]">
+          <div className="pt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border">
             <div className="flex items-center gap-3">
               <NodeId id={task.id} />
               {dueStatus && (
@@ -212,7 +217,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
                     ? 'bg-red-500/10 border-red-500/30 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]'
                     : dueStatus.isUrgent
                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                    : 'bg-white/[0.03] border-white/[0.08] text-white/30'
+                    : 'bg-muted/30 border-border text-muted-foreground/60'
                 )}>
                   <Calendar className="w-3 h-3" />
                   {dueStatus.isOverdue ? 'CRITICAL' : dueStatus.formattedDate}
