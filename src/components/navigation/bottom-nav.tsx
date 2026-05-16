@@ -24,8 +24,8 @@ export function BottomNav() {
   );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass-blur gpu-blur border-t border-border px-2 pt-1 safe-bottom md:hidden transition-colors duration-500">
-      <div className="flex justify-around items-center max-w-md mx-auto">
+    <nav className="fixed bottom-3 left-[2px] right-[2px] z-50 glass-blur gpu-blur border border-border rounded-2xl px-2 py-1.5 md:hidden transition-all duration-500 shadow-2xl">
+      <div className="flex justify-around items-center max-w-md mx-auto h-16">
         {visibleItems.map((item) => {
           const isActive = pathname === item.href;
           return (
@@ -33,19 +33,24 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center justify-center gap-0.5",
-                "min-w-[48px] min-h-[48px] py-2 px-3 rounded-xl",
-                "transition-all duration-200 active:scale-90",
+                "relative flex flex-col items-center justify-center gap-1",
+                "min-w-[60px] min-h-[56px] py-1 px-2 rounded-xl",
+                "transition-all duration-200 active:scale-95",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground active:text-primary/60"
               )}
             >
               {isActive && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-primary neon-glow" />
+                <div className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-6 h-1 rounded-full bg-primary shadow-[0_0_12px_rgba(57,255,20,0.8)]" />
               )}
-              <item.icon className={cn("w-5 h-5", isActive && "drop-shadow-[0_0_6px_rgba(57,255,20,0.5)]")} />
-              <span className="text-[9px] font-black uppercase tracking-wider">{item.label}</span>
+              <item.icon className={cn("w-6 h-6", isActive && "drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]")} />
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-widest transition-all",
+                isActive ? "opacity-100 scale-105" : "opacity-70"
+              )}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
