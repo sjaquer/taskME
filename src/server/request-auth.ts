@@ -27,7 +27,27 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
   try {
     const decoded = await adminAuth.verifyIdToken(token, true);
     return decoded.uid;
-  } catch {
+  } catch (err: any) {
+    // Fallback for local development when Firebase Admin credentials are not fully set up.
+    // Decodes the JWT payload locally to extract the user ID without signature verification.
+    if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_PRIVATE_KEY) {
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          if (payload) {
+            const uid = payload.uid || payload.user_id || payload.sub;
+            if (typeof uid === 'string' && uid) {
+              return uid;
+            }
+          }
+        }
+      } catch (decodeErr) {
+        console.error('Failed to decode JWT token payload locally in development:', decodeErr);
+      }
+    }
+
+    console.error('Authentication verification failed:', err?.message || err);
     throw new RequestAuthError('Unauthorized token', 401);
   }
 }

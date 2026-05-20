@@ -98,8 +98,20 @@ Texto del usuario:
       );
     }
 
-    const message = error instanceof Error ? error.message : 'Error interno al procesar la solicitud de IA';
+    let message = error instanceof Error ? error.message : 'Error interno al procesar la solicitud de IA';
     console.error('Error generating tasks:', message);
+
+    // Intercept quota exceeded or 429 rate limits to return a beautiful Spanish message
+    if (
+      message.includes('429') ||
+      message.toLowerCase().includes('quota exceeded') ||
+      message.toLowerCase().includes('too many requests') ||
+      message.toLowerCase().includes('rate limit')
+    ) {
+      message = 'Límite de peticiones de IA excedido (Quota Exceeded). Por favor, espera unos minutos o reintenta mañana.';
+      return NextResponse.json({ ok: false, error: message, code: 'QUOTA_EXCEEDED' }, { status: 429 });
+    }
+
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

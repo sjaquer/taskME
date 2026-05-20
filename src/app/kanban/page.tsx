@@ -10,7 +10,7 @@ import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1313,6 +1313,9 @@ export default function KanbanPage() {
                   <Layers className="w-6 h-6 text-primary" />
                   {editingTask ? "Modificar Nodo" : "Inyectar Nodo"}
                 </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Formulario para inyectar o modificar una tarea (nodo) en el tablero.
+                </DialogDescription>
               </DialogHeader>
 
               {editingTask ? (
