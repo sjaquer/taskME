@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { genkit, z } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
+import { requireUserIdFromRequest, RequestAuthError } from '@/server/request-auth';
 
 export const runtime = 'nodejs';
 
@@ -33,6 +34,7 @@ function getAiClient() {
 
 export async function POST(req: NextRequest) {
   try {
+    await requireUserIdFromRequest(req);
     const { prompt } = requestSchema.parse(await req.json());
     const ai = getAiClient();
     const preferredModel = process.env.GEMINI_MODEL?.trim() || 'googleai/gemini-2.0-flash'; // Optimized model choice
@@ -96,6 +98,10 @@ Texto del usuario:
         { ok: false, error: 'Prompt invalido. Debe tener entre 3 y 4000 caracteres.' },
         { status: 400 }
       );
+    }
+
+    if (error instanceof RequestAuthError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
     }
 
     let message = error instanceof Error ? error.message : 'Error interno al procesar la solicitud de IA';

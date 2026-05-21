@@ -31,6 +31,8 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
     // Fallback for local development when Firebase Admin credentials are not fully set up.
     // Decodes the JWT payload locally to extract the user ID without signature verification.
     if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_PRIVATE_KEY) {
+      console.warn('⚠️ ATENCIÓN: Verificación de firma JWT deshabilitada. NO USAR EN PRODUCCIÓN.');
+
       try {
         const parts = token.split('.');
         if (parts.length === 3) {
