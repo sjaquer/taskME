@@ -16,12 +16,12 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
   const bearerPrefix = 'Bearer ';
 
   if (!authHeader.startsWith(bearerPrefix)) {
-    throw new RequestAuthError('Missing bearer token', 401);
+    throw new RequestAuthError('Falta el token Bearer de Firebase. Inicia sesión otra vez.', 401);
   }
 
   const token = authHeader.slice(bearerPrefix.length).trim();
   if (!token) {
-    throw new RequestAuthError('Invalid bearer token', 401);
+    throw new RequestAuthError('El token Bearer de Firebase está vacío o es inválido.', 401);
   }
 
   try {
@@ -50,6 +50,6 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
     }
 
     console.error('Authentication verification failed:', err?.message || err);
-    throw new RequestAuthError('Unauthorized token', 401);
+    throw new RequestAuthError('No se pudo validar tu sesión de Firebase.', 401);
   }
 }
