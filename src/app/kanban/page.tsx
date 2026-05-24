@@ -25,15 +25,32 @@ import {
   ChevronDown,
   CircleCheckBig,
   Clock3,
-  Database,
   Flame,
   Loader2,
   Pencil,
   Plus,
   Search,
-  Sparkles,
   Trash2,
+  Cpu,
+  Brain,
+  List,
+  LayoutGrid,
+  SlidersHorizontal,
+  CheckCircle,
+  FolderDot,
 } from "lucide-react";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { KanbanColumn } from "@/components/organisms/kanban-column";
 
 const DEFAULT_STATUSES = ["Pendiente", "Haciendo", "Hecho"];
 const MAX_TAGS_PER_TASK = 5;
@@ -315,10 +332,20 @@ function StatusSection({
 }
 
 export default function KanbanPage() {
-  const { context, kanbanColumns: columns, cachedTasks, setCachedTasks } = useAppContextStore();
+  const { context, setContext, kanbanColumns: columns, setKanbanColumns, cachedTasks, setCachedTasks } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+
+  // Dual View Configuration
+  const [viewMode, setViewMode] = useState<"flow" | "board">("flow");
+
+  // Filtering Configuration
+  const [priorityFilter, setPriorityFilter] = useState<string>("all");
+
+  // Inline Custom Status State
+  const [newColumnName, setNewColumnName] = useState("");
+  const [showAddColumn, setShowAddColumn] = useState(false);
 
   const [tasks, setTasks] = useState<Task[]>(cachedTasks[context] || []);
   const [searchQuery, setSearchQuery] = useState("");
@@ -331,6 +358,24 @@ export default function KanbanPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Drag and Drop Activation Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200,
+        tolerance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -364,16 +409,26 @@ export default function KanbanPage() {
   }, [statusOrder]);
 
   const visibleTasks = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return tasks;
+    let list = tasks;
 
-    return tasks.filter((task) => {
-      const titleMatch = task.title.toLowerCase().includes(query);
-      const descriptionMatch = (task.description || "").toLowerCase().includes(query);
-      const tagMatch = (task.tags || []).some((tag) => normalizeTag(tag).includes(query));
-      return titleMatch || descriptionMatch || tagMatch;
-    });
-  }, [searchQuery, tasks]);
+    // Filter by Priority
+    if (priorityFilter !== "all") {
+      list = list.filter((task) => task.priority === priorityFilter);
+    }
+
+    // Filter by search query
+    const query = searchQuery.trim().toLowerCase();
+    if (query) {
+      list = list.filter((task) => {
+        const titleMatch = task.title.toLowerCase().includes(query);
+        const descriptionMatch = (task.description || "").toLowerCase().includes(query);
+        const tagMatch = (task.tags || []).some((tag) => normalizeTag(tag).includes(query));
+        return titleMatch || descriptionMatch || tagMatch;
+      });
+    }
+
+    return list;
+  }, [priorityFilter, searchQuery, tasks]);
 
   const groupedTasks = useMemo(() => {
     const grouped = new Map<string, Task[]>();
@@ -505,6 +560,57 @@ export default function KanbanPage() {
     toast({ variant: "success", title: "Estado actualizado", description: `Ahora está en ${status}.` });
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+
+    let targetStatus = overId;
+
+    const targetTask = tasks.find((t) => t.id === overId);
+    if (targetTask) {
+      targetStatus = targetTask.status;
+    }
+
+    const currentTask = tasks.find((t) => t.id === taskId);
+    if (currentTask && currentTask.status !== targetStatus) {
+      handleMoveTask(taskId, targetStatus);
+    }
+  };
+
+  const handleAddColumn = () => {
+    const trimmed = newColumnName.trim();
+    if (!trimmed) return;
+    if (statusOrder.includes(trimmed)) {
+      toast({ variant: "destructive", title: "Estado duplicado", description: "Este estado ya existe en el tablero." });
+      return;
+    }
+    const updatedColumns = [...columns, trimmed];
+    setKanbanColumns(updatedColumns);
+    setNewColumnName("");
+    setShowAddColumn(false);
+    toast({ variant: "success", title: "Estado creado", description: `Se agregó la columna "${trimmed}".` });
+  };
+
+  const handleClearCompleted = async () => {
+    if (!user || !firestore) return;
+    const completedList = tasks.filter((task) => task.status === "Hecho");
+    if (completedList.length === 0) {
+      toast({ variant: "warning", title: "Sin tareas hechas", description: "No hay tareas completadas para limpiar." });
+      return;
+    }
+
+    setTasks((previous) => previous.filter((task) => task.status !== "Hecho"));
+
+    for (const task of completedList) {
+      await deleteTask(firestore, user.uid, task.id);
+    }
+
+    toast({ variant: "success", title: "Tablero Limpio", description: `Se archivaron ${completedList.length} tareas.` });
+  };
+
   const handleGenerateTasks = async () => {
     if (!aiPrompt.trim() || !user || !firestore) return;
 
@@ -590,46 +696,83 @@ export default function KanbanPage() {
     return null;
   }
 
+  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   return (
-    <div className="space-y-6 pb-24">
-      <section className="rounded-[32px] border border-border bg-gradient-to-br from-background via-card/60 to-background p-5 shadow-sm md:p-7">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="rounded-full border-primary/20 bg-primary/10 text-[10px] font-black uppercase tracking-[0.35em] text-primary">
-              Vista vertical
-            </Badge>
-            <Badge variant="outline" className="rounded-full border-border bg-muted/40 text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground">
-              {context}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={cn(
-                "rounded-full text-[10px] font-black uppercase tracking-[0.35em]",
-                fromCache ? "border-amber-500/20 bg-amber-500/10 text-amber-300" : "border-primary/20 bg-primary/10 text-primary"
-              )}
-            >
-              <Database className="mr-1 h-3 w-3" />
-              {fromCache ? "Cache" : "Live"}
-            </Badge>
+    <div className="space-y-6 pb-24 max-w-[1400px] mx-auto px-4 sm:px-6">
+      {/* Header Premium Section */}
+      <section className="rounded-[28px] border border-border bg-gradient-to-br from-background via-card/40 to-background p-6 shadow-md md:p-8">
+        <div className="flex flex-col gap-6">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
+            <div className="space-y-1">
+              <h1 className="text-3xl font-black tracking-tight md:text-4xl text-foreground">
+                Organizador Kanban
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Planifica tu jornada, gestiona prioridades y orquesta tus actividades.
+              </p>
+            </div>
+
+            {/* Context Quick Switcher */}
+            <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-2xl border border-border">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setContext("Trabajo")}
+                className={cn(
+                  "h-9 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all",
+                  context === "Trabajo"
+                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)] font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Trabajo
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setContext("Estudio")}
+                className={cn(
+                  "h-9 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all",
+                  context === "Estudio"
+                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)] font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Estudio
+              </Button>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight md:text-5xl">Tareas en una sola columna</h1>
-            <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-              Una interfaz más rápida para móvil y escritorio: crear arriba, cambiar estados en la tarjeta y evitar el tablero horizontal.
-            </p>
+          {/* Progress Tracker */}
+          <div className="space-y-2 bg-muted/10 p-4 rounded-2xl border border-border">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              <span>Rendimiento del Flujo</span>
+              <span className="font-data text-primary text-xs">
+                {completionPercentage}% ({completedTasks} de {totalTasks} Hechas)
+              </span>
+            </div>
+            <div className="h-2 w-full bg-muted/30 rounded-full overflow-hidden border border-border">
+              <div
+                className="h-full bg-primary neon-glow transition-all duration-500 rounded-full"
+                style={{ width: `${completionPercentage}%` }}
+              />
+            </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Metrics Grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Total", value: totalTasks, icon: Database, tone: "text-sky-400" },
-              { label: "En progreso", value: inProgressTasks, icon: Clock3, tone: "text-primary" },
-              { label: "Críticas", value: criticalTasks, icon: Flame, tone: "text-red-400" },
-              { label: "Hechas", value: completedTasks, icon: CircleCheckBig, tone: "text-emerald-400" },
+              { label: "Totales", value: totalTasks, icon: FolderDot, tone: "text-sky-400" },
+              { label: "En Progreso", value: inProgressTasks, icon: Clock3, tone: "text-primary" },
+              { label: "Críticas", value: criticalTasks, icon: Flame, tone: "text-red-500" },
+              { label: "Finalizadas", value: completedTasks, icon: CircleCheckBig, tone: "text-emerald-400" },
             ].map(({ label, value, icon: Icon, tone }) => (
-              <div key={label} className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-4 py-3">
+              <div key={label} className="flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-5 py-4">
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/60">{label}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">{label}</p>
                   <p className={cn("mt-1 text-2xl font-black tracking-tight", tone)}>{value}</p>
                 </div>
                 <Icon className={cn("h-6 w-6 opacity-30", tone)} />
@@ -637,61 +780,130 @@ export default function KanbanPage() {
             ))}
           </div>
 
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
-              <Input
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Buscar por título, descripción o etiqueta"
-                className="h-12 rounded-2xl border-border bg-muted/20 pl-11 text-sm"
-              />
+          {/* Search, View Toggle, and Filters Toolbelt */}
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center border-t border-border/40 pt-5">
+            <div className="flex flex-col sm:flex-row gap-3 flex-1">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
+                <Input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Buscar por palabra clave o etiqueta..."
+                  className="h-12 rounded-2xl border-border bg-muted/20 pl-11 text-sm focus-visible:ring-primary"
+                />
+              </div>
+
+              {/* Priority Toggle Filters */}
+              <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-2xl border border-border overflow-x-auto scrollbar-hide">
+                {[
+                  { value: "all", label: "Todas" },
+                  { value: "alta", label: "Alta" },
+                  { value: "media", label: "Media" },
+                  { value: "baja", label: "Baja" },
+                ].map((p) => (
+                  <Button
+                    key={p.value}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPriorityFilter(p.value)}
+                    className={cn(
+                      "h-8 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 shrink-0",
+                      priorityFilter === p.value
+                        ? p.value === "alta"
+                          ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                          : p.value === "media"
+                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            : p.value === "baja"
+                              ? "bg-blue-500/20 text-blue-300 border border-blue-500/30"
+                              : "bg-primary/20 text-primary border border-primary/30"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {p.label}
+                  </Button>
+                ))}
+              </div>
             </div>
+
+            {/* View Switcher and Clean Buttons */}
             <div className="flex flex-wrap items-center gap-2">
+              <div className="flex bg-muted/40 p-1 rounded-2xl border border-border">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode("flow")}
+                  className={cn(
+                    "h-10 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all gap-1.5",
+                    viewMode === "flow" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+                  )}
+                >
+                  <List className="w-3.5 h-3.5" />
+                  Lista
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode("board")}
+                  className={cn(
+                    "h-10 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all gap-1.5",
+                    viewMode === "board" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
+                  )}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  Tablero
+                </Button>
+              </div>
+
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => openTaskDialog()}
-                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-[0.28em]"
+                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-widest hover:bg-muted/20"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Nueva tarea
+                Nueva Tarea
               </Button>
+
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setAiPrompt("")}
-                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-[0.28em] text-muted-foreground"
+                onClick={handleClearCompleted}
+                className="h-12 rounded-2xl border-red-500/20 hover:border-red-500/40 bg-red-500/5 px-4 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-all"
               >
-                Limpiar IA
+                Limpiar Hechos
               </Button>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Card className="border-border bg-card/60">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-lg font-black tracking-tight">Crear rápido</CardTitle>
-            <CardDescription>Una sola línea para capturar una tarea sin abrir el formulario completo.</CardDescription>
+      {/* Creation Tools Grid */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Quick Task Creator */}
+        <Card className="border-border bg-card/40 rounded-3xl shadow-sm overflow-hidden">
+          <CardHeader className="space-y-1.5 border-b border-border/30 bg-muted/5 p-6">
+            <CardTitle className="text-base font-black tracking-tight uppercase tracking-wider text-foreground">Captura Rápida</CardTitle>
+            <CardDescription className="text-xs">Crea una tarea al instante seleccionando sus propiedades base.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Título de la Actividad</Label>
               <Input
                 value={quickTitle}
                 onChange={(event) => setQuickTitle(event.target.value)}
-                placeholder="Ej. enviar informe, revisar código, estudiar física"
-                className="h-11 rounded-2xl border-border bg-muted/20"
+                placeholder="Ej. enviar informe de fin de mes, revisar PR de backend..."
+                className="h-12 rounded-2xl border-border bg-muted/20 focus-visible:ring-primary"
               />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Estado</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estado Inicial</Label>
                 <Select value={quickStatus} onValueChange={setQuickStatus}>
-                  <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
+                  <SelectTrigger className="h-12 rounded-2xl border-border bg-muted/20">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-card">
@@ -705,9 +917,9 @@ export default function KanbanPage() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Prioridad</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Prioridad</Label>
                 <Select value={quickPriority} onValueChange={(value) => setQuickPriority(value as Priority)}>
-                  <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
+                  <SelectTrigger className="h-12 rounded-2xl border-border bg-muted/20">
                     <SelectValue placeholder="Prioridad" />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-card">
@@ -719,102 +931,173 @@ export default function KanbanPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               <Button
                 type="button"
                 onClick={handleQuickCreate}
                 disabled={isSaving}
-                className="h-11 rounded-2xl bg-primary px-5 text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
+                className="h-12 rounded-2xl bg-primary px-6 text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg"
               >
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                Crear
+                Crear Tarea
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => openTaskDialog({ title: quickTitle, priority: quickPriority, status: quickStatus })}
-                className="h-11 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-[0.3em]"
+                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-widest"
               >
-                Más campos
+                Añadir Detalles
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border bg-card/60">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-lg font-black tracking-tight">Crear con IA</CardTitle>
-            <CardDescription>Describe lo que necesitas y se generan tareas ya listas para el estado inicial.</CardDescription>
+        {/* AI Task Orchestrator */}
+        <Card className="border-border bg-card/40 rounded-3xl shadow-sm overflow-hidden">
+          <CardHeader className="space-y-1.5 border-b border-border/30 bg-muted/5 p-6">
+            <CardTitle className="text-base font-black tracking-tight uppercase tracking-wider text-foreground">Orquestador de Tareas</CardTitle>
+            <CardDescription className="text-xs">Describe tus objetivos y la IA estructurará y priorizará tu jornada.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                <Sparkles className="mr-1 inline h-3.5 w-3.5" />
-                Prompt
+              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center">
+                <Cpu className="mr-1.5 inline h-3.5 w-3.5 text-primary" />
+                Instrucciones de Planificación
               </Label>
               <Textarea
                 value={aiPrompt}
                 onChange={(event) => setAiPrompt(event.target.value)}
-                placeholder="Ej. mañana entregar el informe, responder correos y preparar la reunión del viernes"
-                className="min-h-[148px] rounded-2xl border-border bg-muted/20 text-sm"
+                placeholder="Ej: Necesito analizar el informe financiero por la mañana, responder los correos del cliente y programar la reunión técnica del próximo viernes..."
+                className="min-h-[148px] rounded-2xl border-border bg-muted/20 text-sm focus-visible:ring-primary leading-relaxed"
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Button
                 type="button"
                 onClick={handleGenerateTasks}
                 disabled={isGenerating || !aiPrompt.trim()}
-                className="h-11 rounded-2xl bg-primary px-5 text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
+                className="h-12 rounded-2xl bg-primary px-6 text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg"
               >
-                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                Generar
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
+                Procesar Plan
               </Button>
-              <p className="text-xs text-muted-foreground">Si la sesión no está lista, verás un aviso claro en lugar del error técnico crudo.</p>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setAiPrompt("")}
+                className="h-12 rounded-2xl border border-border bg-muted/10 px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                Limpiar
+              </Button>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-border bg-card/40">
-        <CardHeader className="space-y-2">
-          <CardTitle className="text-lg font-black tracking-tight">Estados</CardTitle>
-          <CardDescription>
-            Todo se organiza verticalmente por estado. Cambia el estado de cada tarea desde su propia tarjeta.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isTasksLoading && visibleTasks.length === 0 ? (
-            <div className="space-y-3">
-              {[0, 1, 2].map((index) => (
-                <div key={index} className="h-28 animate-pulse rounded-[28px] border border-border bg-muted/20" />
-              ))}
-            </div>
-          ) : visibleTasks.length === 0 ? (
-            <div className="rounded-[28px] border border-dashed border-border bg-muted/20 px-5 py-10 text-center">
-              <p className="text-sm font-semibold text-muted-foreground">
-                {hasSearch ? "No hay tareas que coincidan con tu búsqueda." : "Todavía no hay tareas en este contexto."}
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground/70">Crea una tarea rápida o usa IA para llenar la lista en segundos.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
+      {/* Main Task List / Board Section */}
+      <div className="border-t border-border/40 pt-6">
+        {isTasksLoading && visibleTasks.length === 0 ? (
+          <div className="space-y-4">
+            {[0, 1, 2].map((index) => (
+              <div key={index} className="h-28 animate-pulse rounded-3xl border border-border bg-muted/15" />
+            ))}
+          </div>
+        ) : visibleTasks.length === 0 ? (
+          <div className="rounded-[28px] border border-dashed border-border bg-muted/10 px-6 py-16 text-center">
+            <CheckCircle className="mx-auto w-12 h-12 text-muted-foreground/30 stroke-[1]" />
+            <p className="mt-4 text-sm font-bold text-foreground">
+              {hasSearch ? "No se encontraron tareas coincidentes." : "No hay tareas en esta categoría."}
+            </p>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              {hasSearch ? "Intenta con otra palabra clave." : "Crea una tarea arriba para comenzar."}
+            </p>
+          </div>
+        ) : viewMode === "flow" ? (
+          /* View Mode: FLOW (COLLAPSIBLE VERTICAL LIST) */
+          <div className="space-y-4">
+            {displayStatusOrder.map((status) => (
+              <StatusSection
+                key={status}
+                status={status}
+                tasks={groupedTasks.get(status) || []}
+                statusOptions={displayStatusOrder}
+                onAdd={(presetStatus) => openTaskDialog({ status: presetStatus })}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+                onMove={handleMoveTask}
+              />
+            ))}
+          </div>
+        ) : (
+          /* View Mode: BOARD (HORIZONTAL KANBAN COLUMNS) */
+          <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+            <div className="flex gap-6 overflow-x-auto pb-6 snap-x scrollbar-hide">
               {displayStatusOrder.map((status) => (
-                <StatusSection
+                <KanbanColumn
                   key={status}
                   status={status}
                   tasks={groupedTasks.get(status) || []}
-                  statusOptions={displayStatusOrder}
-                  onAdd={(presetStatus) => openTaskDialog({ status: presetStatus })}
-                  onEdit={handleEditTask}
                   onDelete={handleDeleteTask}
-                  onMove={handleMoveTask}
+                  onEdit={handleEditTask}
+                  selectedTaskIds={new Set()}
+                  onToggleTaskSelection={() => {}}
+                  pendingTaskIds={new Set()}
                 />
               ))}
+
+              {/* Inline Column Adder Block */}
+              <div className="flex-shrink-0 w-80 sm:w-96 flex flex-col snap-center h-[420px]">
+                {showAddColumn ? (
+                  <div className="glass-card-elevated p-5 space-y-4 border border-border flex flex-col justify-between h-[180px]">
+                    <div className="space-y-2">
+                      <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Añadir Nuevo Estado</h3>
+                      <Input
+                        value={newColumnName}
+                        onChange={(e) => setNewColumnName(e.target.value)}
+                        placeholder="Nombre (ej. Bloqueado, Pruebas)"
+                        className="h-11 rounded-2xl border-border bg-muted/20 text-sm focus-visible:ring-primary"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleAddColumn}
+                        className="h-11 w-full rounded-2xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary/95"
+                      >
+                        Añadir
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setShowAddColumn(false);
+                          setNewColumnName("");
+                        }}
+                        className="h-11 w-full rounded-2xl border-border bg-muted/10 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddColumn(true)}
+                    className="flex-1 rounded-[28px] border-2 border-dashed border-border/60 hover:border-primary/40 hover:bg-primary/[0.02] transition-all duration-300 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:text-primary p-6"
+                  >
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-border/80 flex items-center justify-center bg-muted/10 group-hover:border-primary/30">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.25em]">Añadir Columna</span>
+                  </button>
+                )}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </DndContext>
+        )}
+      </div>
 
       <Dialog
         open={dialogOpen}

@@ -77,8 +77,8 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds,
                   <AlertCircle className="w-5 h-5 text-primary" />
                 </div>
                 <div className="flex flex-col items-center">
-                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Detectando Secuencia</span>
-                  <span className="text-[8px] font-medium uppercase tracking-widest text-primary/40 mt-1">Listo para inyectar nodo</span>
+                  <span className="text-[9px] font-black uppercase tracking-[0.3em] text-primary/60">Mover a esta columna</span>
+                  <span className="text-[8px] font-medium uppercase tracking-widest text-primary/40 mt-1">Soltar para organizar</span>
                 </div>
               </div>
             )}
