@@ -27,11 +27,6 @@ function getAiClient() {
     throw new Error('Falta configurar GEMINI_API_KEY en .env.local');
   }
 
-  const firebaseKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.trim();
-  if (firebaseKey && apiKey === firebaseKey) {
-    throw new Error('DETECTED_FIREBASE_KEY_AS_GEMINI');
-  }
-
   return genkit({
     plugins: [googleAI({ apiKey })],
   });
@@ -42,7 +37,7 @@ export async function POST(req: NextRequest) {
     await requireUserIdFromRequest(req);
     const { prompt } = requestSchema.parse(await req.json());
     const ai = getAiClient();
-    const preferredModel = process.env.GEMINI_MODEL?.trim() || 'googleai/gemini-2.0-flash'; // Optimized model choice
+    const preferredModel = process.env.GEMINI_MODEL?.trim() || 'googleai/gemini-1.5-flash'; // Simpler, quota-friendly choice
     const fallbackModel = 'googleai/gemini-1.5-flash';
 
     const now = new Date();
@@ -112,10 +107,6 @@ Texto del usuario:
     let message = error instanceof Error ? error.message : 'Error interno al procesar la solicitud de IA';
     console.error('Error generating tasks:', message);
 
-    if (message === 'DETECTED_FIREBASE_KEY_AS_GEMINI') {
-      const errorMsg = 'Error de Configuración: Estás usando tu API Key de Firebase como clave de Gemini. Debes generar una clave de API dedicada para Gemini en Google AI Studio (https://aistudio.google.com) y colocarla en tu archivo .env.local como GEMINI_API_KEY.';
-      return NextResponse.json({ ok: false, error: errorMsg, code: 'INVALID_API_KEY' }, { status: 400 });
-    }
 
     if (
       message.toLowerCase().includes('api key not valid') ||
