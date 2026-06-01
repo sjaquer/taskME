@@ -95,6 +95,35 @@ service cloud.firestore {
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }
 
+    function isValidTransactionDoc(data, userId) {
+      return data.keys().hasOnly([
+               'userId', 'title', 'amount', 'type', 'category', 'date',
+               'context', 'description', 'isRecurring', 'recurrenceInterval',
+               'createdAt', 'updatedAt'
+             ])
+             && data.userId == userId
+             && data.title is string
+             && data.title.size() > 0
+             && data.title.size() <= 140
+             && data.amount is number
+             && data.amount > 0
+             && data.type is string
+             && data.type in ['ingreso', 'gasto']
+             && data.category is string
+             && data.category in [
+                  'Alquiler/Hipoteca', 'Servicios', 'Comida/Super', 'Transporte',
+                  'Salud', 'Ocio', 'Sueldo', 'Inversiones', 'Otros'
+                ]
+             && data.date is string
+             && data.context is string
+             && data.context in ['Personal', 'Hogar', 'Trabajo']
+             && (!('description' in data) || data.description is string)
+             && (!('isRecurring' in data) || data.isRecurring is bool)
+             && (!('recurrenceInterval' in data) || (data.recurrenceInterval is string && data.recurrenceInterval in ['semanal', 'mensual', 'anual']))
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
     function isValidSettingsDoc(data) {
       return data.keys().hasOnly([
                'context', 'theme', 'colorMode', 'activeModules', 'highPerformanceMode',
@@ -240,6 +269,19 @@ service cloud.firestore {
                       && isNotificationReadUpdateOnly();
 
         allow delete: if false;
+      }
+
+      // ── Transacciones financieras del usuario ──────────────
+      match /transactions/{transactionId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && isValidTransactionDoc(request.resource.data, userId);
+
+        allow update: if isOwner(userId)
+                      && isValidTransactionDoc(request.resource.data, userId);
+
+        allow delete: if isOwner(userId);
       }
 
       // ── Logs móviles para observabilidad ────────────────────

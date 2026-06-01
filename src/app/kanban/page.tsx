@@ -703,7 +703,7 @@ export default function KanbanPage() {
       {/* Header Premium Section */}
       <section className="rounded-[28px] border border-border bg-gradient-to-br from-background via-card/40 to-background p-6 shadow-md md:p-8">
         <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-5">
+          <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-5">
             <div className="space-y-1">
               <h1 className="text-3xl font-black tracking-tight md:text-4xl text-foreground">
                 Organizador Kanban
@@ -711,38 +711,6 @@ export default function KanbanPage() {
               <p className="text-sm text-muted-foreground">
                 Planifica tu jornada, gestiona prioridades y orquesta tus actividades.
               </p>
-            </div>
-
-            {/* Context Quick Switcher */}
-            <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-2xl border border-border">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setContext("Trabajo")}
-                className={cn(
-                  "h-9 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all",
-                  context === "Trabajo"
-                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)] font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Trabajo
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setContext("Estudio")}
-                className={cn(
-                  "h-9 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all",
-                  context === "Estudio"
-                    ? "bg-primary text-primary-foreground shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)] font-bold"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Estudio
-              </Button>
             </div>
           </div>
 
@@ -808,7 +776,7 @@ export default function KanbanPage() {
                     size="sm"
                     onClick={() => setPriorityFilter(p.value)}
                     className={cn(
-                      "h-8 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 shrink-0",
+                      "h-11 md:h-9 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-wider px-4 md:px-3 shrink-0 transition-all active:scale-95",
                       priorityFilter === p.value
                         ? p.value === "alta"
                           ? "bg-red-500/20 text-red-300 border border-red-500/30"
@@ -835,7 +803,7 @@ export default function KanbanPage() {
                   size="sm"
                   onClick={() => setViewMode("flow")}
                   className={cn(
-                    "h-10 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all gap-1.5",
+                    "h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
                     viewMode === "flow" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
                   )}
                 >
@@ -848,7 +816,7 @@ export default function KanbanPage() {
                   size="sm"
                   onClick={() => setViewMode("board")}
                   className={cn(
-                    "h-10 rounded-xl text-[10px] font-black uppercase tracking-widest px-4 transition-all gap-1.5",
+                    "h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
                     viewMode === "board" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
                   )}
                 >
@@ -861,7 +829,7 @@ export default function KanbanPage() {
                 type="button"
                 variant="outline"
                 onClick={() => openTaskDialog()}
-                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-widest hover:bg-muted/20"
+                className="h-12 w-full sm:w-auto rounded-2xl border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest hover:bg-muted/20 active:scale-95 transition-all"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Nueva Tarea
@@ -871,7 +839,7 @@ export default function KanbanPage() {
                 type="button"
                 variant="outline"
                 onClick={handleClearCompleted}
-                className="h-12 rounded-2xl border-red-500/20 hover:border-red-500/40 bg-red-500/5 px-4 text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 transition-all"
+                className="h-12 w-full sm:w-auto rounded-2xl border-red-500/20 hover:border-red-500/40 bg-red-500/5 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 active:scale-95 transition-all"
               >
                 Limpiar Hechos
               </Button>
@@ -931,12 +899,12 @@ export default function KanbanPage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2 text-xs md:text-[10px]">
               <Button
                 type="button"
                 onClick={handleQuickCreate}
                 disabled={isSaving}
-                className="h-12 rounded-2xl bg-primary px-6 text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg"
+                className="h-12 w-full sm:w-auto rounded-2xl bg-primary px-6 text-xs md:text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg active:scale-95 transition-all"
               >
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Crear Tarea
@@ -945,7 +913,7 @@ export default function KanbanPage() {
                 type="button"
                 variant="outline"
                 onClick={() => openTaskDialog({ title: quickTitle, priority: quickPriority, status: quickStatus })}
-                className="h-12 rounded-2xl border-border bg-muted/10 px-5 text-[10px] font-black uppercase tracking-widest"
+                className="h-12 w-full sm:w-auto rounded-2xl border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
               >
                 Añadir Detalles
               </Button>
@@ -978,7 +946,7 @@ export default function KanbanPage() {
                 type="button"
                 onClick={handleGenerateTasks}
                 disabled={isGenerating || !aiPrompt.trim()}
-                className="h-12 rounded-2xl bg-primary px-6 text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg"
+                className="h-12 w-full sm:w-auto rounded-2xl bg-primary px-6 text-xs md:text-[10px] font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95 shadow-lg active:scale-95 transition-all"
               >
                 {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Brain className="mr-2 h-4 w-4" />}
                 Procesar Plan
@@ -987,7 +955,7 @@ export default function KanbanPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => setAiPrompt("")}
-                className="h-12 rounded-2xl border border-border bg-muted/10 px-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                className="h-12 w-full sm:w-auto rounded-2xl border border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground active:scale-95 transition-all"
               >
                 Limpiar
               </Button>
