@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUser, useAuth, useFirestore } from "@/firebase";
+import { useUser, useAuth, useFirestore, mapAuthError } from "@/firebase";
 import { useAppContextStore } from "@/lib/store";
 import type { AppTheme, HourFormat } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
@@ -105,7 +105,7 @@ export default function SettingsPage() {
       setEmailData({ newEmail: "", password: "" });
       setEmailDialogOpen(false);
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Re-autenticación necesaria o email inválido.";
+      const message = mapAuthError(error);
       toast({ variant: "destructive", title: "Error", description: message });
     } finally {
       setIsUpdatingEmail(false);
@@ -127,8 +127,9 @@ export default function SettingsPage() {
       toast({ variant: "success", title: "Clave actualizada" });
       setPasswords({ current: "", new: "", confirm: "" });
       setPasswordDialogOpen(false);
-    } catch {
-      toast({ variant: "destructive", title: "Acción Denegada", description: "Contraseña actual incorrecta o re-autenticación necesaria." });
+    } catch (error: any) {
+      const message = mapAuthError(error);
+      toast({ variant: "destructive", title: "Acción Denegada", description: message });
     }
   };
 
@@ -159,7 +160,7 @@ export default function SettingsPage() {
       await deleteUserAccount(user, firestore, isEmailUser ? deletePassword : undefined);
       window.location.href = "/login";
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Re-autenticación necesaria.";
+      const message = mapAuthError(error);
       toast({ variant: "destructive", title: "Error al eliminar cuenta", description: message });
     } finally {
       setIsDeletingAccount(false);

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth, useUser } from "@/firebase";
+import { useAuth, useUser, mapAuthError } from "@/firebase";
 import { 
   initiateAnonymousSignIn, 
   initiateEmailSignIn, 
@@ -82,7 +82,7 @@ export default function LoginPage() {
         }
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Ocurrió un error de autenticación.");
+      setErrorMsg(mapAuthError(err));
     } finally {
       setIsLoading(false);
     }
@@ -98,7 +98,7 @@ export default function LoginPage() {
         await initiateGoogleSignIn(auth);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Ocurrió un error con Google.");
+      setErrorMsg(mapAuthError(err));
     } finally {
       if (!isNative) setIsLoading(false);
     }

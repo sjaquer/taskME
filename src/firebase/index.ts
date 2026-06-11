@@ -62,5 +62,6 @@ export { FirebaseClientProvider } from './client-provider';
 export { useCollectionOnce } from './firestore/use-collection-once';
 export { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
 export { initiateAnonymousSignIn, initiateEmailSignUp, initiateEmailSignIn } from './non-blocking-login';
-export { FirestorePermissionError } from './errors';
+export { FirestorePermissionError, mapAuthError } from './errors';
 export { errorEmitter } from './error-emitter';
+

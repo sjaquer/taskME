@@ -121,3 +121,53 @@ export class FirestorePermissionError extends Error {
     this.request = requestObject;
   }
 }
+
+/**
+ * Maps a Firebase Auth error to a user-friendly Spanish message.
+ * It also catches infrastructure configuration issues such as blocked API keys.
+ */
+export function mapAuthError(error: any): string {
+  if (!error) return "Ocurrió un error inesperado.";
+
+  const code = error.code || "";
+  const message = error.message || "";
+
+  // 1. Check for specific known error codes
+  switch (code) {
+    case 'auth/invalid-email':
+      return 'El formato del correo electrónico no es válido.';
+    case 'auth/user-disabled':
+      return 'Esta cuenta de usuario ha sido deshabilitada.';
+    case 'auth/user-not-found':
+      return 'No existe ningún usuario registrado con este correo electrónico.';
+    case 'auth/wrong-password':
+      return 'La contraseña es incorrecta.';
+    case 'auth/invalid-credential':
+      return 'Las credenciales de acceso no son válidas o han expirado.';
+    case 'auth/email-already-in-use':
+      return 'Este correo electrónico ya está registrado por otro usuario.';
+    case 'auth/weak-password':
+      return 'La contraseña debe tener al menos 6 caracteres.';
+    case 'auth/operation-not-allowed':
+      return 'El método de inicio de sesión con correo y contraseña no está habilitado en Firebase Console.';
+    case 'auth/popup-closed-by-user':
+      return 'La ventana de inicio de sesión fue cerrada antes de completar el proceso.';
+    case 'auth/too-many-requests':
+      return 'Demasiados intentos de acceso fallidos. La cuenta ha sido bloqueada temporalmente por seguridad. Inténtalo más tarde.';
+    case 'auth/requires-recent-login':
+      return 'Esta acción requiere re-autenticación. Por favor, cierra sesión e ingresa nuevamente.';
+  }
+
+  // 2. Check for infrastructure API blocking or method blocking in error message
+  if (message.includes('signinwithpassword-are-blocked') || message.includes('authenticationservice.signinwithpassword-are-blocked')) {
+    return 'Las solicitudes de inicio de sesión están bloqueadas debido a restricciones de clave de API en Google Cloud Console. El administrador debe editar la clave de API y permitir el acceso a "Identity Toolkit API" y "Token Service API".';
+  }
+
+  if (message.includes('requests-to-this-api') && message.includes('are-blocked')) {
+    return 'Esta operación está bloqueada por restricciones de la API en Google Cloud Console. Habilite el servicio y configure los accesos de la clave de API.';
+  }
+
+  // Fallback to error message or a generic message
+  return error.message || "Ocurrió un error de autenticación.";
+}
+
