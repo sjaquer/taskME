@@ -99,7 +99,7 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'userId', 'title', 'amount', 'type', 'category', 'date',
                'context', 'description', 'isRecurring', 'recurrenceInterval',
-               'createdAt', 'updatedAt'
+               'parentTransactionId', 'createdAt', 'updatedAt'
              ])
              && data.userId == userId
              && data.title is string
@@ -120,6 +120,7 @@ service cloud.firestore {
              && (!('description' in data) || data.description is string)
              && (!('isRecurring' in data) || data.isRecurring is bool)
              && (!('recurrenceInterval' in data) || (data.recurrenceInterval is string && data.recurrenceInterval in ['semanal', 'mensual', 'anual']))
+             && (!('parentTransactionId' in data) || data.parentTransactionId is string)
              && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }

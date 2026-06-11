@@ -71,6 +71,29 @@ const CATEGORY_COLORS = {
   'Otros': '#1e293b',            // Slate-800
 };
 
+function isOccurrenceOnDate(tx: Transaction, targetDateStr: string): boolean {
+  const startDate = new Date(tx.date);
+  const targetDate = new Date(targetDateStr);
+  
+  // Normalizar horas en UTC/mediodía para evitar desfases de huso horario
+  startDate.setHours(12, 0, 0, 0);
+  targetDate.setHours(12, 0, 0, 0);
+  
+  if (targetDate <= startDate) return false;
+  
+  const diffTime = Math.abs(targetDate.getTime() - startDate.getTime());
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (tx.recurrenceInterval === 'semanal') {
+    return diffDays % 7 === 0;
+  } else if (tx.recurrenceInterval === 'mensual') {
+    return targetDate.getDate() === startDate.getDate();
+  } else if (tx.recurrenceInterval === 'anual') {
+    return targetDate.getDate() === startDate.getDate() && targetDate.getMonth() === startDate.getMonth();
+  }
+  return false;
+}
+
 export default function FinancePage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -79,6 +102,7 @@ export default function FinancePage() {
   const [selectedContext, setSelectedContext] = useState<FinanceContext | 'Todos'>('Todos');
   const [isMounted, setIsMounted] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [activeChartTab, setActiveChartTab] = useState<'history' | 'projection'>('history');
 
   // Estados para el formulario de transacción
   const [txTitle, setTxTitle] = useState('');
@@ -98,17 +122,19 @@ export default function FinancePage() {
   // Construir consulta reactiva de Firebase
   const transactionsQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return buildTransactionsQuery(firestore, user.uid);
-  }, [firestore, user]);
+    return buildTransactionsQuery(
+      firestore, 
+      user.uid, 
+      selectedContext === 'Todos' ? undefined : selectedContext
+    );
+  }, [firestore, user, selectedContext]);
 
   const { data: rawTransactions, isLoading: isTxLoading } = useCollection<Transaction>(transactionsQuery);
 
-  // Filtrar transacciones localmente según contexto seleccionado
+  // Transacciones obtenidas directamente con el filtro de DB aplicado
   const transactions = useMemo(() => {
-    if (!rawTransactions) return [];
-    if (selectedContext === 'Todos') return rawTransactions;
-    return rawTransactions.filter((tx) => tx.context === selectedContext);
-  }, [rawTransactions, selectedContext]);
+    return rawTransactions || [];
+  }, [rawTransactions]);
 
   // Cálculos financieros para los Bento Cards
   const stats = useMemo(() => {
@@ -159,6 +185,126 @@ export default function FinancePage() {
 
     return Object.values(grouped);
   }, [transactions]);
+
+  // Proyección de Flujo de Caja para los próximos 30 días
+  const projectionData = useMemo(() => {
+    if (transactions.length === 0) return [];
+    
+    let currentBalance = stats.balance;
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    today.setHours(12, 0, 0, 0);
+
+    const recurringTx = transactions.filter((tx) => tx.isRecurring);
+
+    const projection = [];
+    
+    for (let i = 1; i <= 30; i++) {
+      const targetDate = new Date(today);
+      targetDate.setDate(today.getDate() + i);
+      const targetDateStr = targetDate.toISOString().split('T')[0];
+      
+      let dayIngresos = 0;
+      let dayGastos = 0;
+      
+      recurringTx.forEach((tx) => {
+        if (isOccurrenceOnDate(tx, targetDateStr)) {
+          const amount = Number(tx.amount);
+          if (tx.type === 'ingreso') {
+            dayIngresos += amount;
+          } else {
+            dayGastos += amount;
+          }
+        }
+      });
+      
+      currentBalance += (dayIngresos - dayGastos);
+      
+      projection.push({
+        date: targetDateStr,
+        ingresos: dayIngresos,
+        gastos: dayGastos,
+        balance: currentBalance,
+        isProjected: true,
+      });
+    }
+    
+    return projection;
+  }, [transactions, stats.balance]);
+
+  // Autogeneración silenciosa de recurrencias pasadas
+  useEffect(() => {
+    if (isTxLoading || !rawTransactions || !user || !firestore) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date(todayStr);
+    today.setHours(0, 0, 0, 0);
+    
+    const recurringParents = rawTransactions.filter(tx => tx.isRecurring && !tx.parentTransactionId);
+    
+    const transactionsToCreate: Omit<Transaction, 'id' | 'userId' | 'createdAt' | 'updatedAt'>[] = [];
+    
+    recurringParents.forEach(parent => {
+      const startDate = new Date(parent.date);
+      startDate.setHours(0, 0, 0, 0);
+      
+      let currentDate = new Date(startDate);
+      
+      while (true) {
+        if (parent.recurrenceInterval === 'semanal') {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (parent.recurrenceInterval === 'mensual') {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        } else if (parent.recurrenceInterval === 'anual') {
+          currentDate.setFullYear(currentDate.getFullYear() + 1);
+        } else {
+          break;
+        }
+        
+        const currentStr = currentDate.toISOString().split('T')[0];
+        
+        if (currentDate >= today) {
+          break;
+        }
+        
+        const alreadyExists = rawTransactions.some(
+          tx => tx.parentTransactionId === parent.id && tx.date === currentStr
+        );
+        
+        if (!alreadyExists) {
+          transactionsToCreate.push({
+            title: `${parent.title} (Recurrente)`,
+            amount: parent.amount,
+            type: parent.type,
+            category: parent.category,
+            context: parent.context,
+            date: currentStr,
+            description: parent.description || undefined,
+            parentTransactionId: parent.id,
+            isRecurring: false,
+          });
+        }
+      }
+    });
+    
+    if (transactionsToCreate.length > 0) {
+      const createPromises = transactionsToCreate.map(tx => 
+        createTransaction(firestore, user.uid, tx)
+      );
+      
+      Promise.all(createPromises)
+        .then(() => {
+          toast({
+            variant: 'success',
+            title: 'Recurrencias Actualizadas',
+            description: `Se registraron automáticamente ${transactionsToCreate.length} transacciones recurrentes pendientes.`,
+          });
+        })
+        .catch(err => {
+          console.error('Error al generar transacciones recurrentes:', err);
+        });
+    }
+  }, [rawTransactions, isTxLoading, user, firestore]);
 
   // Formatear datos para el gráfico de torta de gastos por categoría
   const categoryChartData = useMemo(() => {
@@ -351,9 +497,34 @@ export default function FinancePage() {
         {/* Gráfico de Tendencia de Flujo (Grande) */}
         <div className="lg:col-span-8 glass-card p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[360px]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Curva de Flujo Temporal</p>
-              <h3 className="text-lg font-black uppercase tracking-wider text-foreground mt-1">Evolución Monetaria</h3>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Curva de Flujo Temporal</p>
+                <h3 className="text-lg font-black uppercase tracking-wider text-foreground mt-1">Evolución Monetaria</h3>
+              </div>
+              {/* Tabs Selector */}
+              <div className="flex bg-muted/40 p-1 rounded-xl border border-border text-xs w-fit">
+                <button
+                  onClick={() => setActiveChartTab('history')}
+                  className={`px-3 py-1 font-bold uppercase tracking-wider rounded-lg transition-all ${
+                    activeChartTab === 'history'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Historial
+                </button>
+                <button
+                  onClick={() => setActiveChartTab('projection')}
+                  className={`px-3 py-1 font-bold uppercase tracking-wider rounded-lg transition-all ${
+                    activeChartTab === 'projection'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Proyección
+                </button>
+              </div>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground font-data">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" /> Ingresos</span>
@@ -362,9 +533,9 @@ export default function FinancePage() {
           </div>
 
           <div className="w-full h-[240px]">
-            {chartData.length > 0 ? (
+            {(activeChartTab === 'history' ? chartData.length : projectionData.length) > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={activeChartTab === 'history' ? chartData : projectionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.12} />
@@ -392,7 +563,9 @@ export default function FinancePage() {
                         const data = payload[0].payload;
                         return (
                           <div className="glass p-4 rounded-xl border border-border text-xs space-y-1 font-data">
-                            <p className="font-semibold text-muted-foreground">{data.date}</p>
+                            <p className="font-semibold text-muted-foreground">
+                              {data.date} {data.isProjected && <span className="text-primary font-bold ml-1">(Proyectado)</span>}
+                            </p>
                             <p className="text-emerald-500">Ingresos: ${data.ingresos.toLocaleString()}</p>
                             <p className="text-rose-500">Gastos: ${data.gastos.toLocaleString()}</p>
                             <p className="text-primary font-bold border-t border-border pt-1 mt-1">Saldo: ${data.balance.toLocaleString()}</p>

@@ -2,6 +2,7 @@
 
 import { type ReactNode, Suspense, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
 import { Toaster } from '@/components/ui/toaster';
@@ -78,14 +79,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
               "flex min-h-[100dvh] w-full relative transition-colors duration-500 bg-background",
               visualConfig.showGrid && "bg-grid-pattern"
             )}>
-              {/* Ambient glows — gpu accelerated */}
-              <div className={cn(
-                "fixed inset-0 pointer-events-none overflow-hidden opacity-20 gpu-blur z-0 transition-opacity duration-700",
-                !visualConfig.glowEnabled && "opacity-0"
-              )}>
-                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-primary/10 blur-[120px] rounded-full animate-pulse" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/5 blur-[100px] rounded-full" />
-              </div>
+
 
               {/* Desktop Sidebar */}
               <Sidebar className="hidden md:flex border-r border-border bg-card/60 backdrop-blur-2xl z-40 transition-all duration-500">
@@ -136,7 +130,18 @@ export function ClientShell({ children }: { children: ReactNode }) {
                   "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
                   visualConfig.compactMode ? "space-y-4" : "space-y-8"
                 )}>
-                  {children}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={pathname}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -15 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      className="w-full h-full flex flex-col"
+                    >
+                      {children}
+                    </motion.div>
+                  </AnimatePresence>
                 </main>
                 <BottomNav />
               </div>

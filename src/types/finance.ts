@@ -25,6 +25,7 @@ export interface Transaction {
   description?: string;
   isRecurring?: boolean;
   recurrenceInterval?: 'semanal' | 'mensual' | 'anual';
+  parentTransactionId?: string;
   createdAt?: any;
   updatedAt?: any;
 }

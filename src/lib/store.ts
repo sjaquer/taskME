@@ -85,8 +85,8 @@ export const useAppContextStore = create<AppState>()(
       setAutoDeleteDoneDays: (days) => set({ autoDeleteDoneDays: days }),
       visualConfig: {
         glassIntensity: 0.8,
-        glowEnabled: true,
-        showGrid: true,
+        glowEnabled: false,
+        showGrid: false,
         compactMode: false,
       },
       updateVisualConfig: (config) => set((state) => ({
