@@ -383,7 +383,7 @@ export default function FinancePage() {
   // Skeletons de Carga alineados a la visual Bento 2.0
   if (isUserLoading || isTxLoading || !isMounted) {
     return (
-      <div className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full animate-pulse">
+      <div className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full animate-pulse">
         <div className="space-y-3">
           <Skeleton className="h-10 w-48 bg-muted/30 rounded-lg" />
           <Skeleton className="h-4 w-72 bg-muted/30 rounded-full" />
@@ -411,7 +411,7 @@ export default function FinancePage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full"
+      className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full"
     >
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
@@ -439,7 +439,7 @@ export default function FinancePage() {
       {/* FILA 1: Bento Grid de Métricas de Alto Rango (1x3) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Balance General */}
-        <div className="glass-card-elevated p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+        <div className="glass-card-elevated p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 blur-2xl rounded-full group-hover:scale-125 transition-transform duration-700" />
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Balance General</span>
@@ -456,7 +456,7 @@ export default function FinancePage() {
         </div>
 
         {/* Ingresos del Periodo */}
-        <div className="glass-card p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+        <div className="glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Ingresos</span>
             <div className="p-2 rounded-xl bg-card border border-border">
@@ -474,7 +474,7 @@ export default function FinancePage() {
         </div>
 
         {/* Gastos del Periodo */}
-        <div className="glass-card p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
+        <div className="glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[140px] relative overflow-hidden group">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Gastos / Egresos</span>
             <div className="p-2 rounded-xl bg-card border border-border">
@@ -495,7 +495,7 @@ export default function FinancePage() {
       {/* FILA 2: Bento de Análisis (Gráficos Asimétricos 70/30) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Gráfico de Tendencia de Flujo (Grande) */}
-        <div className="lg:col-span-8 glass-card p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[360px]">
+        <div className="lg:col-span-8 glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[360px]">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div>
@@ -595,7 +595,7 @@ export default function FinancePage() {
         </div>
 
         {/* Breakdown de Categorías de Gasto (Pequeño) */}
-        <div className="lg:col-span-4 glass-card p-8 rounded-[2.5rem] flex flex-col justify-between min-h-[360px]">
+        <div className="lg:col-span-4 glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[360px]">
           <div>
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Distribución del Gasto</p>
             <h3 className="text-lg font-black uppercase tracking-wider text-foreground mt-1">Por Categoría</h3>
@@ -707,7 +707,7 @@ export default function FinancePage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ type: 'spring', stiffness: 100, damping: 20, delay: Math.min(i * 0.03, 0.3) }}
-                  className="glass-card px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/20 transition-all duration-300 group active:scale-[0.99] relative"
+                  className="glass-card px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-primary/20 transition-all duration-300 group active:scale-[0.99] relative"
                 >
                   {/* Detalles Izquierda */}
                   <div className="flex items-center gap-4 flex-1">

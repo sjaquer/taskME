@@ -699,7 +699,7 @@ export default function KanbanPage() {
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   return (
-    <div className="space-y-6 pb-24 max-w-[1400px] mx-auto px-4 sm:px-6">
+    <div className="space-y-6 pb-12 max-w-[1400px] mx-auto px-0">
       {/* Header Premium Section */}
       <section className="rounded-[28px] border border-border bg-gradient-to-br from-background via-card/40 to-background p-6 shadow-md md:p-8">
         <div className="flex flex-col gap-6">
@@ -795,15 +795,15 @@ export default function KanbanPage() {
             </div>
 
             {/* View Switcher and Clean Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex bg-muted/40 p-1 rounded-2xl border border-border">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="flex w-full sm:w-auto bg-muted/40 p-1 rounded-2xl border border-border">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setViewMode("flow")}
                   className={cn(
-                    "h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
+                    "flex-1 sm:flex-none justify-center h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
                     viewMode === "flow" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
                   )}
                 >
@@ -816,7 +816,7 @@ export default function KanbanPage() {
                   size="sm"
                   onClick={() => setViewMode("board")}
                   className={cn(
-                    "h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
+                    "flex-1 sm:flex-none justify-center h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95",
                     viewMode === "board" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground"
                   )}
                 >

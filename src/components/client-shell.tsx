@@ -70,6 +70,37 @@ export function ClientShell({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const PUBLIC_ROUTES = ['/welcome', '/login', '/privacy', '/terms'];
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
+
+  if (isPublic) {
+    return (
+      <>
+        <FirebaseClientProvider>
+          <NativeBridgeProvider>
+            <div className="min-h-[100dvh] w-full bg-background transition-colors duration-500">
+              <main className="w-full min-h-screen">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={pathname}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full min-h-screen"
+                  >
+                    {children}
+                  </motion.div>
+                </AnimatePresence>
+              </main>
+            </div>
+          </NativeBridgeProvider>
+        </FirebaseClientProvider>
+        <Toaster />
+      </>
+    );
+  }
+
   return (
     <>
       <FirebaseClientProvider>
@@ -127,7 +158,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
               <div className="flex-1 flex flex-col min-w-0 z-10">
                 <Header />
                 <main className={cn(
-                  "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-3 sm:px-4 md:px-8 lg:px-10 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
+                  "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-4 sm:px-6 md:px-8 lg:px-12 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
                   visualConfig.compactMode ? "space-y-4" : "space-y-8"
                 )}>
                   <AnimatePresence mode="wait">
@@ -156,3 +187,4 @@ export function ClientShell({ children }: { children: ReactNode }) {
     </>
   );
 }
+

@@ -83,7 +83,7 @@ export default function Home() {
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full animate-pulse">
+    <div className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full animate-pulse">
       {/* Header Skeleton */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
         <div className="space-y-4 max-w-2xl w-full">
@@ -130,7 +130,7 @@ function DashboardSkeleton() {
   if (isUserLoading || !user || isTasksLoading) return <DashboardSkeleton />;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-24 px-4 sm:px-6 lg:px-8 max-w-[1400px] mx-auto w-full">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">

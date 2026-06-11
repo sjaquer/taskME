@@ -182,7 +182,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto py-4 px-2 md:px-0">
+    <div className="space-y-8 max-w-4xl mx-auto py-4 px-0">
       {/* Profile Header */}
       <div className="flex flex-col md:flex-row items-center md:items-center gap-6 md:gap-8">
         <div className="relative group">

@@ -157,7 +157,7 @@ export default function CalendarPage() {
   }, [events, googleEvents, context]);
 
   if (!mounted || isUserLoading || !user) return (
-    <div className="min-h-screen bg-background p-4">
+    <div className="min-h-screen bg-background py-4 px-0">
       <Skeleton className="h-12 w-2/3 bg-muted/30 rounded-2xl mb-6" />
       <Skeleton className="h-80 w-full bg-muted/30 rounded-2xl mb-4" />
       <Skeleton className="h-40 w-full bg-muted/30 rounded-2xl" />
@@ -296,10 +296,10 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="pb-12">
       {/* Header con mes y navegación */}
-      <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-xl border-b border-border">
-        <div className="px-4 py-3 flex items-center justify-between">
+      <div className="border-b border-border pb-2">
+        <div className="py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <button
               onClick={goToPrevMonth}
@@ -334,7 +334,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendario mensual compacto */}
-      <div className="px-4 pt-4">
+      <div className="px-0 pt-4">
         <div className="rounded-2xl border border-border bg-card/80 backdrop-blur-sm overflow-hidden">
           {/* Header días de la semana */}
           <div className="grid grid-cols-7 border-b border-border">
@@ -407,7 +407,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Sección de día seleccionado */}
-      <div className="px-4 mt-6">
+      <div className="px-0 mt-6">
         {/* Header del día */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -503,7 +503,7 @@ export default function CalendarPage() {
       </div>
 
       {/* Google Calendar Section - Collapsible */}
-      <div className="px-4 mt-6">
+      <div className="px-0 mt-6">
         <Collapsible open={gcalExpanded} onOpenChange={setGcalExpanded}>
           <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
             <CollapsibleTrigger asChild>

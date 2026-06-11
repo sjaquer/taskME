@@ -111,8 +111,8 @@ export default function WelcomePage() {
       </section>
 
       {/* Security Section */}
-      <section id="security" className="relative z-10 py-32 px-6">
-        <div className="max-w-4xl mx-auto glass-card p-12 md:p-24 text-center space-y-8 overflow-hidden relative">
+      <section id="security" className="relative z-10 py-24 sm:py-32 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto glass-card p-6 sm:p-12 md:p-24 text-center space-y-8 overflow-hidden relative">
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <ShieldCheck className="w-64 h-64 text-primary" />
           </div>
@@ -187,7 +187,7 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="glass-card p-8 space-y-6 border-b-4 border-b-transparent hover:border-b-primary transition-all group"
+      className="glass-card p-6 sm:p-8 space-y-6 border-b-4 border-b-transparent hover:border-b-primary transition-all group"
     >
       <div className="w-16 h-16 rounded-2xl bg-background border border-border flex items-center justify-center shadow-sm group-hover:shadow-primary/10 transition-all">
         {icon}

@@ -90,7 +90,7 @@ export default function SchedulePage() {
   }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) return (
-    <div className="max-w-5xl mx-auto space-y-8 p-4">
+    <div className="max-w-5xl mx-auto space-y-8 py-4 px-0">
       <Skeleton className="h-14 w-1/2 bg-muted/30 rounded-2xl" />
       <Skeleton className="h-20 bg-muted/30 rounded-2xl" />
       <Skeleton className="h-64 bg-muted/30 rounded-2xl" />
@@ -152,7 +152,7 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-24">
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
       {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
