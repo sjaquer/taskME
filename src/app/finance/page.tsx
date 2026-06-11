@@ -449,7 +449,7 @@ export default function FinancePage() {
           </div>
           <div>
             <p className={`text-3xl md:text-4xl font-black font-data tracking-tight ${stats.balance >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-              {stats.balance >= 0 ? '+' : ''}${stats.balance.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+              {stats.balance >= 0 ? '+ S/ ' : '- S/ '}{Math.abs(stats.balance).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest">Suma total del periodo seleccionado</p>
           </div>
@@ -465,7 +465,7 @@ export default function FinancePage() {
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black font-data tracking-tight text-foreground">
-              ${stats.ingresos.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+              S/ {stats.ingresos.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] text-emerald-500/80 mt-1 uppercase tracking-widest font-semibold flex items-center gap-1">
               <span>Flujo positivo registrado</span>
@@ -483,7 +483,7 @@ export default function FinancePage() {
           </div>
           <div>
             <p className="text-3xl md:text-4xl font-black font-data tracking-tight text-foreground">
-              ${stats.gastos.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+              S/ {stats.gastos.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[10px] text-rose-500/80 mt-1 uppercase tracking-widest font-semibold">
               Egresos corrientes devengados
@@ -555,7 +555,7 @@ export default function FinancePage() {
                     fontSize={10}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(val) => `$${val}`}
+                    tickFormatter={(val) => `S/ ${val}`}
                   />
                   <ChartTooltip
                     content={({ active, payload }) => {
@@ -566,9 +566,9 @@ export default function FinancePage() {
                             <p className="font-semibold text-muted-foreground">
                               {data.date} {data.isProjected && <span className="text-primary font-bold ml-1">(Proyectado)</span>}
                             </p>
-                            <p className="text-emerald-500">Ingresos: ${data.ingresos.toLocaleString()}</p>
-                            <p className="text-rose-500">Gastos: ${data.gastos.toLocaleString()}</p>
-                            <p className="text-primary font-bold border-t border-border pt-1 mt-1">Saldo: ${data.balance.toLocaleString()}</p>
+                            <p className="text-emerald-500">Ingresos: S/ {data.ingresos.toLocaleString('es-PE')}</p>
+                            <p className="text-rose-500">Gastos: S/ {data.gastos.toLocaleString('es-PE')}</p>
+                            <p className="text-primary font-bold border-t border-border pt-1 mt-1">Saldo: S/ {data.balance.toLocaleString('es-PE')}</p>
                           </div>
                         );
                       }
@@ -628,7 +628,7 @@ export default function FinancePage() {
                         return (
                           <div className="glass px-3 py-2 rounded-lg border border-border text-xs font-data">
                             <p className="font-semibold">{data.name}</p>
-                            <p className="text-rose-500">${data.value !== undefined ? Number(data.value).toLocaleString() : '0'}</p>
+                            <p className="text-rose-500">S/ {data.value !== undefined ? Number(data.value).toLocaleString('es-PE') : '0'}</p>
                           </div>
                         );
                       }
@@ -645,7 +645,7 @@ export default function FinancePage() {
             {categoryChartData.length > 0 && (
               <div className="absolute flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-[10px] uppercase text-muted-foreground tracking-widest font-bold">Total Egresos</span>
-                <span className="text-lg font-black font-data tracking-tight text-foreground">${stats.gastos.toLocaleString()}</span>
+                <span className="text-lg font-black font-data tracking-tight text-foreground">S/ {stats.gastos.toLocaleString('es-PE')}</span>
               </div>
             )}
           </div>
@@ -661,7 +661,7 @@ export default function FinancePage() {
                   />
                   <span className="truncate max-w-[120px]">{item.name}</span>
                 </span>
-                <span className="font-bold text-foreground font-data">${item.value.toLocaleString()}</span>
+                <span className="font-bold text-foreground font-data">S/ {item.value.toLocaleString('es-PE')}</span>
               </div>
             ))}
             {categoryChartData.length > 3 && (
@@ -743,7 +743,7 @@ export default function FinancePage() {
                   <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-border">
                     <div className="text-right">
                       <p className={`text-base sm:text-lg font-black font-data tracking-tight ${tx.type === 'ingreso' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {tx.type === 'ingreso' ? '+' : '-'}${tx.amount.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
+                        {tx.type === 'ingreso' ? '+ S/ ' : '- S/ '}{tx.amount.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
 
@@ -845,7 +845,7 @@ export default function FinancePage() {
 
                 {/* Importe */}
                 <div className="space-y-1.5">
-                  <label htmlFor="tx-amount" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Importe ($)</label>
+                  <label htmlFor="tx-amount" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Importe (S/)</label>
                   <input
                     id="tx-amount"
                     type="number"
