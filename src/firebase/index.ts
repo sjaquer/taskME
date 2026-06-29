@@ -35,7 +35,8 @@ export function getSdks(firebaseApp: FirebaseApp) {
   let firestore;
   try {
     firestore = initializeFirestore(firebaseApp, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      ignoreUndefinedProperties: true,
     });
   } catch {
     // Already initialized (HMR or getApp() path)

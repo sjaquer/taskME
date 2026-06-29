@@ -13,12 +13,33 @@ import {
 import { errorEmitter } from '@/firebase/error-emitter';
 import {FirestorePermissionError} from '@/firebase/errors';
 
+function removeUndefinedFields<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(item => removeUndefinedFields(item)) as unknown as T;
+  }
+  if (Object.getPrototypeOf(obj) !== Object.prototype) {
+    // It's a special object (e.g. FieldValue, Date, etc.)
+    return obj;
+  }
+
+  const cleanObj = {} as any;
+  Object.keys(obj).forEach((key) => {
+    const value = (obj as any)[key];
+    if (value !== undefined) {
+      cleanObj[key] = removeUndefinedFields(value);
+    }
+  });
+  return cleanObj;
+}
+
 /**
  * Initiates a setDoc operation for a document reference.
  * Does NOT await the write operation internally.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: Record<string, unknown>, options: SetOptions) {
-  setDoc(docRef, data, options).catch(error => {
+  setDoc(docRef, removeUndefinedFields(data), options).catch(error => {
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -38,7 +59,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: Record<s
  * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: Record<string, unknown>) {
-  const promise = addDoc(colRef, data)
+  const promise = addDoc(colRef, removeUndefinedFields(data))
     .catch(error => {
       errorEmitter.emit(
         'permission-error',
@@ -58,7 +79,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: Record
  * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: Record<string, unknown>) {
-  updateDoc(docRef, data as Record<string, FieldValue | Partial<unknown> | undefined>)
+  updateDoc(docRef, removeUndefinedFields(data) as Record<string, FieldValue | Partial<unknown> | undefined>)
     .catch(error => {
       errorEmitter.emit(
         'permission-error',

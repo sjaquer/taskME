@@ -757,7 +757,7 @@ export default function KanbanPage() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Buscar por palabra clave o etiqueta..."
-                  className="h-12 rounded-2xl border-border bg-muted/20 pl-11 text-sm focus-visible:ring-primary"
+                  className="h-12 rounded-2xl border-border bg-muted/20 pl-11 text-base sm:text-sm focus-visible:ring-primary"
                 />
               </div>
 
@@ -937,7 +937,7 @@ export default function KanbanPage() {
                 value={aiPrompt}
                 onChange={(event) => setAiPrompt(event.target.value)}
                 placeholder="Ej: Necesito analizar el informe financiero por la mañana, responder los correos del cliente y programar la reunión técnica del próximo viernes..."
-                className="min-h-[148px] rounded-2xl border-border bg-muted/20 text-sm focus-visible:ring-primary leading-relaxed"
+                className="min-h-[148px] rounded-2xl border-border bg-muted/20 text-base sm:text-sm focus-visible:ring-primary leading-relaxed"
               />
             </div>
 
@@ -1025,7 +1025,7 @@ export default function KanbanPage() {
                         value={newColumnName}
                         onChange={(e) => setNewColumnName(e.target.value)}
                         placeholder="Nombre (ej. Bloqueado, Pruebas)"
-                        className="h-11 rounded-2xl border-border bg-muted/20 text-sm focus-visible:ring-primary"
+                        className="h-11 rounded-2xl border-border bg-muted/20 text-base sm:text-sm focus-visible:ring-primary"
                       />
                     </div>
                     <div className="flex gap-2">

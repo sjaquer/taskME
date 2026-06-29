@@ -639,19 +639,19 @@ export default function CalendarPage() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-primary uppercase w-10">Inicio</span>
                 <Input type="date" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl flex-1 px-3 text-sm" />
+                  className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl flex-1 px-3 text-base sm:text-sm" />
                 {!formData.allDay && (
                   <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl w-24 px-3 text-sm" />
+                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl w-24 px-3 text-base sm:text-sm" />
                 )}
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black text-white/40 uppercase w-10">Fin</span>
                 <Input type="date" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl flex-1 px-3 text-sm" />
+                  className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl flex-1 px-3 text-base sm:text-sm" />
                 {!formData.allDay && (
                   <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl w-24 px-3 text-sm" />
+                    className="bg-white/[0.03] border-white/[0.08] h-10 rounded-xl w-24 px-3 text-base sm:text-sm" />
                 )}
               </div>
             </div>

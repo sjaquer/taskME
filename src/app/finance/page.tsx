@@ -776,7 +776,7 @@ export default function FinancePage() {
       {/* MODAL FORMULARIO: REGISTRO DE TRANSACCIÓN */}
       <AnimatePresence>
         {showModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4 px-0">
             {/* Fondo de desenfoque */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -788,11 +788,11 @@ export default function FinancePage() {
 
             {/* Contenedor Modal */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              transition={{ type: 'spring', stiffness: 150, damping: 25 }}
-              className="glass-card-elevated max-w-md w-full max-h-[90dvh] overflow-y-auto p-5 sm:p-8 rounded-3xl sm:rounded-[2.5rem] z-10 border border-white/10 shadow-2xl relative scrollbar-hide"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+              className="glass-card-elevated w-full sm:max-w-md max-h-[85vh] sm:max-h-[90dvh] overflow-y-auto p-6 sm:p-8 rounded-t-[2.5rem] rounded-b-none sm:rounded-[2.5rem] z-10 border border-white/10 shadow-2xl relative scrollbar-hide pb-10 sm:pb-8"
             >
               <div className="mb-5 sm:mb-6">
                 <h3 className="text-lg sm:text-xl font-black uppercase tracking-wider text-foreground">Registrar Movimiento</h3>
@@ -839,7 +839,7 @@ export default function FinancePage() {
                     placeholder="Ej. Alquiler de Dpto, Honorarios Profesionales"
                     value={txTitle}
                     onChange={(e) => setTxTitle(e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/40"
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/40"
                   />
                 </div>
 
@@ -854,7 +854,7 @@ export default function FinancePage() {
                     placeholder="0.00"
                     value={txAmount}
                     onChange={(e) => setTxAmount(e.target.value)}
-                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-sm sm:text-xs font-data text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/40"
+                    className="w-full rounded-2xl border border-border bg-card px-4 py-3 text-base sm:text-sm font-data text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-muted-foreground/40"
                   />
                 </div>
 
@@ -866,7 +866,7 @@ export default function FinancePage() {
                       id="tx-category"
                       value={txCategory}
                       onChange={(e) => setTxCategory(e.target.value as FinanceCategory)}
-                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     >
                       {CATEGORIES.map((cat) => (
                         <option key={cat} value={cat}>{cat}</option>
@@ -881,7 +881,7 @@ export default function FinancePage() {
                       id="tx-context"
                       value={txContext}
                       onChange={(e) => setTxContext(e.target.value as FinanceContext)}
-                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     >
                       {CONTEXTS.map((ctx) => (
                         <option key={ctx} value={ctx}>{ctx}</option>
@@ -899,7 +899,7 @@ export default function FinancePage() {
                     required
                     value={txDate}
                     onChange={(e) => setTxDate(e.target.value)}
-                    className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-4 text-sm sm:text-xs font-data text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-4 text-base sm:text-sm font-data text-foreground focus:outline-none focus:ring-1 focus:ring-primary [color-scheme:dark]"
                   />
                 </div>
 
@@ -913,7 +913,7 @@ export default function FinancePage() {
                     type="checkbox"
                     checked={txIsRecurring}
                     onChange={(e) => setTxIsRecurring(e.target.checked)}
-                    className="w-4 h-4 rounded border-border accent-primary focus:ring-primary cursor-pointer"
+                    className="w-5 h-5 sm:w-4 sm:h-4 rounded border-border accent-primary focus:ring-primary cursor-pointer shrink-0"
                   />
                 </div>
 
@@ -928,7 +928,7 @@ export default function FinancePage() {
                       id="tx-recurrence"
                       value={txRecurrence}
                       onChange={(e) => setTxRecurrence(e.target.value as any)}
-                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-sm sm:text-xs text-foreground focus:outline-none focus:ring-1"
+                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1"
                     >
                       <option value="semanal">Semanal</option>
                       <option value="mensual">Mensual</option>
