@@ -3,12 +3,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, LayoutGrid, Clock, Settings, DollarSign } from "lucide-react";
+import { Calendar, LayoutGrid, Clock, Settings, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContextStore } from "@/lib/store";
 
 const NAV_ITEMS = [
-  { icon: Home, label: "Inicio", href: "/", moduleKey: "dashboard" as const },
   { icon: LayoutGrid, label: "Tablero", href: "/kanban", moduleKey: "kanban" as const },
   { icon: Clock, label: "Horario", href: "/schedule", moduleKey: "schedule" as const },
   { icon: Calendar, label: "Eventos", href: "/calendar", moduleKey: "calendar" as const },

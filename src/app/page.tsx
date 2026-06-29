@@ -41,10 +41,8 @@ export default function Home() {
     if (!isUserLoading && !user) {
       router.push("/welcome");
     } else if (!isUserLoading && user) {
-      if (defaultPage && defaultPage !== "/" && !sessionStorage.getItem("hasRedirectedToDefault")) {
-        sessionStorage.setItem("hasRedirectedToDefault", "true");
-        router.push(defaultPage);
-      }
+      const targetPage = (defaultPage && defaultPage !== "/") ? defaultPage : "/kanban";
+      router.push(targetPage);
     }
   }, [user, isUserLoading, router, defaultPage]);
 
