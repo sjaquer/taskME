@@ -13,7 +13,7 @@ import {
   Calendar,
   AlertCircle,
   PiggyBank,
-  CreditCard,
+  CreditCard as CreditCardIcon,
   ArrowRight,
   Info,
   Check,
@@ -29,7 +29,7 @@ import {
   createTransaction,
   deleteTransaction,
 } from '@/services/finance-service';
-import type { Transaction, FinanceCategory, FinanceContext } from '@/types/finance';
+import type { Transaction, FinanceCategory, FinanceContext, BankAccount, IncomeMethod, CreditCard } from '@/types/finance';
 
 // Evitar errores de hidratación de Recharts en Next.js cargándolo dinámicamente
 import {
@@ -114,6 +114,8 @@ export default function FinancePage() {
   const [txDescription, setTxDescription] = useState('');
   const [txIsRecurring, setTxIsRecurring] = useState(false);
   const [txRecurrence, setTxRecurrence] = useState<'semanal' | 'mensual' | 'anual'>('mensual');
+  const [txIncomeOption, setTxIncomeOption] = useState<'yape_bcp' | 'plin_interbank' | 'transferencia_bcp' | 'transferencia_interbank'>('yape_bcp');
+  const [txCreditCard, setTxCreditCard] = useState<CreditCard | 'ninguna'>('ninguna');
 
   useEffect(() => {
     setIsMounted(true);
@@ -140,18 +142,48 @@ export default function FinancePage() {
   const stats = useMemo(() => {
     let ingresos = 0;
     let gastos = 0;
+    let bcpBalance = 0;
+    let interbankBalance = 0;
+    let cardBcpOro = 0;
+    let cardIo = 0;
+    let cardOh = 0;
+    let cardDiners = 0;
 
     transactions.forEach((tx) => {
       const amount = Number(tx.amount);
       if (tx.type === 'ingreso') {
         ingresos += amount;
+        if (tx.bankAccount === 'BCP') {
+          bcpBalance += amount;
+        } else if (tx.bankAccount === 'Interbank') {
+          interbankBalance += amount;
+        }
       } else {
         gastos += amount;
+        if (tx.creditCard === 'BCP Oro Personal') {
+          cardBcpOro += amount;
+        } else if (tx.creditCard === 'IO Personal') {
+          cardIo += amount;
+        } else if (tx.creditCard === 'OH Familiar') {
+          cardOh += amount;
+        } else if (tx.creditCard === 'Diners Familiar') {
+          cardDiners += amount;
+        }
       }
     });
 
     const balance = ingresos - gastos;
-    return { ingresos, gastos, balance };
+    return {
+      ingresos,
+      gastos,
+      balance,
+      bcpBalance,
+      interbankBalance,
+      cardBcpOro,
+      cardIo,
+      cardOh,
+      cardDiners,
+    };
   }, [transactions]);
 
   // Formatear datos para el gráfico de líneas de flujo de caja
@@ -282,6 +314,9 @@ export default function FinancePage() {
             description: parent.description || undefined,
             parentTransactionId: parent.id,
             isRecurring: false,
+            bankAccount: parent.bankAccount || undefined,
+            method: parent.method || undefined,
+            creditCard: parent.creditCard || undefined,
           });
         }
       }
@@ -335,6 +370,31 @@ export default function FinancePage() {
       return;
     }
 
+    // Mapear opción de cuenta bancaria y método para ingresos, o tarjeta para gastos
+    let bankAccount: BankAccount | undefined = undefined;
+    let method: IncomeMethod | undefined = undefined;
+    let creditCard: CreditCard | undefined = undefined;
+
+    if (txType === 'ingreso') {
+      if (txIncomeOption === 'yape_bcp') {
+        bankAccount = 'BCP';
+        method = 'Yape';
+      } else if (txIncomeOption === 'transferencia_bcp') {
+        bankAccount = 'BCP';
+        method = 'Transferencia';
+      } else if (txIncomeOption === 'plin_interbank') {
+        bankAccount = 'Interbank';
+        method = 'Plin';
+      } else if (txIncomeOption === 'transferencia_interbank') {
+        bankAccount = 'Interbank';
+        method = 'Transferencia';
+      }
+    } else {
+      if (txCreditCard !== 'ninguna') {
+        creditCard = txCreditCard;
+      }
+    }
+
     try {
       await createTransaction(firestore, user.uid, {
         title: txTitle,
@@ -346,6 +406,9 @@ export default function FinancePage() {
         description: txDescription || undefined,
         isRecurring: txIsRecurring || undefined,
         recurrenceInterval: txIsRecurring ? txRecurrence : undefined,
+        bankAccount,
+        method,
+        creditCard,
       });
 
       toast({ variant: 'success', title: 'Registro Exitoso', description: 'Movimiento añadido correctamente.' });
@@ -378,6 +441,8 @@ export default function FinancePage() {
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxDescription('');
     setTxIsRecurring(false);
+    setTxIncomeOption('yape_bcp');
+    setTxCreditCard('ninguna');
   };
 
   // Skeletons de Carga alineados a la visual Bento 2.0
@@ -488,6 +553,75 @@ export default function FinancePage() {
             <p className="text-[10px] text-rose-500/80 mt-1 uppercase tracking-widest font-semibold">
               Egresos corrientes devengados
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* FILA EXTRA: Resumen de Cuentas y Tarjetas de Crédito */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Cuentas Bancarias */}
+        <div className="glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Saldos por Cuentas</p>
+              <h3 className="text-lg font-black uppercase tracking-wider text-foreground mt-1">Cuentas Bancarias</h3>
+            </div>
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <PiggyBank className="w-5 h-5 text-primary" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Cuenta BCP</span>
+              <p className="text-xl md:text-2xl font-black font-data tracking-tight text-emerald-500">
+                S/ {stats.bcpBalance.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Cuenta Interbank</span>
+              <p className="text-xl md:text-2xl font-black font-data tracking-tight text-emerald-500">
+                S/ {stats.interbankBalance.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjetas de Crédito */}
+        <div className="glass-card p-5 sm:p-8 rounded-2xl sm:rounded-[2.5rem] flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Consumos de Periodo</p>
+              <h3 className="text-lg font-black uppercase tracking-wider text-foreground mt-1">Tarjetas de Crédito</h3>
+            </div>
+            <div className="p-2 rounded-xl bg-card border border-border">
+              <CreditCardIcon className="w-5 h-5 text-amber-500" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="space-y-1">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider block truncate">BCP Oro</span>
+              <p className="text-base sm:text-lg font-black font-data tracking-tight text-rose-500">
+                S/ {stats.cardBcpOro.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider block truncate">IO Personal</span>
+              <p className="text-base sm:text-lg font-black font-data tracking-tight text-rose-500">
+                S/ {stats.cardIo.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider block truncate">OH Familiar</span>
+              <p className="text-base sm:text-lg font-black font-data tracking-tight text-rose-500">
+                S/ {stats.cardOh.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider block truncate">Diners Fam.</span>
+              <p className="text-base sm:text-lg font-black font-data tracking-tight text-rose-500">
+                S/ {stats.cardDiners.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -730,6 +864,20 @@ export default function FinancePage() {
                         <span className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-bold text-[9px] uppercase tracking-wide border border-border">
                           {tx.context}
                         </span>
+                        {tx.type === 'ingreso' && tx.bankAccount && (
+                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide border flex items-center gap-1 ${
+                            tx.bankAccount === 'BCP'
+                              ? 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                              : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                          }`}>
+                            🏦 {tx.bankAccount} {tx.method ? `(${tx.method})` : ''}
+                          </span>
+                        )}
+                        {tx.type === 'gasto' && tx.creditCard && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[9px] font-bold uppercase tracking-wide flex items-center gap-1">
+                            <CreditCardIcon className="w-2.5 h-2.5" /> {tx.creditCard.replace('Crédito ', '')}
+                          </span>
+                        )}
                         {tx.isRecurring && (
                           <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold text-[9px] uppercase tracking-wide border border-primary/20">
                             🔁 Recurrente
@@ -889,6 +1037,40 @@ export default function FinancePage() {
                     </select>
                   </div>
                 </div>
+
+                {/* Cuenta de destino (Ingresos) o Tarjeta de crédito (Gastos) */}
+                {txType === 'ingreso' ? (
+                  <div className="space-y-1.5">
+                    <label htmlFor="tx-income-option" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Cuenta de Destino / Método</label>
+                    <select
+                      id="tx-income-option"
+                      value={txIncomeOption}
+                      onChange={(e) => setTxIncomeOption(e.target.value as any)}
+                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    >
+                      <option value="yape_bcp">Yape (BCP)</option>
+                      <option value="transferencia_bcp">Transferencia BCP</option>
+                      <option value="plin_interbank">Plin (Interbank)</option>
+                      <option value="transferencia_interbank">Transferencia Interbank</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <label htmlFor="tx-credit-card" className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Imputar a Tarjeta de Crédito</label>
+                    <select
+                      id="tx-credit-card"
+                      value={txCreditCard}
+                      onChange={(e) => setTxCreditCard(e.target.value as any)}
+                      className="w-full h-11 sm:h-10 rounded-2xl border border-border bg-card px-3 text-base sm:text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                    >
+                      <option value="ninguna">Ninguna (Efectivo/Débito)</option>
+                      <option value="BCP Oro Personal">Crédito BCP Oro Personal</option>
+                      <option value="IO Personal">Crédito IO Personal</option>
+                      <option value="OH Familiar">Crédito OH Familiar</option>
+                      <option value="Diners Familiar">Crédito Diners Familiar</option>
+                    </select>
+                  </div>
+                )}
 
                 {/* Fecha */}
                 <div className="space-y-1.5">

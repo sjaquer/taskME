@@ -99,7 +99,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'userId', 'title', 'amount', 'type', 'category', 'date',
                'context', 'description', 'isRecurring', 'recurrenceInterval',
-               'parentTransactionId', 'createdAt', 'updatedAt'
+               'parentTransactionId', 'createdAt', 'updatedAt',
+               'bankAccount', 'method', 'creditCard'
              ])
              && data.userId == userId
              && data.title is string
@@ -122,7 +123,10 @@ service cloud.firestore {
              && (!('recurrenceInterval' in data) || (data.recurrenceInterval is string && data.recurrenceInterval in ['semanal', 'mensual', 'anual']))
              && (!('parentTransactionId' in data) || data.parentTransactionId is string)
              && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
-             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt))
+             && (!('bankAccount' in data) || (data.bankAccount is string && data.bankAccount in ['BCP', 'Interbank']))
+             && (!('method' in data) || (data.method is string && data.method in ['Yape', 'Plin', 'Transferencia']))
+             && (!('creditCard' in data) || (data.creditCard is string && data.creditCard in ['BCP Oro Personal', 'IO Personal', 'OH Familiar', 'Diners Familiar']));
     }
 
     function isValidSettingsDoc(data) {

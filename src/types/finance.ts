@@ -13,6 +13,10 @@ export type FinanceCategory =
 
 export type FinanceContext = 'Personal' | 'Hogar' | 'Trabajo';
 
+export type BankAccount = 'BCP' | 'Interbank';
+export type IncomeMethod = 'Yape' | 'Plin' | 'Transferencia';
+export type CreditCard = 'BCP Oro Personal' | 'IO Personal' | 'OH Familiar' | 'Diners Familiar';
+
 export interface Transaction {
   id: string;
   userId: string;
@@ -28,4 +32,7 @@ export interface Transaction {
   parentTransactionId?: string;
   createdAt?: any;
   updatedAt?: any;
+  bankAccount?: BankAccount;
+  method?: IncomeMethod;
+  creditCard?: CreditCard;
 }
