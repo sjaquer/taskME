@@ -1077,7 +1077,7 @@ export default function KanbanPage() {
           }
         }}
       >
-        <DialogContent className="max-h-[92dvh] overflow-y-auto border-border bg-card sm:max-w-[560px]">
+        <DialogContent className="sm:max-h-[92dvh] overflow-y-auto border-border bg-card sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-black tracking-tight">{editingTask ? "Editar tarea" : "Nueva tarea"}</DialogTitle>
             <DialogDescription>Formulario completo para cuando necesitas más detalle que la creación rápida.</DialogDescription>

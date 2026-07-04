@@ -38,11 +38,11 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // Mobile: full-screen estable (evita colapso con teclado en WebView)
-        "fixed z-50 flex flex-col gap-4 border bg-background shadow-2xl duration-200",
-        "inset-0 p-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-none overflow-y-auto overflow-x-hidden overscroll-contain",
-        // Desktop (sm+): modal centrado clásico
-        "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(48rem,calc(100vw-2rem))] sm:max-w-none sm:h-fit sm:max-h-[90dvh] sm:rounded-2xl sm:p-6",
+        // Mobile: layout de bloque para evitar colapso/reducción con el teclado en WebViews
+        "fixed z-50 border bg-background shadow-2xl duration-200",
+        "inset-0 p-4 pt-[calc(1.25rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] rounded-none overflow-y-auto overflow-x-hidden overscroll-contain block space-y-4",
+        // Desktop (sm+): modal centrado clásico usando flex
+        "sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[min(48rem,calc(100vw-2rem))] sm:max-w-none sm:h-fit sm:max-h-[90dvh] sm:rounded-2xl sm:p-6 sm:flex sm:flex-col sm:gap-4 sm:space-y-0",
         // Animaciones: fade en móvil (sin transform), zoom en desktop
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",

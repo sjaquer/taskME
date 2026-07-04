@@ -550,18 +550,18 @@ export default function CalendarPage() {
                         ? `Última sincronización: ${format(new Date(gcalLastSyncedAt), "HH:mm 'del' d MMM", { locale: es })}`
                         : "Eventos sincronizados correctamente"}
                     </p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={handleGoogleSync}
                         disabled={gcalSyncing}
-                        className="flex-1 h-11 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
+                        className="w-full sm:flex-1 h-11 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-50"
                       >
                         <RefreshCw className={cn("w-4 h-4", gcalSyncing && "animate-spin")} />
                         {gcalSyncing ? "Sincronizando" : "Sincronizar"}
                       </button>
                       <button
                         onClick={handleGoogleDisconnect}
-                        className="h-11 px-4 rounded-xl border border-white/[0.08] text-white/50 text-xs font-bold uppercase tracking-wider flex items-center gap-2 hover:text-red-400 hover:border-red-500/30 active:scale-95 transition-all"
+                        className="w-full sm:w-auto h-11 px-4 rounded-xl border border-white/[0.08] text-white/50 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:text-red-400 hover:border-red-500/30 active:scale-95 transition-all"
                       >
                         <Link2Off className="w-4 h-4" />
                         Desconectar
@@ -608,9 +608,8 @@ export default function CalendarPage() {
         <Plus className="w-7 h-7" />
       </button>
 
-      {/* Dialog para crear/editar evento */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-        <DialogContent className="glass-card-elevated border-border bg-card/98 sm:max-w-[500px] p-5 sm:p-6 sm:max-h-[92dvh] overflow-hidden">
+        <DialogContent className="glass-card-elevated border-border bg-card/98 sm:max-w-[500px] p-5 sm:p-6 sm:max-h-[92dvh] sm:overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase flex items-center gap-3">
               <div className={cn("w-4 h-4 rounded-full", getColorClasses(formData.color))} />

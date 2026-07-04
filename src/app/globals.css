@@ -118,8 +118,9 @@
   * {
     @apply border-border transition-colors duration-300;
   }
+  html,
   body {
-    @apply bg-background text-foreground selection:bg-primary/20 antialiased;
+    @apply bg-background text-foreground selection:bg-primary/20 antialiased overflow-x-hidden w-full max-w-full;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
   }
 }
