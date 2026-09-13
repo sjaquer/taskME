@@ -17,7 +17,7 @@ import {
   Zap,
   Compass,
   ListTodo,
-  CalendarDays,
+  Ticket,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { useUser, useFirestore, useCollectionOnce, useMemoFirebase } from "@/firebase";
@@ -206,14 +206,14 @@ function DashboardSkeleton() {
           </div>
         </Link>
 
-        <Link href="/calendar" className="glass-card p-4 hover:border-primary/30 transition-colors group flex flex-col justify-between min-h-[100px]">
-          <p className="text-xs font-semibold tracking-wider text-primary mb-2">Agenda</p>
+        <Link href="/tickets" className="glass-card p-4 hover:border-primary/30 transition-colors group flex flex-col justify-between min-h-[100px]">
+          <p className="text-xs font-semibold tracking-wider text-primary mb-2">Solicitudes</p>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-bold uppercase tracking-wider">Revisa próximos eventos</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">Coordina entregas y reuniones en un solo lugar.</p>
+              <p className="text-sm font-bold uppercase tracking-wider">Revisa tickets pendientes</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Gestiona pedidos de trabajo de terceros.</p>
             </div>
-            <CalendarDays className="w-5 h-5 text-primary/70 group-hover:text-primary" />
+            <Ticket className="w-5 h-5 text-primary/70 group-hover:text-primary" />
           </div>
         </Link>
       </div>

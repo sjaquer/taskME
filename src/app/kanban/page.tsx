@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -19,7 +18,10 @@ import { toast } from "@/hooks/use-toast";
 import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { buildTasksQuery, createTask, deleteTask, updateTask } from "@/services/task-service";
-import type { AppContext, Priority, Task } from "@/types/task";
+import { buildProjectsQuery, createProject, updateProject, archiveProject } from "@/services/project-service";
+import { TaskFormPanel, type TaskFormState } from "@/components/kanban/task-form-panel";
+import { ProjectManager } from "@/components/kanban/project-manager";
+import type { AppContext, Priority, Project, ProjectFormData, Task } from "@/types/task";
 import {
   CalendarDays,
   ChevronDown,
@@ -35,9 +37,9 @@ import {
   Brain,
   List,
   LayoutGrid,
-  SlidersHorizontal,
   CheckCircle,
   FolderDot,
+  Ticket,
 } from "lucide-react";
 import {
   DndContext,
@@ -52,28 +54,21 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "@/components/organisms/kanban-column";
 
-const DEFAULT_STATUSES = ["Pendiente", "Haciendo", "Hecho"];
+// Estados fijos: el Kanban nunca admite estados personalizados adicionales.
+const STATUSES = ["Pendiente", "Haciendo", "Hecho"] as const;
 const MAX_TAGS_PER_TASK = 5;
 
 const TaskSchema = z.object({
   title: z.string().trim().min(1, "El título es requerido").max(120),
   description: z.string().trim().optional(),
   priority: z.enum(["baja", "media", "alta"]),
-  status: z.string().trim().min(1),
+  status: z.enum(["Pendiente", "Haciendo", "Hecho"]),
   tags: z.array(z.string()),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida").optional(),
   context: z.enum(["Trabajo", "Estudio"]),
   userId: z.string(),
+  projectId: z.string().optional(),
 });
-
-type TaskFormState = {
-  title: string;
-  description: string;
-  priority: Priority;
-  status: string;
-  tags: string;
-  dueDate: string;
-};
 
 function getInitialTaskForm(status: string): TaskFormState {
   return {
@@ -83,6 +78,7 @@ function getInitialTaskForm(status: string): TaskFormState {
     status,
     tags: "",
     dueDate: "",
+    projectId: "",
   };
 }
 
@@ -152,21 +148,15 @@ function getPriorityMeta(priority: Priority) {
   return { label: "Baja", className: "border-blue-500/30 bg-blue-500/10 text-blue-300" };
 }
 
-function buildStatusOrder(columns: string[], tasks: Task[]) {
-  const base = columns.length > 0 ? columns : DEFAULT_STATUSES;
-  const extraStatuses = Array.from(new Set(tasks.map((task) => task.status))).filter((status) => !base.includes(status));
-  return [...base, ...extraStatuses];
-}
-
 function TaskRow({
   task,
-  statusOptions,
+  project,
   onEdit,
   onDelete,
   onMove,
 }: {
   task: Task;
-  statusOptions: string[];
+  project?: Project;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onMove: (taskId: string, status: string) => void;
@@ -188,6 +178,18 @@ function TaskRow({
             <Badge variant="outline" className={cn("rounded-full text-[10px] font-black uppercase tracking-widest", priorityMeta.className)}>
               {priorityMeta.label}
             </Badge>
+            {task.isTicket && (
+              <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest border-primary/30 bg-primary/10 text-primary">
+                <Ticket className="mr-1 h-3 w-3" />
+                Ticket
+              </Badge>
+            )}
+            {project && (
+              <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest border-border bg-muted/30 text-muted-foreground">
+                <span className="mr-1.5 h-2 w-2 rounded-full inline-block" style={{ backgroundColor: project.color }} />
+                {project.name}
+              </Badge>
+            )}
             {dueMeta && (
               <Badge
                 variant="outline"
@@ -209,6 +211,9 @@ function TaskRow({
           <div className="space-y-1">
             <h4 className="text-[15px] font-black leading-tight tracking-tight text-foreground">{task.title}</h4>
             {task.description && <p className="text-sm leading-relaxed text-muted-foreground">{task.description}</p>}
+            {task.isTicket && task.requesterName && (
+              <p className="text-xs font-bold text-primary/70">Solicitado por {task.requesterName}</p>
+            )}
           </div>
 
           {task.tags && task.tags.length > 0 && (
@@ -234,7 +239,7 @@ function TaskRow({
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent className="border-border bg-card">
-              {statusOptions.map((status) => (
+              {STATUSES.map((status) => (
                 <SelectItem key={`${task.id}-${status}`} value={status}>
                   {status}
                 </SelectItem>
@@ -243,15 +248,24 @@ function TaskRow({
           </Select>
 
           <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onEdit(task)}
-              className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary"
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+            {task.isTicket ? (
+              <Link
+                href={`/tickets?edit=${task.id}`}
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary"
+              >
+                <Pencil className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(task)}
+                className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -273,7 +287,7 @@ function TaskRow({
 function StatusSection({
   status,
   tasks,
-  statusOptions,
+  projectsById,
   onAdd,
   onEdit,
   onDelete,
@@ -281,7 +295,7 @@ function StatusSection({
 }: {
   status: string;
   tasks: Task[];
-  statusOptions: string[];
+  projectsById: Map<string, Project>;
   onAdd: (status: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
@@ -318,7 +332,14 @@ function StatusSection({
       <div className="space-y-3 px-4 pb-4 md:px-5">
         {tasks.length > 0 ? (
           tasks.map((task) => (
-            <TaskRow key={task.id} task={task} statusOptions={statusOptions} onEdit={onEdit} onDelete={onDelete} onMove={onMove} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              project={task.projectId ? projectsById.get(task.projectId) : undefined}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onMove={onMove}
+            />
           ))
         ) : (
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
@@ -332,31 +353,31 @@ function StatusSection({
 }
 
 export default function KanbanPage() {
-  const { context, setContext, kanbanColumns: columns, setKanbanColumns, cachedTasks, setCachedTasks } = useAppContextStore();
+  const { context, cachedTasks, setCachedTasks, cachedProjects, setCachedProjects } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const formPanelRef = useRef<HTMLDivElement>(null);
 
   // Dual View Configuration
   const [viewMode, setViewMode] = useState<"flow" | "board">("flow");
 
   // Filtering Configuration
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
-
-  // Inline Custom Status State
-  const [newColumnName, setNewColumnName] = useState("");
-  const [showAddColumn, setShowAddColumn] = useState(false);
+  const [projectFilter, setProjectFilter] = useState<string>("all");
 
   const [tasks, setTasks] = useState<Task[]>(cachedTasks[context] || []);
+  const [projects, setProjects] = useState<Project[]>(cachedProjects[context] || []);
   const [searchQuery, setSearchQuery] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [quickTitle, setQuickTitle] = useState("");
   const [quickPriority, setQuickPriority] = useState<Priority>("media");
-  const [quickStatus, setQuickStatus] = useState<string>(columns[0] ?? DEFAULT_STATUSES[0]);
-  const [taskForm, setTaskForm] = useState<TaskFormState>(getInitialTaskForm(columns[0] ?? DEFAULT_STATUSES[0]));
+  const [quickStatus, setQuickStatus] = useState<string>(STATUSES[0]);
+  const [taskForm, setTaskForm] = useState<TaskFormState>(getInitialTaskForm(STATUSES[0]));
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingProject, setIsSavingProject] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
   // Drag and Drop Activation Sensors
@@ -382,7 +403,14 @@ export default function KanbanPage() {
     return buildTasksQuery(firestore, user.uid, context);
   }, [firestore, user, context]);
 
-  const { data: firestoreTasks, isLoading: isTasksLoading, fromCache } = useCollection<Task>(tasksQuery);
+  const { data: firestoreTasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
+
+  const projectsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return buildProjectsQuery(firestore, user.uid, context);
+  }, [firestore, user, context]);
+
+  const { data: firestoreProjects } = useCollection<Project>(projectsQuery);
 
   useEffect(() => {
     if (firestoreTasks) {
@@ -392,31 +420,32 @@ export default function KanbanPage() {
   }, [context, firestoreTasks, setCachedTasks]);
 
   useEffect(() => {
+    if (firestoreProjects) {
+      setProjects(firestoreProjects);
+      setCachedProjects(context, firestoreProjects);
+    }
+  }, [context, firestoreProjects, setCachedProjects]);
+
+  useEffect(() => {
     if (!isUserLoading && !user) {
       router.push("/login");
     }
   }, [user, isUserLoading, router]);
 
-  const statusOrder = useMemo(() => buildStatusOrder(columns, tasks), [columns, tasks]);
-
-  useEffect(() => {
-    const defaultStatus = statusOrder[0] ?? DEFAULT_STATUSES[0];
-    setQuickStatus((current) => (statusOrder.includes(current) ? current : defaultStatus));
-    setTaskForm((current) => ({
-      ...current,
-      status: current.status && statusOrder.includes(current.status) ? current.status : defaultStatus,
-    }));
-  }, [statusOrder]);
+  const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
+  const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);
 
   const visibleTasks = useMemo(() => {
     let list = tasks;
 
-    // Filter by Priority
     if (priorityFilter !== "all") {
       list = list.filter((task) => task.priority === priorityFilter);
     }
 
-    // Filter by search query
+    if (projectFilter !== "all") {
+      list = list.filter((task) => task.projectId === projectFilter);
+    }
+
     const query = searchQuery.trim().toLowerCase();
     if (query) {
       list = list.filter((task) => {
@@ -428,33 +457,35 @@ export default function KanbanPage() {
     }
 
     return list;
-  }, [priorityFilter, searchQuery, tasks]);
+  }, [priorityFilter, projectFilter, searchQuery, tasks]);
 
   const groupedTasks = useMemo(() => {
     const grouped = new Map<string, Task[]>();
-    statusOrder.forEach((status) => grouped.set(status, []));
+    STATUSES.forEach((status) => grouped.set(status, []));
 
     visibleTasks.forEach((task) => {
       if (!grouped.has(task.status)) {
         grouped.set(task.status, []);
       }
-
       grouped.get(task.status)?.push(task);
     });
 
     return grouped;
-  }, [statusOrder, visibleTasks]);
+  }, [visibleTasks]);
 
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter((task) => task.status === "Hecho").length;
   const inProgressTasks = tasks.filter((task) => task.status === "Haciendo").length;
   const criticalTasks = tasks.filter((task) => task.priority === "alta" && task.status !== "Hecho").length;
   const hasSearch = searchQuery.trim().length > 0;
-  const displayStatusOrder = statusOrder.length > 0 ? statusOrder : DEFAULT_STATUSES;
 
-  const openTaskDialog = (seed?: Partial<TaskFormState>, task?: Task) => {
-    const defaultStatus = statusOrder[0] ?? DEFAULT_STATUSES[0];
+  const scrollToForm = () => {
+    requestAnimationFrame(() => {
+      formPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
+  const openTaskForm = (seed?: Partial<TaskFormState>, task?: Task) => {
     if (task) {
       setEditingTask(task);
       setTaskForm({
@@ -464,17 +495,25 @@ export default function KanbanPage() {
         status: task.status,
         tags: task.tags?.join(", ") || "",
         dueDate: toInputDateValue(task.dueDate),
+        projectId: task.projectId || "",
       });
     } else {
       setEditingTask(null);
       setTaskForm({
-        ...getInitialTaskForm(defaultStatus),
+        ...getInitialTaskForm(STATUSES[0]),
         ...seed,
-        status: seed?.status || defaultStatus,
+        status: seed?.status || STATUSES[0],
       });
     }
 
-    setDialogOpen(true);
+    setFormOpen(true);
+    scrollToForm();
+  };
+
+  const closeTaskForm = () => {
+    setFormOpen(false);
+    setEditingTask(null);
+    setTaskForm(getInitialTaskForm(STATUSES[0]));
   };
 
   const saveTask = async (draft: TaskFormState) => {
@@ -484,11 +523,12 @@ export default function KanbanPage() {
       title: draft.title.trim(),
       description: draft.description.trim(),
       priority: draft.priority,
-      status: draft.status || statusOrder[0] || DEFAULT_STATUSES[0],
+      status: draft.status || STATUSES[0],
       tags: parseTagInput(draft.tags),
       ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
       context: context as AppContext,
       userId: user.uid,
+      ...(draft.projectId ? { projectId: draft.projectId } : {}),
     };
 
     const result = TaskSchema.safeParse(payload);
@@ -528,20 +568,21 @@ export default function KanbanPage() {
         title: quickTitle,
         description: "",
         priority: quickPriority,
-        status: quickStatus || statusOrder[0] || DEFAULT_STATUSES[0],
+        status: quickStatus || STATUSES[0],
         tags: "",
         dueDate: "",
+        projectId: "",
       });
       setQuickTitle("");
       setQuickPriority("media");
-      setQuickStatus(statusOrder[0] || DEFAULT_STATUSES[0]);
+      setQuickStatus(STATUSES[0]);
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleEditTask = (task: Task) => {
-    openTaskDialog(undefined, task);
+    openTaskForm(undefined, task);
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -555,7 +596,7 @@ export default function KanbanPage() {
   const handleMoveTask = (taskId: string, status: string) => {
     if (!user || !firestore) return;
 
-    setTasks((previous) => previous.map((task) => (task.id === taskId ? { ...task, status } : task)));
+    setTasks((previous) => previous.map((task) => (task.id === taskId ? { ...task, status: status as Task["status"] } : task)));
     updateTask(firestore, user.uid, taskId, { status });
     toast({ variant: "success", title: "Estado actualizado", description: `Ahora está en ${status}.` });
   };
@@ -578,20 +619,6 @@ export default function KanbanPage() {
     if (currentTask && currentTask.status !== targetStatus) {
       handleMoveTask(taskId, targetStatus);
     }
-  };
-
-  const handleAddColumn = () => {
-    const trimmed = newColumnName.trim();
-    if (!trimmed) return;
-    if (statusOrder.includes(trimmed)) {
-      toast({ variant: "destructive", title: "Estado duplicado", description: "Este estado ya existe en el tablero." });
-      return;
-    }
-    const updatedColumns = [...columns, trimmed];
-    setKanbanColumns(updatedColumns);
-    setNewColumnName("");
-    setShowAddColumn(false);
-    toast({ variant: "success", title: "Estado creado", description: `Se agregó la columna "${trimmed}".` });
   };
 
   const handleClearCompleted = async () => {
@@ -640,7 +667,7 @@ export default function KanbanPage() {
         throw new Error("La IA no devolvió una lista válida de tareas.");
       }
 
-      const targetStatus = statusOrder[0] || DEFAULT_STATUSES[0];
+      const targetStatus = STATUSES[0];
       let createdCount = 0;
 
       for (const item of generatedTasks) {
@@ -680,16 +707,37 @@ export default function KanbanPage() {
     }
   };
 
-  const handleSaveDialog = async () => {
+  const handleSubmitForm = async () => {
     setIsSaving(true);
     try {
       await saveTask(taskForm);
-      setDialogOpen(false);
-      setEditingTask(null);
-      setTaskForm(getInitialTaskForm(statusOrder[0] || DEFAULT_STATUSES[0]));
+      closeTaskForm();
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCreateProject = (data: ProjectFormData) => {
+    if (!user || !firestore) return;
+    setIsSavingProject(true);
+    createProject(firestore, user.uid, { ...data, context: context as AppContext });
+    toast({ variant: "success", title: "Proyecto creado" });
+    setIsSavingProject(false);
+  };
+
+  const handleUpdateProject = (projectId: string, data: ProjectFormData) => {
+    if (!user || !firestore) return;
+    setIsSavingProject(true);
+    updateProject(firestore, user.uid, projectId, { ...data });
+    toast({ variant: "success", title: "Proyecto actualizado" });
+    setIsSavingProject(false);
+  };
+
+  const handleArchiveProject = (projectId: string) => {
+    if (!user || !firestore) return;
+    archiveProject(firestore, user.uid, projectId);
+    if (projectFilter === projectId) setProjectFilter("all");
+    toast({ variant: "warning", title: "Proyecto archivado" });
   };
 
   if (isUserLoading || !user) {
@@ -828,7 +876,7 @@ export default function KanbanPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => openTaskDialog()}
+                onClick={() => openTaskForm()}
                 className="h-12 w-full sm:w-auto rounded-2xl border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest hover:bg-muted/20 active:scale-95 transition-all"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -845,8 +893,68 @@ export default function KanbanPage() {
               </Button>
             </div>
           </div>
+
+          {/* Project Filter */}
+          {activeProjects.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap bg-muted/30 p-1 rounded-2xl border border-border">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setProjectFilter("all")}
+                className={cn(
+                  "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all",
+                  projectFilter === "all" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Todos los proyectos
+              </Button>
+              {activeProjects.map((project) => (
+                <Button
+                  key={project.id}
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setProjectFilter(project.id)}
+                  className={cn(
+                    "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all gap-1.5",
+                    projectFilter === project.id ? "bg-muted/60 border border-border text-foreground" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: project.color }} />
+                  {project.name}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Gestión de Proyectos */}
+      <ProjectManager
+        projects={projects}
+        onCreate={handleCreateProject}
+        onUpdate={handleUpdateProject}
+        onArchive={handleArchiveProject}
+        isSaving={isSavingProject}
+      />
+
+      {/* Formulario embebido de tarea (crear/editar) — sin modal */}
+      {formOpen && (
+        <div ref={formPanelRef}>
+          <TaskFormPanel
+            isEditing={Boolean(editingTask)}
+            value={taskForm}
+            onChange={(patch) => setTaskForm((previous) => ({ ...previous, ...patch }))}
+            onSubmit={handleSubmitForm}
+            onCancel={closeTaskForm}
+            isSaving={isSaving}
+            statusOptions={[...STATUSES]}
+            projects={activeProjects}
+            maxTags={MAX_TAGS_PER_TASK}
+          />
+        </div>
+      )}
 
       {/* Creation Tools Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -875,7 +983,7 @@ export default function KanbanPage() {
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-card">
-                    {displayStatusOrder.map((status) => (
+                    {STATUSES.map((status) => (
                       <SelectItem key={`quick-${status}`} value={status}>
                         {status}
                       </SelectItem>
@@ -912,7 +1020,7 @@ export default function KanbanPage() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => openTaskDialog({ title: quickTitle, priority: quickPriority, status: quickStatus })}
+                onClick={() => openTaskForm({ title: quickTitle, priority: quickPriority, status: quickStatus })}
                 className="h-12 w-full sm:w-auto rounded-2xl border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
               >
                 Añadir Detalles
@@ -985,13 +1093,13 @@ export default function KanbanPage() {
         ) : viewMode === "flow" ? (
           /* View Mode: FLOW (COLLAPSIBLE VERTICAL LIST) */
           <div className="space-y-4">
-            {displayStatusOrder.map((status) => (
+            {STATUSES.map((status) => (
               <StatusSection
                 key={status}
                 status={status}
                 tasks={groupedTasks.get(status) || []}
-                statusOptions={displayStatusOrder}
-                onAdd={(presetStatus) => openTaskDialog({ status: presetStatus })}
+                projectsById={projectsById}
+                onAdd={(presetStatus) => openTaskForm({ status: presetStatus })}
                 onEdit={handleEditTask}
                 onDelete={handleDeleteTask}
                 onMove={handleMoveTask}
@@ -1002,7 +1110,7 @@ export default function KanbanPage() {
           /* View Mode: BOARD (HORIZONTAL KANBAN COLUMNS) */
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
             <div className="flex gap-6 overflow-x-auto pb-6 snap-x scrollbar-hide">
-              {displayStatusOrder.map((status) => (
+              {STATUSES.map((status) => (
                 <KanbanColumn
                   key={status}
                   status={status}
@@ -1014,163 +1122,10 @@ export default function KanbanPage() {
                   pendingTaskIds={new Set()}
                 />
               ))}
-
-              {/* Inline Column Adder Block */}
-              <div className="flex-shrink-0 w-80 sm:w-96 flex flex-col snap-center h-[420px]">
-                {showAddColumn ? (
-                  <div className="glass-card-elevated p-5 space-y-4 border border-border flex flex-col justify-between h-[180px]">
-                    <div className="space-y-2">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Añadir Nuevo Estado</h3>
-                      <Input
-                        value={newColumnName}
-                        onChange={(e) => setNewColumnName(e.target.value)}
-                        placeholder="Nombre (ej. Bloqueado, Pruebas)"
-                        className="h-11 rounded-2xl border-border bg-muted/20 text-base sm:text-sm focus-visible:ring-primary"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        onClick={handleAddColumn}
-                        className="h-11 w-full rounded-2xl bg-primary text-primary-foreground text-[10px] font-black uppercase tracking-widest hover:bg-primary/95"
-                      >
-                        Añadir
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setShowAddColumn(false);
-                          setNewColumnName("");
-                        }}
-                        className="h-11 w-full rounded-2xl border-border bg-muted/10 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddColumn(true)}
-                    className="flex-1 rounded-[28px] border-2 border-dashed border-border/60 hover:border-primary/40 hover:bg-primary/[0.02] transition-all duration-300 flex flex-col items-center justify-center gap-3 text-muted-foreground hover:text-primary p-6"
-                  >
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-border/80 flex items-center justify-center bg-muted/10 group-hover:border-primary/30">
-                      <Plus className="w-5 h-5" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.25em]">Añadir Columna</span>
-                  </button>
-                )}
-              </div>
             </div>
           </DndContext>
         )}
       </div>
-
-      <Dialog
-        open={dialogOpen}
-        onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) {
-            setEditingTask(null);
-            setTaskForm(getInitialTaskForm(statusOrder[0] || DEFAULT_STATUSES[0]));
-          }
-        }}
-      >
-        <DialogContent className="sm:max-h-[92dvh] overflow-y-auto border-border bg-card sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black tracking-tight">{editingTask ? "Editar tarea" : "Nueva tarea"}</DialogTitle>
-            <DialogDescription>Formulario completo para cuando necesitas más detalle que la creación rápida.</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título</Label>
-              <Input
-                value={taskForm.title}
-                onChange={(event) => setTaskForm((previous) => ({ ...previous, title: event.target.value }))}
-                className="h-11 rounded-2xl border-border bg-muted/20"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Descripción</Label>
-              <Textarea
-                value={taskForm.description}
-                onChange={(event) => setTaskForm((previous) => ({ ...previous, description: event.target.value }))}
-                className="min-h-[110px] rounded-2xl border-border bg-muted/20"
-              />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Estado</Label>
-                <Select value={taskForm.status} onValueChange={(value) => setTaskForm((previous) => ({ ...previous, status: value }))}>
-                  <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card">
-                    {displayStatusOrder.map((status) => (
-                      <SelectItem key={`dialog-${status}`} value={status}>
-                        {status}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Prioridad</Label>
-                <Select value={taskForm.priority} onValueChange={(value) => setTaskForm((previous) => ({ ...previous, priority: value as Priority }))}>
-                  <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
-                    <SelectValue placeholder="Prioridad" />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card">
-                    <SelectItem value="alta">Alta</SelectItem>
-                    <SelectItem value="media">Media</SelectItem>
-                    <SelectItem value="baja">Baja</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Etiquetas</Label>
-              <Input
-                value={taskForm.tags}
-                onChange={(event) => setTaskForm((previous) => ({ ...previous, tags: event.target.value }))}
-                placeholder="cliente, urgente, backend"
-                className="h-11 rounded-2xl border-border bg-muted/20"
-              />
-              <p className="text-[11px] text-muted-foreground">Máximo {MAX_TAGS_PER_TASK} etiquetas separadas por coma.</p>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Fecha límite</Label>
-              <Input
-                type="date"
-                value={taskForm.dueDate}
-                onChange={(event) => setTaskForm((previous) => ({ ...previous, dueDate: event.target.value }))}
-                className="h-11 rounded-2xl border-border bg-muted/20 [color-scheme:dark]"
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={handleSaveDialog}
-              disabled={isSaving}
-              className="h-11 rounded-2xl bg-primary px-5 text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
-            >
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              {editingTask ? "Guardar cambios" : "Crear tarea"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

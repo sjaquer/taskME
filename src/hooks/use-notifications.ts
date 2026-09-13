@@ -1,29 +1,26 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { differenceInMinutes, isToday, parseISO, isAfter, isBefore } from 'date-fns';
+import { differenceInMinutes, isToday, parseISO } from 'date-fns';
 import { useCallback } from 'react';
 import { NotificationService } from '@/services/notification-service';
 
 interface NotificationTracker {
   taskId?: string;
-  eventId?: string;
   routineId?: string;
   sentAt?: number;
 }
 
 /**
- * Hook para monitorear tareas, eventos y rutinas próximos
+ * Hook para monitorear tareas y rutinas próximas
  * Envía notificaciones cuando están a punto de vencer/comenzar
  *
  * @param tasks - Array de tareas del usuario
- * @param events - Array de eventos del usuario
  * @param routines - Array de rutinas del usuario
  * @param enabled - Si el monitoreo está habilitado
  */
 export function useNotifications(
   tasks: any[] = [],
-  events: any[] = [],
   routines: any[] = [],
   enabled: boolean = true
 ) {
@@ -34,8 +31,6 @@ export function useNotifications(
   const NOTIFICATION_TIMES = {
     TASK_15MIN: 15, // Notificar cuando quedan 15 minutos
     TASK_1HOUR: 60,
-    EVENT_15MIN: 15,
-    EVENT_1HOUR: 60,
     ROUTINE_5MIN: 5, // Notificar 5 min antes de que comience
   };
 
@@ -44,7 +39,7 @@ export function useNotifications(
    */
   const wasRecentlyNotified = useCallback((key: string, thresholdMs: number = 60000): boolean => {
     const tracker = notifiedRef.current.find(n =>
-      (n.taskId === key || n.eventId === key || n.routineId === key)
+      (n.taskId === key || n.routineId === key)
     );
 
     if (!tracker || !tracker.sentAt) return false;
@@ -56,7 +51,7 @@ export function useNotifications(
   /**
    * Marca como notificado
    */
-  const markAsNotified = useCallback((key: string, type: 'task' | 'event' | 'routine') => {
+  const markAsNotified = useCallback((key: string, type: 'task' | 'routine') => {
     // Limpiar notificaciones antiguas (más de 24 horas)
     notifiedRef.current = notifiedRef.current.filter(n => {
       if (!n.sentAt) return true;
@@ -66,7 +61,6 @@ export function useNotifications(
     // Agregar nueva notificación
     const tracker: NotificationTracker = { sentAt: Date.now() };
     if (type === 'task') tracker.taskId = key;
-    if (type === 'event') tracker.eventId = key;
     if (type === 'routine') tracker.routineId = key;
 
     notifiedRef.current.push(tracker);
@@ -98,33 +92,6 @@ export function useNotifications(
       }
     });
   }, [tasks, wasRecentlyNotified, markAsNotified, NOTIFICATION_TIMES.TASK_1HOUR]);
-
-  /**
-   * Revisa eventos próximos
-   */
-  const checkUpcomingEvents = useCallback(() => {
-    if (!events || events.length === 0) return;
-
-    events.forEach(event => {
-      if (!event.startDate) return;
-
-      try {
-        const startDate = typeof event.startDate === 'string' ? parseISO(event.startDate) : new Date(event.startDate);
-        const now = new Date();
-        const minutesUntilStart = differenceInMinutes(startDate, now);
-
-        // Notificar si falta entre 1 y 120 minutos
-        if (minutesUntilStart > 0 && minutesUntilStart <= NOTIFICATION_TIMES.EVENT_1HOUR) {
-          if (!wasRecentlyNotified(`event-${event.id}`)) {
-            NotificationService.eventUpcomingNotification(event.title, minutesUntilStart);
-            markAsNotified(`event-${event.id}`, 'event');
-          }
-        }
-      } catch (error) {
-        console.error('Error al procesar evento para notificación:', error);
-      }
-    });
-  }, [events, wasRecentlyNotified, markAsNotified, NOTIFICATION_TIMES.EVENT_1HOUR]);
 
   /**
    * Revisa rutinas próximas a comenzar
@@ -168,9 +135,8 @@ export function useNotifications(
     if (!enabled || !NotificationService.isEnabled()) return;
 
     checkUpcomingTasks();
-    checkUpcomingEvents();
     checkUpcomingRoutines();
-  }, [enabled, checkUpcomingTasks, checkUpcomingEvents, checkUpcomingRoutines]);
+  }, [enabled, checkUpcomingTasks, checkUpcomingRoutines]);
 
   /**
    * Configura el intervalo de chequeo
@@ -201,7 +167,7 @@ export function useNotifications(
    */
   useEffect(() => {
     runAllChecks();
-  }, [tasks, events, routines, runAllChecks]);
+  }, [tasks, routines, runAllChecks]);
 
   /**
    * Solicitar permiso de notificaciones

@@ -3,7 +3,9 @@
 import { motion } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar, Ticket } from 'lucide-react';
 import { differenceInDays, isAfter, parseISO } from 'date-fns';
 import { PriorityBadge, NodeId } from '@/components/atoms';
 import { cn } from '@/lib/utils';
@@ -76,6 +78,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
   };
 
   const { visualConfig } = useAppContextStore();
+  const router = useRouter();
 
   return (
     <motion.div
@@ -129,6 +132,12 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <PriorityBadge priority={task.priority} className="py-1 px-3 flex-shrink-0" />
+              {task.isTicket && (
+                <span className="flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-lg border border-primary/30 bg-primary/10 text-primary uppercase tracking-widest font-black flex-shrink-0">
+                  <Ticket className="h-2.5 w-2.5" />
+                  Ticket
+                </span>
+              )}
               {pendingSync && (
                 <span className="flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 uppercase tracking-widest font-black animate-pulse flex-shrink-0">
                   <span className="w-1 h-1 rounded-full bg-yellow-300" />
@@ -140,13 +149,24 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
             <div className="flex items-center gap-1.5 flex-shrink-0">
               {/* Desktop Actions (Appear on Hover) */}
               <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => { e.stopPropagation(); onEdit(task); }}
-                  className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-primary transition-all border border-transparent hover:border-border"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
+                {task.isTicket ? (
+                  <Link
+                    href={`/tickets?edit=${task.id}`}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-primary transition-all border border-transparent hover:border-border"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </Link>
+                ) : (
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); onEdit(task); }}
+                    className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-primary transition-all border border-transparent hover:border-border"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
@@ -175,13 +195,21 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
           </div>
 
           {/* Title and Description */}
-          <div onClick={() => onEdit(task)} className="space-y-2 cursor-pointer group/content">
+          <div
+            onClick={() => (task.isTicket ? router.push(`/tickets?edit=${task.id}`) : onEdit(task))}
+            className="space-y-2 cursor-pointer group/content"
+          >
             <h4 className="text-[14px] md:text-[15px] font-black leading-tight tracking-tight group-hover/content:text-primary transition-colors pr-2">
               {task.title}
             </h4>
             {task.description && (
               <p className="text-[11px] text-muted-foreground line-clamp-3 font-medium leading-relaxed group-hover/content:text-foreground transition-colors">
                 {task.description}
+              </p>
+            )}
+            {task.isTicket && task.requesterName && (
+              <p className="text-[10px] font-black uppercase tracking-widest text-primary/70">
+                Solicitado por {task.requesterName}
               </p>
             )}
           </div>

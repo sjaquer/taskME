@@ -45,27 +45,19 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>Datos de Cuenta:</strong> Nombre y correo electrónico proporcionados vía Firebase Auth o Google Sign-In.</li>
-              <li><strong>Datos de Contenido:</strong> Tareas, rutinas y eventos que creas dentro de la plataforma.</li>
-              <li><strong>Integración con Google Calendar:</strong> Si vinculas tu cuenta, accedemos a tus calendarios para leer y escribir eventos según tu solicitud.</li>
+              <li><strong>Datos de Contenido:</strong> Tareas, tickets, rutinas, proyectos y notas que creas dentro de la plataforma.</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">3. Uso de Google Calendar API</h2>
-            <p>
-              TaskMe utiliza los servicios de Google API para sincronizar tus eventos. Nuestro uso de la información recibida de las APIs de Google cumplirá con la <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Política de Datos de Usuario de los Servicios de API de Google</a>, incluyendo los requisitos de Uso Limitado.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">4. Protección de Datos</h2>
+            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">3. Protección de Datos</h2>
             <p>
               Toda la información se almacena de forma segura en Firebase (Google Cloud). Implementamos Reglas de Seguridad estrictas para asegurar que solo tú puedas acceder a tus datos personales.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">5. Tus Derechos</h2>
+            <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">4. Tus Derechos</h2>
             <p>
               Puedes exportar o eliminar tus datos en cualquier momento desde la configuración de la aplicación o contactándonos directamente.
             </p>

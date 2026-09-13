@@ -9,7 +9,6 @@ interface ModuleFlags {
   dashboard: boolean;
   kanban: boolean;
   schedule: boolean;
-  calendar: boolean;
 }
 
 export type ColorMode = 'dark' | 'light';
@@ -32,8 +31,6 @@ interface AppState {
   toggleModule: (module: keyof ModuleFlags) => void;
   highPerformanceMode: boolean;
   setHighPerformanceMode: (enabled: boolean) => void;
-  kanbanColumns: string[];
-  setKanbanColumns: (columns: string[]) => void;
   hourFormat: HourFormat;
   setHourFormat: (format: HourFormat) => void;
   defaultPage: string;
@@ -42,14 +39,16 @@ interface AppState {
   setAutoDeleteDoneDays: (days: string) => void;
   visualConfig: VisualConfig;
   updateVisualConfig: (config: Partial<VisualConfig>) => void;
-  
+
   // Data Cache (Expert Optimization)
   cachedTasks: Record<string, Task[]>; // Key: context
   setCachedTasks: (context: string, tasks: Task[]) => void;
   cachedRoutines: Record<string, any[]>;
   setCachedRoutines: (context: string, routines: any[]) => void;
-  cachedEvents: Record<string, any[]>;
-  setCachedEvents: (context: string, events: any[]) => void;
+  cachedProjects: Record<string, any[]>;
+  setCachedProjects: (context: string, projects: any[]) => void;
+  cachedNotes: Record<string, any[]>;
+  setCachedNotes: (context: string, notes: any[]) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -65,7 +64,6 @@ export const useAppContextStore = create<AppState>()(
         dashboard: true,
         kanban: true,
         schedule: true,
-        calendar: true,
       },
       toggleModule: (module) => set((state) => ({
         activeModules: {
@@ -75,8 +73,6 @@ export const useAppContextStore = create<AppState>()(
       })),
       highPerformanceMode: false,
       setHighPerformanceMode: (enabled) => set({ highPerformanceMode: enabled }),
-      kanbanColumns: ['Pendiente', 'Haciendo', 'Hecho'],
-      setKanbanColumns: (columns) => set({ kanbanColumns: columns }),
       hourFormat: '24h',
       setHourFormat: (format) => set({ hourFormat: format }),
       defaultPage: '/',
@@ -92,7 +88,7 @@ export const useAppContextStore = create<AppState>()(
       updateVisualConfig: (config) => set((state) => ({
         visualConfig: { ...state.visualConfig, ...config }
       })),
-      
+
       // Cache Initial State
       cachedTasks: {},
       setCachedTasks: (context, tasks) => set((state) => ({
@@ -102,13 +98,17 @@ export const useAppContextStore = create<AppState>()(
       setCachedRoutines: (context, routines) => set((state) => ({
         cachedRoutines: { ...state.cachedRoutines, [context]: routines }
       })),
-      cachedEvents: {},
-      setCachedEvents: (context, events) => set((state) => ({
-        cachedEvents: { ...state.cachedEvents, [context]: events }
+      cachedProjects: {},
+      setCachedProjects: (context, projects) => set((state) => ({
+        cachedProjects: { ...state.cachedProjects, [context]: projects }
+      })),
+      cachedNotes: {},
+      setCachedNotes: (context, notes) => set((state) => ({
+        cachedNotes: { ...state.cachedNotes, [context]: notes }
       })),
     }),
     {
-      name: 'taskme-app-state-v4',
+      name: 'taskme-app-state-v5',
     }
   )
 );

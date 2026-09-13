@@ -24,7 +24,6 @@ export function NotificationMonitor() {
   const firestore = useFirestore();
   const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<any[]>([]);
-  const [events, setEvents] = useState<any[]>([]);
   const [routines, setRoutines] = useState<any[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(NotificationService.isEnabled());
   const nativeRegistrationRef = useRef<string | null>(null);
@@ -34,7 +33,6 @@ export function NotificationMonitor() {
   // Inicializar el hook de notificaciones
   const { isEnabled } = useNotifications(
     tasks,
-    events,
     routines,
     notificationsEnabled
   );
@@ -104,22 +102,6 @@ export function NotificationMonitor() {
         ...doc.data(),
       }));
       setTasks(tasksList);
-    });
-
-    return () => unsubscribe();
-  }, [user, firestore]);
-
-  // Cargar eventos en tiempo real
-  useEffect(() => {
-    if (!user || !firestore) return;
-
-    const userEventsRef = collection(firestore, 'users', user.uid, 'events');
-    const unsubscribe = onSnapshot(userEventsRef, (snapshot) => {
-      const eventsList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setEvents(eventsList);
     });
 
     return () => unsubscribe();

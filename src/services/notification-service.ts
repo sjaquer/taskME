@@ -109,29 +109,6 @@ export class NotificationService {
   }
 
   /**
-   * Envía notificación de evento próximo
-   */
-  static eventUpcomingNotification(eventTitle: string, minutesLeft: number): Notification | null {
-    const hoursLeft = Math.floor(minutesLeft / 60);
-
-    let timeText = '';
-    if (hoursLeft > 0) {
-      timeText = `en ${hoursLeft}h`;
-    } else {
-      timeText = `en ${minutesLeft}m`;
-    }
-
-    return this.send(`📅 Evento próximo: ${eventTitle}`, {
-      body: `Comienza ${timeText}`,
-      tag: `event-${eventTitle}`,
-      requireInteraction: minutesLeft < 15,
-      onClick: () => {
-        window.location.href = '/calendar';
-      },
-    });
-  }
-
-  /**
    * Envía notificación de rutina en progreso
    */
   static routineStartsNotification(routineTitle: string): Notification | null {

@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutGrid, Clock, Calendar, Settings, DollarSign } from 'lucide-react';
+import { LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
@@ -29,8 +29,8 @@ import { NativeBridgeProvider } from './native-bridge-provider';
 const DESKTOP_NAV = [
   { icon: LayoutGrid, label: "Tablero", href: "/kanban" },
   { icon: Clock, label: "Horario", href: "/schedule" },
-  { icon: Calendar, label: "Eventos", href: "/calendar" },
-  { icon: DollarSign, label: "Finanzas", href: "/finance" },
+  { icon: Ticket, label: "Tickets", href: "/tickets" },
+  { icon: NotebookText, label: "Notas", href: "/notes" },
   { icon: Settings, label: "Perfil", href: "/settings" },
 ];
 

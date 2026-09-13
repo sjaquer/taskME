@@ -267,7 +267,6 @@ export default function SettingsPage() {
             <ModuleToggle label="Terminal" active={activeModules.dashboard} onToggle={() => handleToggleModule("dashboard")} />
             <ModuleToggle label="Tablero" active={activeModules.kanban} onToggle={() => handleToggleModule("kanban")} />
             <ModuleToggle label="Horario" active={activeModules.schedule} onToggle={() => handleToggleModule("schedule")} />
-            <ModuleToggle label="Calendario" active={activeModules.calendar} onToggle={() => handleToggleModule("calendar")} />
           </div>
         </section>
 
@@ -487,7 +486,8 @@ export default function SettingsPage() {
                   <SelectItem value="/" className="text-[11px] font-black uppercase tracking-wider">Dashboard</SelectItem>
                   <SelectItem value="/kanban" className="text-[11px] font-black uppercase tracking-wider">Kanban</SelectItem>
                   <SelectItem value="/schedule" className="text-[11px] font-black uppercase tracking-wider">Horario</SelectItem>
-                  <SelectItem value="/calendar" className="text-[11px] font-black uppercase tracking-wider">Calendario</SelectItem>
+                  <SelectItem value="/tickets" className="text-[11px] font-black uppercase tracking-wider">Tickets</SelectItem>
+                  <SelectItem value="/notes" className="text-[11px] font-black uppercase tracking-wider">Notas</SelectItem>
                 </SelectContent>
               </Select>
             </div>

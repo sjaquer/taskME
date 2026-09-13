@@ -4,13 +4,12 @@ import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { format, addDays, startOfWeek, isSameDay, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { Plus, Inbox, CalendarDays } from "lucide-react";
+import { Plus, Inbox, CalendarDays, X } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useRouter } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
 import { ScheduleItem } from "@/components/molecules";
-import { buildRoutinesQuery, createRoutine, updateRoutine, deleteRoutine } from "@/services/task-service";
+import { buildRoutinesQuery, createRoutine, updateRoutine, deleteRoutine } from "@/services/routine-service";
 import type { Routine, Priority, RoutineFormData } from "@/types/task";
 
 const RoutineSchema = z.object({
@@ -60,7 +59,7 @@ export default function SchedulePage() {
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [formData, setFormData] = useState<RoutineFormData>(INITIAL_FORM);
 
@@ -72,7 +71,7 @@ export default function SchedulePage() {
   useEffect(() => {
     setFormData(INITIAL_FORM);
     setEditingRoutine(null);
-    setIsDialogOpen(false);
+    setFormOpen(false);
   }, [context]);
 
   const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -90,7 +89,7 @@ export default function SchedulePage() {
   }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) return (
-    <div className="max-w-5xl mx-auto space-y-8 py-4 px-0">
+    <div className="max-w-2xl mx-auto space-y-6 py-4 px-0">
       <Skeleton className="h-14 w-1/2 bg-muted/30 rounded-2xl" />
       <Skeleton className="h-20 bg-muted/30 rounded-2xl" />
       <Skeleton className="h-64 bg-muted/30 rounded-2xl" />
@@ -102,6 +101,8 @@ export default function SchedulePage() {
     if (r.context !== context) return false;
     return r.recurringDays?.includes(selectedDayNum);
   }).sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? "")) || [];
+
+  const resetForm = () => { setFormData(INITIAL_FORM); setEditingRoutine(null); };
 
   const handleSaveRoutine = () => {
     const result = RoutineSchema.safeParse(formData);
@@ -127,13 +128,16 @@ export default function SchedulePage() {
     }
 
     resetForm();
-    setIsDialogOpen(false);
+    setFormOpen(false);
     toast({ variant: "success", title: editingRoutine ? "Rutina actualizada" : "Rutina creada" });
   };
 
-  const resetForm = () => { setFormData(INITIAL_FORM); setEditingRoutine(null); };
+  const openCreateForm = () => {
+    resetForm();
+    setFormOpen(true);
+  };
 
-  const openEditDialog = (routine: Routine) => {
+  const openEditForm = (routine: Routine) => {
     setEditingRoutine(routine);
     setFormData({
       title: routine.title,
@@ -143,7 +147,12 @@ export default function SchedulePage() {
       recurringDays: routine.recurringDays || [],
       color: routine.color || "#39FF14",
     });
-    setIsDialogOpen(true);
+    setFormOpen(true);
+  };
+
+  const closeForm = () => {
+    resetForm();
+    setFormOpen(false);
   };
 
   const handleDeleteRoutine = (routineId: string) => {
@@ -152,9 +161,9 @@ export default function SchedulePage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+    <div className="flex flex-col gap-6 max-w-2xl mx-auto pb-12 w-full">
       {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
@@ -169,87 +178,98 @@ export default function SchedulePage() {
           </p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) resetForm(); setIsDialogOpen(open); }}>
-          <DialogTrigger asChild>
-            <TacticalButton className="w-full md:w-auto"><Plus className="w-4 h-4 mr-2" /> Nueva Rutina</TacticalButton>
-          </DialogTrigger>
-          <DialogContent className="glass-card-elevated border-border bg-card/95 sm:max-w-[450px] sm:max-h-[92dvh] overflow-y-auto p-6 sm:p-5 md:p-8">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-black uppercase tracking-tighter">
-                {editingRoutine ? "Editar Rutina" : "Nueva Rutina"}
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-1.5">
-                <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre</Label>
-                <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Ej: Gimnasio, Estudio, Reunión..." className="bg-muted/30 border-border h-11 rounded-lg" />
-              </div>
+        {!formOpen && (
+          <TacticalButton className="w-full" onClick={openCreateForm}>
+            <Plus className="w-4 h-4 mr-2" /> Nueva Rutina
+          </TacticalButton>
+        )}
+      </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[9px] uppercase font-black tracking-widest">Días de la semana</Label>
-                <div className="flex justify-between gap-1">
-                  {WEEK_DAYS.map((day) => (
-                    <button key={day.value} onClick={() => setFormData((prev) => ({
-                      ...prev,
-                      recurringDays: prev.recurringDays.includes(day.value)
-                        ? prev.recurringDays.filter((d) => d !== day.value)
-                        : [...prev.recurringDays, day.value],
-                    }))} className={cn(
-                      "w-9 h-9 rounded-lg text-[11px] font-black transition-all border",
-                      formData.recurringDays.includes(day.value)
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-muted/30 border-border text-muted-foreground"
-                    )}>
-                      {day.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+      {/* Formulario embebido (crear/editar) — sin modal */}
+      {formOpen && (
+        <div className="glass-card-elevated border border-border rounded-2xl p-5 sm:p-6 space-y-4 w-full">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-black uppercase tracking-tighter">
+              {editingRoutine ? "Editar Rutina" : "Nueva Rutina"}
+            </h3>
+            <button
+              type="button"
+              onClick={closeForm}
+              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest">Inicio</Label>
-                  <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest">Fin</Label>
-                  <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
-                </div>
-              </div>
+          <div className="space-y-1.5">
+            <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre</Label>
+            <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Ej: Gimnasio, Estudio, Reunión..." className="bg-muted/30 border-border h-11 rounded-lg" />
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
-                  <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as Priority })}>
-                    <SelectTrigger className="bg-muted/30 border-border h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                    <SelectContent className="bg-card border-border">
-                      <SelectItem value="baja">Baja</SelectItem>
-                      <SelectItem value="media">Media</SelectItem>
-                      <SelectItem value="alta">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[9px] uppercase font-black tracking-widest">Color</Label>
-                  <div className="flex gap-1.5 flex-wrap pt-1">
-                    {ROUTINE_COLORS.map((c) => (
-                      <button key={c.value} onClick={() => setFormData({ ...formData, color: c.value })}
-                        className={cn("w-7 h-7 rounded-full border-2 transition-all", formData.color === c.value ? "border-white scale-110" : "border-transparent opacity-60 hover:opacity-100")}
-                        style={{ backgroundColor: c.value }}
-                      />
-                    ))}
-                  </div>
-                </div>
+          <div className="space-y-1.5">
+            <Label className="text-[9px] uppercase font-black tracking-widest">Días de la semana</Label>
+            <div className="flex justify-between gap-1">
+              {WEEK_DAYS.map((day) => (
+                <button key={day.value} onClick={() => setFormData((prev) => ({
+                  ...prev,
+                  recurringDays: prev.recurringDays.includes(day.value)
+                    ? prev.recurringDays.filter((d) => d !== day.value)
+                    : [...prev.recurringDays, day.value],
+                }))} className={cn(
+                  "w-9 h-9 rounded-lg text-[11px] font-black transition-all border",
+                  formData.recurringDays.includes(day.value)
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/30 border-border text-muted-foreground"
+                )}>
+                  {day.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] uppercase font-black tracking-widest">Inicio</Label>
+              <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] uppercase font-black tracking-widest">Fin</Label>
+              <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
+              <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as Priority })}>
+                <SelectTrigger className="bg-muted/30 border-border h-11 rounded-lg"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-card border-border">
+                  <SelectItem value="baja">Baja</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] uppercase font-black tracking-widest">Color</Label>
+              <div className="flex gap-1.5 flex-wrap pt-1">
+                {ROUTINE_COLORS.map((c) => (
+                  <button key={c.value} onClick={() => setFormData({ ...formData, color: c.value })}
+                    className={cn("w-7 h-7 rounded-full border-2 transition-all", formData.color === c.value ? "border-white scale-110" : "border-transparent opacity-60 hover:opacity-100")}
+                    style={{ backgroundColor: c.value }}
+                  />
+                ))}
               </div>
             </div>
-            <DialogFooter>
-              <TacticalButton onClick={handleSaveRoutine} className="w-full">
-                {editingRoutine ? "Actualizar Rutina" : "Crear Rutina"}
-              </TacticalButton>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <TacticalButton onClick={handleSaveRoutine} className="w-full">
+              {editingRoutine ? "Actualizar Rutina" : "Crear Rutina"}
+            </TacticalButton>
+          </div>
+        </div>
+      )}
 
       {/* Day Selector */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -271,31 +291,28 @@ export default function SchedulePage() {
         })}
       </div>
 
-      {/* Timeline */}
-      <div className="relative mt-12 ml-4 md:ml-24">
-        <div className="absolute left-[-12px] md:left-[-40px] top-0 bottom-0 w-px bg-border" />
-        <div className="space-y-8">
-          <AnimatePresence mode="popLayout">
-            {dailyRoutines.length > 0 ? (
-              dailyRoutines.map((routine, idx) => (
-                <ScheduleItem
-                  key={routine.id}
-                  routine={routine}
-                  selectedDate={selectedDate}
-                  currentTime={currentTime}
-                  index={idx}
-                  onEdit={openEditDialog}
-                  onDelete={handleDeleteRoutine}
-                />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-20 opacity-[0.04]">
-                <Inbox className="w-12 h-12 mb-2" />
-                <p className="text-[11px] font-black uppercase tracking-[0.4em]">Sin Rutinas</p>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
+      {/* Lista vertical de bloques del día */}
+      <div className="flex flex-col gap-4 w-full">
+        <AnimatePresence mode="popLayout">
+          {dailyRoutines.length > 0 ? (
+            dailyRoutines.map((routine, idx) => (
+              <ScheduleItem
+                key={routine.id}
+                routine={routine}
+                selectedDate={selectedDate}
+                currentTime={currentTime}
+                index={idx}
+                onEdit={openEditForm}
+                onDelete={handleDeleteRoutine}
+              />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center py-20 opacity-[0.15]">
+              <Inbox className="w-12 h-12 mb-2" />
+              <p className="text-[11px] font-black uppercase tracking-[0.4em]">Sin Rutinas</p>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

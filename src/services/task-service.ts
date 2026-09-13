@@ -15,9 +15,10 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { Priority, AppContext } from '@/types/task';
+import type { AppContext, Priority, Task } from '@/types/task';
 
-// ── TASKS (Kanban) ─────────────────────────────────────────
+// ── TASKS (Kanban + Tickets) ───────────────────────────────
+// Un ticket es una Task con isTicket: true y context: 'Trabajo'.
 function getUserTasksRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'tasks');
 }
@@ -41,19 +42,29 @@ export function buildTasksQuery(firestore: Firestore, userId: string, context: A
   );
 }
 
-export function createTask(
-  firestore: Firestore,
-  userId: string,
-  data: {
-    title: string;
-    description?: string;
-    priority: Priority;
-    status: string;
-    tags?: string[];
-    dueDate?: string;
-    context: AppContext;
-  }
-) {
+// Los tickets siempre viven en el contexto 'Trabajo'; se filtra en memoria
+// sobre el resultado de buildTasksQuery para evitar un índice compuesto extra.
+export function buildTicketsQuery(firestore: Firestore, userId: string) {
+  return buildTasksQuery(firestore, userId, 'Trabajo');
+}
+
+export interface TaskInput {
+  title: string;
+  description?: string;
+  priority: Priority;
+  status: string;
+  tags?: string[];
+  dueDate?: string;
+  context: AppContext;
+  projectId?: string;
+  isTicket?: boolean;
+  requestedAction?: string;
+  requesterName?: string;
+  reviewDate?: string;
+  referenceUrl?: string;
+}
+
+export function createTask(firestore: Firestore, userId: string, data: TaskInput) {
   const colRef = getUserTasksRef(firestore, userId);
   return addDocumentNonBlocking(colRef, {
     ...data,
@@ -85,115 +96,6 @@ export function completeTask(firestore: Firestore, userId: string, taskId: strin
   updateTask(firestore, userId, taskId, { status: 'Hecho' });
 }
 
-// ── ROUTINES (Horario semanal) ─────────────────────────────
-function getUserRoutinesRef(firestore: Firestore, userId: string): CollectionReference {
-  return collection(firestore, 'users', userId, 'routines');
-}
-
-function getRoutineDocRef(firestore: Firestore, userId: string, routineId: string): DocumentReference {
-  return doc(firestore, 'users', userId, 'routines', routineId);
-}
-
-export function buildRoutinesQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserRoutinesRef(firestore, userId),
-    where('context', '==', context)
-  );
-}
-
-export function createRoutine(
-  firestore: Firestore,
-  userId: string,
-  data: {
-    title: string;
-    startTime: string;
-    endTime: string;
-    recurringDays: number[];
-    priority: Priority;
-    context: AppContext;
-    color?: string;
-  }
-) {
-  const colRef = getUserRoutinesRef(firestore, userId);
-  return addDocumentNonBlocking(colRef, {
-    ...data,
-    userId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export function updateRoutine(
-  firestore: Firestore,
-  userId: string,
-  routineId: string,
-  data: Record<string, unknown>
-) {
-  const docRef = getRoutineDocRef(firestore, userId, routineId);
-  updateDocumentNonBlocking(docRef, {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export function deleteRoutine(firestore: Firestore, userId: string, routineId: string) {
-  const docRef = getRoutineDocRef(firestore, userId, routineId);
-  deleteDocumentNonBlocking(docRef);
-}
-
-// ── EVENTS (Calendario de eventos puntuales) ───────────────
-function getUserEventsRef(firestore: Firestore, userId: string): CollectionReference {
-  return collection(firestore, 'users', userId, 'events');
-}
-
-function getEventDocRef(firestore: Firestore, userId: string, eventId: string): DocumentReference {
-  return doc(firestore, 'users', userId, 'events', eventId);
-}
-
-export function buildEventsQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserEventsRef(firestore, userId),
-    where('context', '==', context)
-  );
-}
-
-export function createEvent(
-  firestore: Firestore,
-  userId: string,
-  data: {
-    title: string;
-    description?: string;
-    startDate: string;
-    endDate: string;
-    allDay: boolean;
-    location?: string;
-    color: string;
-    context: AppContext;
-  }
-) {
-  const colRef = getUserEventsRef(firestore, userId);
-  return addDocumentNonBlocking(colRef, {
-    ...data,
-    userId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export function updateEvent(
-  firestore: Firestore,
-  userId: string,
-  eventId: string,
-  data: Record<string, unknown>
-) {
-  const docRef = getEventDocRef(firestore, userId, eventId);
-  updateDocumentNonBlocking(docRef, {
-    ...data,
-    updatedAt: serverTimestamp(),
-  });
-}
-
-export function deleteEvent(firestore: Firestore, userId: string, eventId: string) {
-  const docRef = getEventDocRef(firestore, userId, eventId);
-  deleteDocumentNonBlocking(docRef);
+export function filterTickets(tasks: Task[]): Task[] {
+  return tasks.filter((task) => task.isTicket);
 }
