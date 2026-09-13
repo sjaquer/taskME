@@ -122,7 +122,7 @@ service cloud.firestore {
     function isValidSettingsDoc(data) {
       return data.keys().hasOnly([
                'context', 'theme', 'colorMode', 'activeModules', 'highPerformanceMode',
-               'hourFormat', 'defaultPage', 'autoDeleteDoneDays',
+               'hourFormat', 'defaultPage', 'taskRetentionPeriod',
                'visualConfig', 'updatedAt'
              ])
              && (!('context' in data) || isValidContext(data))
@@ -134,7 +134,9 @@ service cloud.firestore {
              && (!('highPerformanceMode' in data) || data.highPerformanceMode is bool)
              && (!('hourFormat' in data) || (data.hourFormat is string && data.hourFormat in ['24h', '12h']))
              && (!('defaultPage' in data) || data.defaultPage is string)
-             && (!('autoDeleteDoneDays' in data) || data.autoDeleteDoneDays is string)
+             && (!('taskRetentionPeriod' in data) || (data.taskRetentionPeriod is string && data.taskRetentionPeriod in [
+                  'weekly', 'monthly', 'quarterly', 'yearly'
+                ]))
              && (!('visualConfig' in data) || data.visualConfig is map)
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }

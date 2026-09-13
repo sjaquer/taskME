@@ -112,6 +112,18 @@
     --accent: 215 25% 50%;
     --ring: 215 25% 50%;
   }
+
+  /* Sidebar tokens (siguen el mismo esquema que el resto de la UI) */
+  :root {
+    --sidebar-background: var(--card);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--muted);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
+  }
 }
 
 @layer base {
@@ -260,8 +272,13 @@
     box-shadow: none !important;
   }
 
-  /* Sobrescribir y remover sombras neón inline de Tailwind */
-  [class*="shadow-[0_0_"],
+  /* Sombras "glow" (radiales) solo se muestran si el usuario activa el
+     efecto de brillo en Ajustes; por defecto quedan apagadas (look minimalista). */
+  :root[data-glow='false'] [class*="shadow-[0_0_"] {
+    box-shadow: none !important;
+  }
+
+  /* Sombras planas grandes de Tailwind: siempre apagadas, no son parte del look minimalista/glass */
   [class*="shadow-lg"],
   [class*="shadow-xl"],
   [class*="shadow-2xl"] {

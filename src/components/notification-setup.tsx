@@ -59,7 +59,7 @@ export function NotificationSetup({ onPermissionChanged, className }: Notificati
       variant="outline"
       size="sm"
       className={cn(
-        "text-[9px] font-black uppercase tracking-widest gap-2 h-9 rounded-lg border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08]",
+        "text-[9px] font-black uppercase tracking-widest gap-2 h-9 rounded-lg border-border bg-muted/30 hover:bg-muted/50",
         className
       )}
     >

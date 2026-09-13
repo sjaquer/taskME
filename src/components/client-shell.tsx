@@ -25,6 +25,7 @@ import { useAppContextStore } from '@/lib/store';
 import { NotificationMonitor } from './notification-monitor';
 import { isNativeAndroidContainer } from '@/lib/native-bridge';
 import { NativeBridgeProvider } from './native-bridge-provider';
+import { useUser } from '@/firebase';
 
 const DESKTOP_NAV = [
   { icon: LayoutGrid, label: "Tablero", href: "/kanban" },
@@ -35,52 +36,56 @@ const DESKTOP_NAV = [
 ];
 
 export function ClientShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
+  return (
+    <>
+      <FirebaseClientProvider>
+        <NativeBridgeProvider>
+          <ShellRouter>{children}</ShellRouter>
+        </NativeBridgeProvider>
+      </FirebaseClientProvider>
+      <Toaster />
+    </>
+  );
+}
 
-  const PUBLIC_ROUTES = ['/welcome', '/login', '/privacy', '/terms'];
-  const isPublic = PUBLIC_ROUTES.includes(pathname);
+function ShellRouter({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const { user } = useUser();
+
+  const PUBLIC_ROUTES = ['/login', '/privacy', '/terms'];
+  // /tickets es público solo para visitantes sin sesión (crear un ticket);
+  // una vez autenticado, el dueño ve el shell completo con la gestión de tickets.
+  const isPublic = PUBLIC_ROUTES.includes(pathname) || (pathname === '/tickets' && !user);
 
   if (isPublic) {
     return (
-      <>
-        <FirebaseClientProvider>
-          <NativeBridgeProvider>
-            <div className="min-h-[100dvh] w-full bg-background transition-colors duration-500">
-              <main className="w-full min-h-screen">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={pathname}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="w-full min-h-screen"
-                  >
-                    {children}
-                  </motion.div>
-                </AnimatePresence>
-              </main>
-            </div>
-          </NativeBridgeProvider>
-        </FirebaseClientProvider>
-        <Toaster />
-      </>
+      <div className="min-h-[100dvh] w-full bg-background transition-colors duration-500">
+        <main className="w-full min-h-screen">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full min-h-screen"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
     );
   }
 
   return (
     <>
-      <FirebaseClientProvider>
-        <NativeBridgeProvider>
-          <SidebarProvider defaultOpen={true}>
-            <ClientShellInner>{children}</ClientShellInner>
-          </SidebarProvider>
-          <Suspense fallback={null}>
-            <NotificationMonitor />
-          </Suspense>
-        </NativeBridgeProvider>
-      </FirebaseClientProvider>
-      <Toaster />
+      <SidebarProvider defaultOpen={true}>
+        <ClientShellInner>{children}</ClientShellInner>
+      </SidebarProvider>
+      <Suspense fallback={null}>
+        <NotificationMonitor />
+      </Suspense>
     </>
   );
 }
@@ -158,7 +163,7 @@ function ClientShellInner({ children }: { children: ReactNode }) {
                       "rounded-2xl py-8 px-6 transition-all duration-500 active:scale-95 group",
                       state === "collapsed" ? "py-4 px-2 justify-center" : "",
                       isActive
-                        ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_rgba(var(--primary),0.1)]"
+                        ? "bg-primary/10 text-primary border border-primary/20 shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
                         : "hover:bg-primary/5 text-muted-foreground hover:text-foreground border border-transparent"
                     )}
                   >

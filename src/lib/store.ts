@@ -4,6 +4,7 @@ import type { AppContext, Task } from '@/types/task';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet' | 'emerald' | 'indigo' | 'crimson' | 'slate';
 export type HourFormat = '24h' | '12h';
+export type TaskRetentionPeriod = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 
 interface ModuleFlags {
   dashboard: boolean;
@@ -35,8 +36,8 @@ interface AppState {
   setHourFormat: (format: HourFormat) => void;
   defaultPage: string;
   setDefaultPage: (page: string) => void;
-  autoDeleteDoneDays: string;
-  setAutoDeleteDoneDays: (days: string) => void;
+  taskRetentionPeriod: TaskRetentionPeriod;
+  setTaskRetentionPeriod: (period: TaskRetentionPeriod) => void;
   visualConfig: VisualConfig;
   updateVisualConfig: (config: Partial<VisualConfig>) => void;
 
@@ -77,8 +78,8 @@ export const useAppContextStore = create<AppState>()(
       setHourFormat: (format) => set({ hourFormat: format }),
       defaultPage: '/',
       setDefaultPage: (page) => set({ defaultPage: page }),
-      autoDeleteDoneDays: '15',
-      setAutoDeleteDoneDays: (days) => set({ autoDeleteDoneDays: days }),
+      taskRetentionPeriod: 'monthly',
+      setTaskRetentionPeriod: (period) => set({ taskRetentionPeriod: period }),
       visualConfig: {
         glassIntensity: 0.8,
         glowEnabled: false,

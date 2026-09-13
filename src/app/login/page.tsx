@@ -188,7 +188,7 @@ export default function LoginPage() {
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <Card className="glass-card-elevated border-border bg-card/60 backdrop-blur-2xl">
           <CardHeader className="space-y-4 text-center">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(57,255,20,0.3)]">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-[0_0_20px_hsl(var(--primary)/0.3)]">
               <Zap className="w-10 h-10 text-black" />
             </div>
             <div>

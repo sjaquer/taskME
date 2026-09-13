@@ -127,10 +127,6 @@ function TicketsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const loadedEditId = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) router.push("/login");
-  }, [user, isUserLoading, router]);
-
   // Los tickets viven siempre en el contexto 'Trabajo'.
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -259,7 +255,9 @@ function TicketsPageContent() {
     toast({ variant: "success", title: "Estado actualizado" });
   };
 
-  if (isUserLoading || !user) return null;
+  if (isUserLoading) return null;
+
+  if (!user) return <PublicTicketForm />;
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto pb-12 w-full">
@@ -519,6 +517,182 @@ function TicketsPageContent() {
             );
           })
         )}
+      </div>
+    </div>
+  );
+}
+
+const PublicTicketSchema = z.object({
+  title: z.string().trim().min(1, "El título es requerido").max(120),
+  requestedAction: z.string().trim().min(1, "Indica la acción que se solicita"),
+  description: z.string().trim().optional(),
+  requesterName: z.string().trim().min(1, "Indica quién lo solicita").max(140),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha límite inválida").optional().or(z.literal("")),
+  referenceUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
+  priority: z.enum(["baja", "media", "alta"]),
+});
+
+const PUBLIC_INITIAL_FORM = {
+  title: "",
+  requestedAction: "",
+  description: "",
+  requesterName: "",
+  dueDate: "",
+  referenceUrl: "",
+  priority: "media" as Priority,
+};
+
+function PublicTicketForm() {
+  const [form, setForm] = useState(PUBLIC_INITIAL_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async () => {
+    const result = PublicTicketSchema.safeParse(form);
+    if (!result.success) {
+      toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const response = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: result.data.title,
+          requestedAction: result.data.requestedAction,
+          description: result.data.description || undefined,
+          requesterName: result.data.requesterName,
+          priority: result.data.priority,
+          dueDate: result.data.dueDate || undefined,
+          referenceUrl: result.data.referenceUrl || undefined,
+        }),
+      });
+
+      if (!response.ok) throw new Error();
+
+      setSubmitted(true);
+    } catch {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo enviar el ticket. Intenta de nuevo." });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 max-w-md mx-auto py-24 text-center">
+        <CalendarCheck className="w-12 h-12 text-primary" />
+        <h1 className="text-xl font-black uppercase tracking-tight">Ticket enviado</h1>
+        <p className="text-sm text-muted-foreground">Tu solicitud fue recibida. Te contactarán cuando sea revisada.</p>
+        <Button onClick={() => { setForm(PUBLIC_INITIAL_FORM); setSubmitted(false); }} variant="outline" className="rounded-xl">
+          Enviar otro ticket
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 max-w-lg mx-auto pb-12 w-full">
+      <div className="space-y-1">
+        <h1 className="text-2xl md:text-3xl font-black tracking-tighter uppercase flex items-center gap-2">
+          <TicketIcon className="w-6 h-6 text-primary" /> Nuevo Ticket
+        </h1>
+        <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em]">
+          Solicita una tarea de trabajo
+        </p>
+      </div>
+
+      <div className="glass-card-elevated border border-border rounded-3xl p-5 sm:p-6 space-y-4 w-full">
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título corto</Label>
+          <Input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Ej. Ajustar reporte mensual"
+            className="h-11 rounded-2xl border-border bg-muted/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Acción que se solicita</Label>
+          <Textarea
+            value={form.requestedAction}
+            onChange={(e) => setForm({ ...form, requestedAction: e.target.value })}
+            placeholder="¿Qué necesitas que se haga exactamente?"
+            className="min-h-[80px] rounded-2xl border-border bg-muted/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Descripción</Label>
+          <Textarea
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="Contexto adicional de la tarea"
+            className="min-h-[80px] rounded-2xl border-border bg-muted/20"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Tu nombre</Label>
+          <Input
+            value={form.requesterName}
+            onChange={(e) => setForm({ ...form, requesterName: e.target.value })}
+            placeholder="Ej. María, equipo de marketing..."
+            className="h-11 rounded-2xl border-border bg-muted/20"
+          />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Fecha límite</Label>
+            <Input
+              type="date"
+              value={form.dueDate}
+              onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+              className="h-11 rounded-2xl border-border bg-muted/20 [color-scheme:dark]"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Prioridad</Label>
+            <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as Priority })}>
+              <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-border bg-card">
+                <SelectItem value="alta">Alta</SelectItem>
+                <SelectItem value="media">Media</SelectItem>
+                <SelectItem value="baja">Baja</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-1.5">
+            <LinkIcon className="h-3.5 w-3.5 text-primary" /> Link de referencia (opcional)
+          </Label>
+          <Input
+            value={form.referenceUrl}
+            onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })}
+            placeholder="https://drive.google.com/..."
+            className="h-11 rounded-2xl border-border bg-muted/20"
+          />
+        </div>
+
+        <div className="pt-2 border-t border-border/40">
+          <Button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSaving}
+            className="h-11 w-full rounded-2xl bg-primary text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
+          >
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+            Crear ticket
+          </Button>
+        </div>
       </div>
     </div>
   );

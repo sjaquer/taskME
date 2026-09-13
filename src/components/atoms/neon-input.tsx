@@ -15,7 +15,7 @@ export const NeonInput = forwardRef<HTMLInputElement, NeonInputProps>(
       {label && (
         <label className={cn(
           'text-[9px] uppercase font-black tracking-widest block',
-          accent ? 'text-primary' : 'text-white/40'
+          accent ? 'text-primary' : 'text-muted-foreground/60'
         )}>
           {label}
         </label>
@@ -23,7 +23,7 @@ export const NeonInput = forwardRef<HTMLInputElement, NeonInputProps>(
       <Input
         ref={ref}
         className={cn(
-          'bg-white/[0.03] border-white/[0.08] h-11 rounded-lg focus:border-primary/40 transition-colors',
+          'bg-muted/30 border-border h-11 rounded-lg focus:border-primary/40 transition-colors',
           className
         )}
         {...props}

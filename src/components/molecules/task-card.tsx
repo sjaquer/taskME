@@ -91,7 +91,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
       transition={{ duration: 0.2 }}
       className={cn(
         'group relative glass-card p-4 transition-all duration-500 overflow-hidden',
-        visualConfig.glowEnabled && 'hover:border-primary/40 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4),0_0_20px_rgba(var(--primary-rgb),0.1)]',
+        visualConfig.glowEnabled && 'hover:border-primary/40 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4),0_0_20px_hsl(var(--primary)/0.15)]',
         selected && 'border-primary/60 bg-primary/[0.06]'
       )}
     >
@@ -117,11 +117,11 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
               className={cn(
                 'h-6 w-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300',
                 selected
-                  ? 'border-primary bg-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)] scale-110'
+                  ? 'border-primary bg-primary shadow-[0_0_15px_hsl(var(--primary)/0.4)] scale-110'
                   : 'border-border bg-muted/30 hover:border-primary/40'
               )}
             >
-              {selected && <CheckCircle2 className="w-4 h-4 text-black stroke-[3px]" />}
+              {selected && <CheckCircle2 className="w-4 h-4 text-primary-foreground stroke-[3px]" />}
             </button>
           </div>
         )}

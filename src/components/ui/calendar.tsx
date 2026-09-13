@@ -24,14 +24,14 @@ function Calendar({
         month: "space-y-3 w-full",
         // Header con mes y navegación — touch targets grandes
         caption: "flex justify-between items-center px-1 py-3 relative",
-        caption_label: "text-base sm:text-lg font-black uppercase tracking-wide text-white",
+        caption_label: "text-base sm:text-lg font-black uppercase tracking-wide text-foreground",
         nav: "flex items-center gap-1",
         nav_button: cn(
           "inline-flex items-center justify-center",
           // Touch target mínimo 44px para WebView
           "h-11 w-11 sm:h-10 sm:w-10",
-          "rounded-xl border border-white/[0.08] bg-white/[0.02]",
-          "text-white/60 hover:bg-white/[0.08] hover:text-white active:scale-95",
+          "rounded-xl border border-border bg-muted/20",
+          "text-muted-foreground hover:bg-muted/50 hover:text-foreground active:scale-95",
           "transition-all duration-150"
         ),
         nav_button_previous: "",
@@ -57,8 +57,8 @@ function Calendar({
           "w-full h-full min-h-[44px] sm:min-h-[48px]",
           "flex items-center justify-center",
           "rounded-xl text-sm sm:text-base font-bold",
-          "text-white/80 transition-all duration-150",
-          "hover:bg-white/[0.06] active:scale-95",
+          "text-foreground/80 transition-all duration-150",
+          "hover:bg-muted/40 active:scale-95",
           "focus:outline-none focus:ring-2 focus:ring-primary/50",
           "relative font-data",
           "aria-selected:opacity-100"
@@ -68,16 +68,16 @@ function Calendar({
         day_selected: cn(
           "bg-primary text-primary-foreground font-black",
           "hover:bg-primary hover:text-primary-foreground",
-          "shadow-[0_0_20px_rgba(57,255,20,0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
+          "shadow-[0_0_20px_hsl(var(--primary)/0.4),inset_0_1px_0_rgba(255,255,255,0.2)]",
           "border border-primary/50"
         ),
         day_today: cn(
           "bg-primary/15 text-primary font-black",
           "border-2 border-primary/40",
-          "shadow-[0_0_10px_rgba(57,255,20,0.2)]"
+          "shadow-[0_0_10px_hsl(var(--primary)/0.2)]"
         ),
-        day_outside: "text-white/20 hover:text-white/30 hover:bg-white/[0.02]",
-        day_disabled: "text-white/10 cursor-not-allowed hover:bg-transparent",
+        day_outside: "text-muted-foreground/30 hover:text-muted-foreground/50 hover:bg-muted/10",
+        day_disabled: "text-muted-foreground/20 cursor-not-allowed hover:bg-transparent",
         day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
         ...classNames,

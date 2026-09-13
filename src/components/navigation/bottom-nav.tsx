@@ -42,9 +42,9 @@ export function BottomNav() {
               )}
             >
               {isActive && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary shadow-[0_0_12px_rgba(57,255,20,0.8)]" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary shadow-[0_0_12px_hsl(var(--primary)/0.8)]" />
               )}
-              <item.icon className={cn("w-5 h-5 transition-transform duration-300", isActive && "scale-110 drop-shadow-[0_0_8px_rgba(57,255,20,0.6)]")} />
+              <item.icon className={cn("w-5 h-5 transition-transform duration-300", isActive && "scale-110 drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)]")} />
               <span className={cn(
                 "text-[8px] font-bold uppercase tracking-wider transition-all truncate max-w-full text-center block",
                 isActive ? "opacity-100 scale-100" : "opacity-60"

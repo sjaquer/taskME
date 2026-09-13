@@ -49,7 +49,7 @@ export function ScheduleItem({ routine, selectedDate, currentTime, index, onEdit
       <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-6">
         <div className="w-16 pt-3 flex items-center gap-1.5">
           {isActive && (
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_6px_rgba(57,255,20,0.5)]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse shadow-[0_0_6px_hsl(var(--primary)/0.5)]" />
           )}
           <span className={cn('text-xs md:text-sm font-black tracking-widest font-data', isActive ? 'text-primary' : 'text-muted-foreground/30')}>
             {formatTime(routine.startTime, hourFormat)}

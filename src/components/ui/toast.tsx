@@ -46,15 +46,15 @@ const toastVariants = cva(
     variants: {
       variant: {
         default:
-          "border-white/[0.08] bg-[#0a0a0a]/90 text-white shadow-[0_0_20px_rgba(57,255,20,0.08)]",
+          "border-border bg-popover/90 text-foreground shadow-[0_0_20px_hsl(var(--primary)/0.08)]",
         success:
-          "border-primary/20 bg-[#0a0a0a]/90 text-white shadow-[0_0_20px_rgba(57,255,20,0.15)]",
+          "border-primary/20 bg-popover/90 text-foreground shadow-[0_0_20px_hsl(var(--primary)/0.15)]",
         destructive:
-          "destructive border-red-500/20 bg-[#0a0a0a]/90 text-white shadow-[0_0_20px_rgba(239,68,68,0.15)]",
+          "destructive border-red-500/20 bg-popover/90 text-foreground shadow-[0_0_20px_rgba(239,68,68,0.15)]",
         warning:
-          "border-yellow-500/20 bg-[#0a0a0a]/90 text-white shadow-[0_0_20px_rgba(234,179,8,0.15)]",
+          "border-yellow-500/20 bg-popover/90 text-foreground shadow-[0_0_20px_rgba(234,179,8,0.15)]",
         info:
-          "border-blue-500/20 bg-[#0a0a0a]/90 text-white shadow-[0_0_20px_rgba(59,130,246,0.15)]",
+          "border-blue-500/20 bg-popover/90 text-foreground shadow-[0_0_20px_rgba(59,130,246,0.15)]",
       },
     },
     defaultVariants: {

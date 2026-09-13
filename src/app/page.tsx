@@ -39,7 +39,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push("/welcome");
+      router.push("/login");
     } else if (!isUserLoading && user) {
       const targetPage = (defaultPage && defaultPage !== "/") ? defaultPage : "/kanban";
       router.push(targetPage);

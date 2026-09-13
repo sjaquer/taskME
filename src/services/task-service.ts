@@ -6,6 +6,8 @@ import {
   query,
   where,
   serverTimestamp,
+  getDocs,
+  writeBatch,
   Firestore,
   CollectionReference,
   DocumentReference,
@@ -16,6 +18,7 @@ import {
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
 import type { AppContext, Priority, Task } from '@/types/task';
+import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
 // Un ticket es una Task con isTicket: true y context: 'Trabajo'.
@@ -28,18 +31,46 @@ function getTaskDocRef(firestore: Firestore, userId: string, taskId: string): Do
 }
 
 export function buildTasksQuery(firestore: Firestore, userId: string, context: AppContext) {
-  // Optimization: Calculate a "Focus Window" (e.g., 30 days)
-  // Tasks older than this that are already 'Hecho' are not fetched to save reads.
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  // Note: For complex filtering with multiple 'where', Firestore requires a composite index.
-  // If the index doesn't exist, Firebase will throw an error with a link to create it.
   return query(
     getUserTasksRef(firestore, userId),
-    where('context', '==', context),
-    where('updatedAt', '>=', thirtyDaysAgo)
+    where('context', '==', context)
   );
+}
+
+const RETENTION_DAYS: Record<TaskRetentionPeriod, number> = {
+  weekly: 7,
+  monthly: 30,
+  quarterly: 90,
+  yearly: 365,
+};
+
+// Borrado manual: elimina las tareas "Hecho" cuya última actualización supera
+// el periodo elegido por el usuario. Solo se ejecuta cuando el usuario lo pide.
+export async function cleanupCompletedTasks(
+  firestore: Firestore,
+  userId: string,
+  period: TaskRetentionPeriod
+): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - RETENTION_DAYS[period]);
+
+  const snap = await getDocs(
+    query(getUserTasksRef(firestore, userId), where('status', '==', 'Hecho'))
+  );
+
+  const staleDocs = snap.docs.filter((d) => {
+    const updatedAt = d.data().updatedAt;
+    const updatedDate = updatedAt?.toDate ? updatedAt.toDate() : null;
+    return updatedDate ? updatedDate < cutoff : false;
+  });
+
+  if (staleDocs.length === 0) return 0;
+
+  const batch = writeBatch(firestore);
+  staleDocs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+
+  return staleDocs.length;
 }
 
 // Los tickets siempre viven en el contexto 'Trabajo'; se filtra en memoria
