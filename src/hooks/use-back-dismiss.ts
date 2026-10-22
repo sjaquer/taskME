@@ -3,8 +3,18 @@
 import { useEffect, useRef } from 'react';
 
 // Cierres hechos desde la UI que llaman a history.back(): su popstate no debe
-// interpretarse como un "atrás" del usuario.
+// interpretarse como un "atrás" del usuario. Un único listener global (registrado
+// al cargar el módulo, antes que los de cada panel) los descuenta aunque el panel
+// que los originó ya se haya desmontado.
 let pendingProgrammaticBacks = 0;
+let currentPopIsProgrammatic = false;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    currentPopIsProgrammatic = pendingProgrammaticBacks > 0;
+    if (currentPopIsProgrammatic) pendingProgrammaticBacks -= 1;
+  });
+}
 
 /**
  * Mientras `open` es true, el botón atrás (Android/WebView o navegador) cierra
@@ -32,10 +42,7 @@ export function useBackDismiss(open: boolean, onClose: () => void) {
     }
 
     const handlePopState = () => {
-      if (pendingProgrammaticBacks > 0) {
-        pendingProgrammaticBacks -= 1;
-        return;
-      }
+      if (currentPopIsProgrammatic) return;
       closedByBackRef.current = true;
       onCloseRef.current();
     };

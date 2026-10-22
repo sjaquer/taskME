@@ -20,3 +20,8 @@ export function formatTime(time: string | undefined, format: HourFormat): string
   const hours12 = hours % 12 || 12;
   return `${String(hours12).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
 }
+
+/** "1 pendiente", "3 pendientes": número con la forma singular o plural. */
+export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}

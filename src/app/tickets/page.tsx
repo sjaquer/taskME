@@ -27,7 +27,7 @@ import { useContexts, useProjects, useTasks } from "@/firebase/user-data";
 import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/native-features";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 import { getDueMeta, isTaskStatus, parseTagInput, sortTasks, toInputDateValue } from "@/lib/tasks";
 import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
 import { createTask, deleteTask, updateTask } from "@/services/task-service";
@@ -257,8 +257,8 @@ function TicketsPageContent() {
         title="Tickets"
         summary={
           <>
-            {pendingTickets.length} pendientes · {inProgressCount} en curso
-            {overdueCount > 0 && <span className="text-red-400"> · {overdueCount} vencidos</span>}
+            {pluralize(pendingTickets.length, "pendiente")} · {inProgressCount} en curso
+            {overdueCount > 0 && <span className="text-red-400"> · {pluralize(overdueCount, "vencido")}</span>}
           </>
         }
         actionLabel={formOpen ? undefined : "Nuevo"}
