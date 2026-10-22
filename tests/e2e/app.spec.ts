@@ -3,6 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 const PROJECT_ID = 'demo-taskme';
 const OWNER_UID = 'e2e-owner';
 const PIN = '2468'; // APP_PIN de playwright.config.ts
+// Mensaje de error del PIN (getByRole('alert') también encuentra el anunciador de rutas de Next).
+const pinError = (page: Page) => page.locator('#pin-error');
 const ownerHeaders = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' };
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -55,7 +57,7 @@ test.describe('acceso con PIN', () => {
     await expect(page).toHaveURL(/\/login$/);
     await page.getByLabel('PIN').fill('0000');
     await page.getByRole('button', { name: 'Desbloquear' }).click();
-    await expect(page.getByRole('alert')).toHaveText('PIN incorrecto.');
+    await expect(pinError(page)).toHaveText('PIN incorrecto.');
     await page.getByLabel('PIN').fill(PIN);
     await page.getByRole('button', { name: 'Desbloquear' }).click();
     await page.waitForURL((url) => !url.pathname.startsWith('/login'));
@@ -69,11 +71,11 @@ test.describe('acceso con PIN', () => {
     for (let attempt = 0; attempt < 5; attempt++) {
       await page.getByLabel('PIN').fill(`99${attempt}9`);
       await page.getByRole('button', { name: 'Desbloquear' }).click();
-      await expect(page.getByRole('alert')).toHaveText('PIN incorrecto.');
+      await expect(pinError(page)).toHaveText('PIN incorrecto.');
     }
     await page.getByLabel('PIN').fill(PIN);
     await page.getByRole('button', { name: 'Desbloquear' }).click();
-    await expect(page.getByRole('alert')).toHaveText(/Demasiados intentos/);
+    await expect(pinError(page)).toHaveText(/Demasiados intentos/);
   });
 
   test('"Bloquear este dispositivo" vuelve a pedir el PIN', async ({ page }) => {

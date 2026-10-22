@@ -21,9 +21,14 @@ export default defineConfig({
   webServer: [
     {
       command: `firebase emulators:start --only auth,firestore --project ${PROJECT_ID}`,
-      url: 'http://127.0.0.1:8080',
+      // Se espera al emulador de Auth (necesario para desbloquear con el PIN); si
+      // solo respondiera Firestore, quedaría un emulador a medias de otra corrida.
+      url: 'http://127.0.0.1:9099',
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
+      // SIGINT permite al CLI de Firebase apagar sus emuladores; si se lo mata de
+      // golpe, el proceso Java de Firestore queda vivo ocupando el puerto 8080.
+      gracefulShutdown: { signal: 'SIGINT', timeout: 20_000 },
     },
     {
       command: `npx next dev -p ${PORT}`,
