@@ -20,6 +20,7 @@ import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-
 import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
+import { UserDataProvider } from '@/firebase/user-data';
 import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
 import { NotificationMonitor } from './notification-monitor';
@@ -43,9 +44,11 @@ export function ClientShell({ children }: { children: ReactNode }) {
   return (
     <>
       <FirebaseClientProvider>
-        <NativeBridgeProvider>
-          <ShellRouter>{children}</ShellRouter>
-        </NativeBridgeProvider>
+        <UserDataProvider>
+          <NativeBridgeProvider>
+            <ShellRouter>{children}</ShellRouter>
+          </NativeBridgeProvider>
+        </UserDataProvider>
       </FirebaseClientProvider>
       <Toaster />
     </>

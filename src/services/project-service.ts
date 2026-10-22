@@ -3,8 +3,6 @@
 import {
   collection,
   doc,
-  query,
-  where,
   serverTimestamp,
   Firestore,
   CollectionReference,
@@ -18,19 +16,12 @@ import {
 import type { AppContext } from '@/types/task';
 
 // ── PROJECTS (agrupación de tareas y tickets) ──────────────
-function getUserProjectsRef(firestore: Firestore, userId: string): CollectionReference {
+export function getUserProjectsRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'projects');
 }
 
 function getProjectDocRef(firestore: Firestore, userId: string, projectId: string): DocumentReference {
   return doc(firestore, 'users', userId, 'projects', projectId);
-}
-
-export function buildProjectsQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserProjectsRef(firestore, userId),
-    where('context', '==', context)
-  );
 }
 
 export function createProject(

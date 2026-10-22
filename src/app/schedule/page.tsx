@@ -8,8 +8,8 @@ import { Plus, Inbox, CalendarDays, X } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
-import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { useRoutines } from "@/firebase/user-data";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,7 @@ import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
 import { ScheduleItem } from "@/components/molecules";
-import { buildRoutinesQuery, createRoutine, updateRoutine, deleteRoutine } from "@/services/routine-service";
+import { createRoutine, updateRoutine, deleteRoutine } from "@/services/routine-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Routine, Priority, RoutineFormData } from "@/types/task";
@@ -70,12 +70,7 @@ export default function SchedulePage() {
   const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
   const days = [...Array(14)].map((_, i) => addDays(startDate, i));
 
-  const routinesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildRoutinesQuery(firestore, user.uid, context);
-  }, [firestore, user, context]);
-
-  const { data: routines } = useCollection<Routine>(routinesQuery);
+  const { data: routines } = useRoutines(context);
 
   useEffect(() => {
     if (!isUserLoading && !user) router.push("/login");
@@ -90,10 +85,9 @@ export default function SchedulePage() {
   );
 
   const selectedDayNum = getDay(selectedDate);
-  const dailyRoutines = routines?.filter((r) => {
-    if (r.context !== context) return false;
-    return r.recurringDays?.includes(selectedDayNum);
-  }).sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? "")) || [];
+  const dailyRoutines = routines
+    .filter((r) => r.recurringDays?.includes(selectedDayNum))
+    .sort((a, b) => (a.startTime ?? "").localeCompare(b.startTime ?? ""));
 
   const resetForm = () => { setFormData(INITIAL_FORM); setEditingRoutine(null); };
 
@@ -149,7 +143,7 @@ export default function SchedulePage() {
   };
 
   const handleDeleteRoutine = (routineId: string) => {
-    const deletedRoutine = routines?.find((routine) => routine.id === routineId);
+    const deletedRoutine = routines.find((routine) => routine.id === routineId);
     deleteRoutine(firestore, user.uid, routineId);
     if (!deletedRoutine) {
       toast({ title: "Rutina eliminada", variant: "warning" });

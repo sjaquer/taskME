@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { AppContext, Project, Task } from '@/types/task';
+import type { AppContext } from '@/types/task';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet' | 'emerald' | 'indigo' | 'crimson' | 'slate';
 export type HourFormat = '24h' | '12h';
@@ -39,11 +39,6 @@ interface AppState {
   visualConfig: VisualConfig;
   updateVisualConfig: (config: Partial<VisualConfig>) => void;
 
-  // Data Cache (Expert Optimization)
-  cachedTasks: Record<string, Task[]>; // Key: context
-  setCachedTasks: (context: string, tasks: Task[]) => void;
-  cachedProjects: Record<string, Project[]>;
-  setCachedProjects: (context: string, projects: Project[]) => void;
 }
 
 export const useAppContextStore = create<AppState>()(
@@ -82,15 +77,6 @@ export const useAppContextStore = create<AppState>()(
         visualConfig: { ...state.visualConfig, ...config }
       })),
 
-      // Cache Initial State
-      cachedTasks: {},
-      setCachedTasks: (context, tasks) => set((state) => ({
-        cachedTasks: { ...state.cachedTasks, [context]: tasks }
-      })),
-      cachedProjects: {},
-      setCachedProjects: (context, projects) => set((state) => ({
-        cachedProjects: { ...state.cachedProjects, [context]: projects }
-      })),
     }),
     {
       name: 'taskme-app-state-v5',

@@ -22,19 +22,12 @@ import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
 // Un ticket es una Task con isTicket: true y context: 'Trabajo'.
-function getUserTasksRef(firestore: Firestore, userId: string): CollectionReference {
+export function getUserTasksRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'tasks');
 }
 
 function getTaskDocRef(firestore: Firestore, userId: string, taskId: string): DocumentReference {
   return doc(firestore, 'users', userId, 'tasks', taskId);
-}
-
-export function buildTasksQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserTasksRef(firestore, userId),
-    where('context', '==', context)
-  );
 }
 
 const RETENTION_DAYS: Record<TaskRetentionPeriod, number> = {

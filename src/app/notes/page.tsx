@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppContextStore } from "@/lib/store";
-import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { useNotes } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { noteSchema } from "@/lib/schemas";
-import { buildNotesQuery, createNote, updateNote, deleteNote } from "@/services/note-service";
+import { createNote, updateNote, deleteNote } from "@/services/note-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Note, NoteCategory } from "@/types/task";
@@ -47,17 +47,11 @@ export default function NotesPage() {
     if (!isUserLoading && !user) router.push("/login");
   }, [user, isUserLoading, router]);
 
-  const notesQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildNotesQuery(firestore, user.uid, context);
-  }, [firestore, user, context]);
-
-  const { data: notes, isLoading } = useCollection<Note>(notesQuery);
+  const { data: notes, isLoading } = useNotes(context);
 
   const visibleNotes = useMemo(() => {
-    const list = notes || [];
-    if (categoryFilter === "all") return list;
-    return list.filter((note) => note.category === categoryFilter);
+    if (categoryFilter === "all") return notes;
+    return notes.filter((note) => note.category === categoryFilter);
   }, [notes, categoryFilter]);
 
   const openCreateForm = () => {
@@ -106,7 +100,7 @@ export default function NotesPage() {
 
   const handleDelete = (noteId: string) => {
     if (!user || !firestore) return;
-    const deletedNote = notes?.find((note) => note.id === noteId);
+    const deletedNote = notes.find((note) => note.id === noteId);
     deleteNote(firestore, user.uid, noteId);
     if (!deletedNote) {
       toast({ variant: "warning", title: "Nota eliminada" });

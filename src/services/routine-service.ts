@@ -3,8 +3,6 @@
 import {
   collection,
   doc,
-  query,
-  where,
   serverTimestamp,
   Firestore,
   CollectionReference,
@@ -18,19 +16,12 @@ import {
 import type { Priority, AppContext } from '@/types/task';
 
 // ── ROUTINES (Horario semanal) ─────────────────────────────
-function getUserRoutinesRef(firestore: Firestore, userId: string): CollectionReference {
+export function getUserRoutinesRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'routines');
 }
 
 function getRoutineDocRef(firestore: Firestore, userId: string, routineId: string): DocumentReference {
   return doc(firestore, 'users', userId, 'routines', routineId);
-}
-
-export function buildRoutinesQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserRoutinesRef(firestore, userId),
-    where('context', '==', context)
-  );
 }
 
 export function createRoutine(

@@ -3,8 +3,6 @@
 import {
   collection,
   doc,
-  query,
-  where,
   serverTimestamp,
   Firestore,
   CollectionReference,
@@ -18,19 +16,12 @@ import {
 import type { AppContext, NoteCategory } from '@/types/task';
 
 // ── NOTES (recordatorios y apuntes libres) ─────────────────
-function getUserNotesRef(firestore: Firestore, userId: string): CollectionReference {
+export function getUserNotesRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'notes');
 }
 
 function getNoteDocRef(firestore: Firestore, userId: string, noteId: string): DocumentReference {
   return doc(firestore, 'users', userId, 'notes', noteId);
-}
-
-export function buildNotesQuery(firestore: Firestore, userId: string, context: AppContext) {
-  return query(
-    getUserNotesRef(firestore, userId),
-    where('context', '==', context)
-  );
 }
 
 export function createNote(

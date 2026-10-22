@@ -15,12 +15,12 @@ import { cn } from "@/lib/utils";
 import { MAX_TAGS_PER_TASK, TASK_STATUSES, getDueMeta, getPriorityMeta, normalizeTag, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
-import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
-import { buildTasksQuery, createTask, deleteTask, deleteTasks, updateTask } from "@/services/task-service";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { useProjects, useTasks } from "@/firebase/user-data";
+import { createTask, deleteTask, deleteTasks, updateTask } from "@/services/task-service";
 import { restoreUserDocument, restoreUserDocuments } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
-import { buildProjectsQuery, createProject, updateProject, archiveProject } from "@/services/project-service";
+import { createProject, updateProject, archiveProject } from "@/services/project-service";
 import { TaskFormPanel, type TaskFormState } from "@/components/kanban/task-form-panel";
 import { ProjectManager } from "@/components/kanban/project-manager";
 import type { AppContext, Priority, Project, ProjectFormData, Task } from "@/types/task";
@@ -273,7 +273,7 @@ function StatusSection({
 }
 
 export default function KanbanPage() {
-  const { context, cachedTasks, setCachedTasks, cachedProjects, setCachedProjects } = useAppContextStore();
+  const { context } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -286,8 +286,10 @@ export default function KanbanPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
 
-  const [tasks, setTasks] = useState<Task[]>(cachedTasks[context] || []);
-  const [projects, setProjects] = useState<Project[]>(cachedProjects[context] || []);
+  // Firestore aplica las escrituras locales al instante (latency compensation),
+  // así que no hace falta un estado optimista propio.
+  const { data: tasks, isLoading: isTasksLoading } = useTasks(context);
+  const { data: projects } = useProjects(context);
   const [searchQuery, setSearchQuery] = useState("");
   const [aiPrompt, setAiPrompt] = useState("");
   const [quickTitle, setQuickTitle] = useState("");
@@ -318,34 +320,6 @@ export default function KanbanPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-
-  const tasksQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildTasksQuery(firestore, user.uid, context);
-  }, [firestore, user, context]);
-
-  const { data: firestoreTasks, isLoading: isTasksLoading } = useCollection<Task>(tasksQuery);
-
-  const projectsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildProjectsQuery(firestore, user.uid, context);
-  }, [firestore, user, context]);
-
-  const { data: firestoreProjects } = useCollection<Project>(projectsQuery);
-
-  useEffect(() => {
-    if (firestoreTasks) {
-      setTasks(firestoreTasks);
-      setCachedTasks(context, firestoreTasks);
-    }
-  }, [context, firestoreTasks, setCachedTasks]);
-
-  useEffect(() => {
-    if (firestoreProjects) {
-      setProjects(firestoreProjects);
-      setCachedProjects(context, firestoreProjects);
-    }
-  }, [context, firestoreProjects, setCachedProjects]);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -466,12 +440,9 @@ export default function KanbanPage() {
 
     if (editingTask) {
       const taskId = editingTask.id;
-      setTasks((previous) => previous.map((task) => (task.id === taskId ? { ...task, ...normalizedTask } : task)));
       updateTask(firestore, user.uid, taskId, normalizedTask);
       toast({ variant: "success", title: "Tarea actualizada" });
     } else {
-      const tempId = `temp-${Date.now()}`;
-      setTasks((previous) => [{ ...normalizedTask, id: tempId } as Task, ...previous]);
       createTask(firestore, user.uid, normalizedTask);
       toast({ variant: "success", title: "Tarea creada" });
     }
@@ -510,11 +481,9 @@ export default function KanbanPage() {
     if (!user || !firestore) return;
     const deletedTask = tasks.find((task) => task.id === taskId);
 
-    setTasks((previous) => previous.filter((task) => task.id !== taskId));
     deleteTask(firestore, user.uid, taskId);
 
-    // Una tarea recién creada aún tiene id temporal: no hay documento que restaurar.
-    if (!deletedTask || taskId.startsWith("temp-")) {
+    if (!deletedTask) {
       toast({ variant: "warning", title: "Tarea eliminada" });
       return;
     }
@@ -528,7 +497,6 @@ export default function KanbanPage() {
   const handleMoveTask = (taskId: string, status: string) => {
     if (!user || !firestore) return;
 
-    setTasks((previous) => previous.map((task) => (task.id === taskId ? { ...task, status: status as Task["status"] } : task)));
     updateTask(firestore, user.uid, taskId, { status });
     toast({ variant: "success", title: "Estado actualizado", description: `Ahora está en ${status}.` });
   };
@@ -562,7 +530,7 @@ export default function KanbanPage() {
 
   const handleClearCompleted = async () => {
     if (!user || !firestore) return;
-    const completedList = tasks.filter((task) => task.status === "Hecho" && !task.id.startsWith("temp-"));
+    const completedList = tasks.filter((task) => task.status === "Hecho");
     if (completedList.length === 0) {
       toast({ variant: "warning", title: "Sin tareas hechas", description: "No hay tareas completadas para limpiar." });
       return;
@@ -574,7 +542,6 @@ export default function KanbanPage() {
     }
     setConfirmClearCompleted(false);
 
-    setTasks((previous) => previous.filter((task) => task.status !== "Hecho"));
     try {
       await deleteTasks(firestore, user.uid, completedList.map((task) => task.id));
     } catch (error) {

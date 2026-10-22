@@ -18,7 +18,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useUser, useFirestore, useCollectionOnce, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useTasks } from "@/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,9 +26,8 @@ import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { MetricCard } from "@/components/molecules";
 import { SectionLabel } from "@/components/atoms";
-import { buildTasksQuery, completeTask } from "@/services/task-service";
+import { completeTask } from "@/services/task-service";
 import { consumeLaunchRedirect } from "@/lib/launch-state";
-import type { Task } from "@/types/task";
 
 export default function Home() {
   const { context, defaultPage, activeModules } = useAppContextStore();
@@ -53,24 +52,9 @@ export default function Home() {
     }
   }, [user, isUserLoading, router, defaultPage, dashboardEnabled]);
 
-  const tasksQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildTasksQuery(firestore, user.uid, context);
-  }, [firestore, user, context]);
-
-  const { data: tasks, isLoading: isTasksLoading } = useCollectionOnce<Task>(tasksQuery);
+  const { data: tasks, isLoading: isTasksLoading } = useTasks(context);
 
   const metrics = useMemo(() => {
-    if (!tasks)
-      return {
-        allTasks: [] as Task[],
-        completedCount: 0,
-        progressPercent: 0,
-        highPriorityTasks: [] as Task[],
-        pendingTasksCount: 0,
-        nextPendingTask: null as Task | null,
-      };
-
     const completedCount = tasks.filter((t) => t.status === "Hecho").length;
     const progressPercent = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
     const highPriorityTasks = tasks.filter((t) => t.priority === "alta" && t.status !== "Hecho").slice(0, 3);

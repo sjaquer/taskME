@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 
 /**
  * Hook para gestionar la comunicación bidireccional con la APK nativa.

@@ -44,42 +44,6 @@ function getQueryPath(target: CollectionReference<DocumentData> | Query<Document
     : (target as unknown as InternalQuery)._query.path.canonicalString();
 }
 
-function getQuerySignature(target: CollectionReference<DocumentData> | Query<DocumentData>): string {
-  if (target.type === 'collection') return (target as CollectionReference<DocumentData>).path;
-
-  const internal = target as unknown as { _query?: unknown };
-  try {
-    return JSON.stringify(internal._query) || getQueryPath(target);
-  } catch {
-    return getQueryPath(target);
-  }
-}
-
-function getCollectionCacheKey(signature: string): string {
-  return `taskme:cache:collection:${signature}`;
-}
-
-function readCachedCollection<T>(signature: string): WithId<T>[] | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = window.localStorage.getItem(getCollectionCacheKey(signature));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as WithId<T>[];
-    return Array.isArray(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCachedCollection<T>(signature: string, data: WithId<T>[]): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(getCollectionCacheKey(signature), JSON.stringify(data));
-  } catch {
-    // Ignore localStorage quota and serialization errors.
-  }
-}
-
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Handles nullable references/queries.
@@ -101,12 +65,9 @@ export function useCollection<T = unknown>(
   type ResultItemType = WithId<T>;
   type StateDataType = ResultItemType[] | null;
 
-  const initialSignature = memoizedTargetRefOrQuery ? getQuerySignature(memoizedTargetRefOrQuery) : null;
-  const initialCachedData = initialSignature ? readCachedCollection<T>(initialSignature) : null;
-
-  const [data, setData] = useState<StateDataType>(initialCachedData);
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery && !initialCachedData);
-  const [fromCache, setFromCache] = useState<boolean>(!!initialCachedData);
+  const [data, setData] = useState<StateDataType>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery);
+  const [fromCache, setFromCache] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -118,20 +79,11 @@ export function useCollection<T = unknown>(
     }
 
     const queryPath = getQueryPath(memoizedTargetRefOrQuery);
-    const querySignature = getQuerySignature(memoizedTargetRefOrQuery);
-    const cachedData = readCachedCollection<T>(querySignature);
-
-    if (cachedData && cachedData.length > 0) {
-      setData(cachedData);
-      setIsLoading(false);
-      setFromCache(true);
-    } else {
-      setIsLoading(true);
-      setFromCache(false);
-    }
-
+    setIsLoading(true);
     setError(null);
 
+    // Firestore usa su caché persistente (IndexedDB): el primer snapshot llega
+    // desde el dispositivo aunque no haya conexión.
     const unsubscribe = onSnapshot(
       memoizedTargetRefOrQuery,
       (snapshot: QuerySnapshot<DocumentData>) => {
@@ -140,8 +92,7 @@ export function useCollection<T = unknown>(
           results.push({ ...(snapshotDoc.data() as T), id: snapshotDoc.id });
         }
         setData(results);
-        writeCachedCollection<T>(querySignature, results);
-        setFromCache(snapshot.metadata.fromCache); // Use Firestore's own cache indicator if available
+        setFromCache(snapshot.metadata.fromCache);
         setError(null);
         setIsLoading(false);
       },
@@ -152,9 +103,7 @@ export function useCollection<T = unknown>(
         });
 
         setError(contextualError);
-        if (!cachedData) {
-          setData(null);
-        }
+        setData(null);
         setIsLoading(false);
 
         // Trigger global error propagation.

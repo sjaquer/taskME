@@ -10,11 +10,7 @@ import {
   registerMobileLogEvent,
   registerNativeAndroidDevice,
 } from '@/services/mobile-integration-service';
-import {
-  collection,
-  onSnapshot,
-} from 'firebase/firestore';
-import type { Routine, Task } from '@/types/task';
+import { useRoutines, useTasks } from '@/firebase/user-data';
 
 /**
  * Componente que monitorea tareas, eventos y rutinas próximos
@@ -24,8 +20,9 @@ export function NotificationMonitor() {
   const { user } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [routines, setRoutines] = useState<Routine[]>([]);
+  // Todas las tareas y rutinas (de cualquier contexto), compartidas con las páginas.
+  const { data: tasks } = useTasks();
+  const { data: routines } = useRoutines();
   const [notificationsEnabled, setNotificationsEnabled] = useState(NotificationService.isEnabled());
   const nativeRegistrationRef = useRef<string | null>(null);
   const openedNotificationRef = useRef<string | null>(null);
@@ -91,32 +88,6 @@ export function NotificationMonitor() {
       // La UI no debe romperse si falla la confirmacion de apertura.
     });
   }, [searchParams, user]);
-
-  // Cargar tareas en tiempo real
-  useEffect(() => {
-    if (!user || !firestore) return;
-
-    const userTasksRef = collection(firestore, 'users', user.uid, 'tasks');
-    const unsubscribe = onSnapshot(userTasksRef, (snapshot) => {
-      const tasksList = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Task);
-      setTasks(tasksList);
-    });
-
-    return () => unsubscribe();
-  }, [user, firestore]);
-
-  // Cargar rutinas en tiempo real
-  useEffect(() => {
-    if (!user || !firestore) return;
-
-    const userRoutinesRef = collection(firestore, 'users', user.uid, 'routines');
-    const unsubscribe = onSnapshot(userRoutinesRef, (snapshot) => {
-      const routinesList = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Routine);
-      setRoutines(routinesList);
-    });
-
-    return () => unsubscribe();
-  }, [user, firestore]);
 
   if (!user || !firestore) {
     return null;

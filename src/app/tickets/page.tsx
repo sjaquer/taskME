@@ -21,17 +21,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
-import { useCollection } from "@/firebase/firestore/use-collection";
+import { useFirestore, useUser } from "@/firebase/provider";
+import { useProjects, useTasks } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getDueMeta, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
-import { buildTasksQuery, createTask, deleteTask, updateTask } from "@/services/task-service";
-import { buildProjectsQuery } from "@/services/project-service";
+import { createTask, deleteTask, updateTask } from "@/services/task-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
-import type { Priority, Project, Task } from "@/types/task";
+import type { Priority, Task } from "@/types/task";
 
 interface TicketFormState {
   title: string;
@@ -81,22 +80,11 @@ function TicketsPageContent() {
   const loadedEditId = useRef<string | null>(null);
 
   // Los tickets viven siempre en el contexto 'Trabajo'.
-  const tasksQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildTasksQuery(firestore, user.uid, "Trabajo");
-  }, [firestore, user]);
+  const { data: tasks, isLoading } = useTasks("Trabajo");
+  const { data: projects } = useProjects("Trabajo");
+  const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);
 
-  const { data: tasks, isLoading } = useCollection<Task>(tasksQuery);
-
-  const projectsQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
-    return buildProjectsQuery(firestore, user.uid, "Trabajo");
-  }, [firestore, user]);
-
-  const { data: projects } = useCollection<Project>(projectsQuery);
-  const activeProjects = useMemo(() => (projects || []).filter((p) => !p.archived), [projects]);
-
-  const tickets = useMemo(() => (tasks || []).filter((task) => task.isTicket), [tasks]);
+  const tickets = useMemo(() => tasks.filter((task) => task.isTicket), [tasks]);
   const pendingTickets = useMemo(
     () =>
       tickets
@@ -133,7 +121,7 @@ function TicketsPageContent() {
   // Deep-link desde el Tablero: /tickets?edit=<id>
   useEffect(() => {
     const editId = searchParams.get("edit");
-    if (!editId || !tasks || loadedEditId.current === editId) return;
+    if (!editId || loadedEditId.current === editId) return;
     const ticket = tasks.find((t) => t.id === editId && t.isTicket);
     if (ticket) {
       loadedEditId.current = editId;
