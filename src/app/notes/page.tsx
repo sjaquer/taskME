@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Field, FormPanel, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useAppContextStore } from "@/lib/store";
 import { useFirestore, useUser } from "@/firebase/provider";
-import { useNotes } from "@/firebase/user-data";
+import { useActiveContext, useNotes } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { noteSchema } from "@/lib/schemas";
@@ -31,6 +31,7 @@ const INITIAL_FORM: NoteFormState = { title: "", content: "", category: "Otro" }
 
 export default function NotesPage() {
   const { context } = useAppContextStore();
+  const activeContext = useActiveContext();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const formRef = useRef<HTMLDivElement>(null);
@@ -115,7 +116,7 @@ export default function NotesPage() {
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase flex items-center gap-2">
-          <NotebookText className="w-6 h-6 text-primary" /> Notas <span className="text-primary italic glow-text">{context}</span>
+          <NotebookText className="w-6 h-6 text-primary" /> Notas <span className="text-primary italic glow-text">{activeContext.name}</span>
         </h1>
         <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em]">
           Recordatorios y apuntes rápidos

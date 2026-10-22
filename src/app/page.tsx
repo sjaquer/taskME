@@ -18,7 +18,7 @@ import {
   Ticket,
 } from "lucide-react";
 import { useEffect, useMemo } from "react";
-import { useUser, useFirestore, useTasks } from "@/firebase";
+import { useUser, useFirestore, useTasks, useActiveContext } from "@/firebase";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +35,7 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const dashboardEnabled = activeModules.dashboard;
+  const activeContext = useActiveContext();
 
   useEffect(() => {
     // La sesión la controla el shell (AuthGate); aquí solo se decide la página de inicio.
@@ -75,7 +76,7 @@ export default function Home() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="space-y-1">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            Panel <span className="text-primary">{context}</span>
+            Panel <span className="text-primary">{activeContext.name}</span>
           </h2>
           <p className="text-sm text-muted-foreground">
             {metrics.pendingTasksCount > 0
@@ -265,7 +266,7 @@ export default function Home() {
               <div className="space-y-2 text-xs text-muted-foreground/80">
                 <p className="flex justify-between">
                   <span>Contexto Activo</span>
-                  <span className="font-semibold text-foreground">{context}</span>
+                  <span className="font-semibold text-foreground">{activeContext.name}</span>
                 </p>
                 <p className="flex justify-between">
                   <span>Tareas Pendientes</span>

@@ -21,7 +21,7 @@ import type { AppContext, Priority, TaskStatus } from '@/types/task';
 import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
-// Un ticket es una Task con isTicket: true y context: 'Trabajo'.
+// Un ticket es una Task con isTicket: true, en el contexto elegido para tickets.
 export function getUserTasksRef(firestore: Firestore, userId: string): CollectionReference {
   return collection(firestore, 'users', userId, 'tasks');
 }

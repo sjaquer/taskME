@@ -9,7 +9,7 @@ import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser } from "@/firebase/provider";
-import { useRoutines } from "@/firebase/user-data";
+import { useActiveContext, useRoutines } from "@/firebase/user-data";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Field, FormPanel, PrioritySelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
@@ -44,6 +44,7 @@ const INITIAL_FORM: RoutineFormData = {
 
 export default function SchedulePage() {
   const { context } = useAppContextStore();
+  const activeContext = useActiveContext();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
@@ -157,7 +158,7 @@ export default function SchedulePage() {
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-              Horario <span className="text-primary italic glow-text">{context}</span>
+              Horario <span className="text-primary italic glow-text">{activeContext.name}</span>
             </h2>
             <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px] font-data">
               {dailyRoutines.length} BLOQUES

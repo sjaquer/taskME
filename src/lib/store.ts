@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AppContext } from '@/types/task';
+import { DEFAULT_TICKETS_CONTEXT } from '@/lib/contexts';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet' | 'emerald' | 'indigo' | 'crimson' | 'slate';
 export type HourFormat = '24h' | '12h';
@@ -24,6 +25,9 @@ interface VisualConfig {
 interface AppState {
   context: AppContext;
   setContext: (context: AppContext) => void;
+  /** Contexto donde se guardan los tickets (también los del formulario público). */
+  ticketsContext: AppContext;
+  setTicketsContext: (context: AppContext) => void;
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
   colorMode: ColorMode;
@@ -46,6 +50,8 @@ export const useAppContextStore = create<AppState>()(
     (set) => ({
       context: 'Trabajo',
       setContext: (context) => set({ context }),
+      ticketsContext: DEFAULT_TICKETS_CONTEXT,
+      setTicketsContext: (ticketsContext) => set({ ticketsContext }),
       theme: 'neon',
       setTheme: (theme) => set({ theme }),
       colorMode: 'dark',

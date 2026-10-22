@@ -2,19 +2,14 @@
 "use client";
 
 import { useAppContextStore } from "@/lib/store";
-import { Briefcase, GraduationCap, Sun, Moon } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AppContext } from "@/types/task";
 import Image from "next/image";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
-
-const CONTEXTS: { value: AppContext; icon: typeof Briefcase; label: string }[] = [
-  { value: 'Trabajo', icon: Briefcase, label: 'Trabajo' },
-  { value: 'Estudio', icon: GraduationCap, label: 'Estudio' },
-];
+import { ContextSwitcher } from "@/components/layout/context-switcher";
 
 export function Header() {
-  const { context, setContext, colorMode, setColorMode } = useAppContextStore();
+  const { colorMode, setColorMode } = useAppContextStore();
   const { state } = useSidebar();
 
   return (
@@ -33,23 +28,7 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-2 sm:gap-4">
-        <div className="flex bg-muted/30 rounded-full p-1 border border-border">
-          {CONTEXTS.map(({ value, icon: Icon, label }) => (
-            <button
-              key={value}
-              onClick={() => setContext(value)}
-              className={cn(
-                "flex items-center gap-2 px-2.5 py-1.5 sm:px-4 rounded-full text-xs font-medium transition-all",
-                context === value
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
-        </div>
+        <ContextSwitcher />
 
         <button
           onClick={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}

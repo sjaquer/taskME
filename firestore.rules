@@ -11,9 +11,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // context guarda el id de un documento de users/{uid}/contexts
+    // ('Trabajo' y 'Estudio' para los contextos originales).
     function isValidContext(data) {
       return data.context is string
-             && data.context in ['Trabajo', 'Estudio'];
+             && data.context.size() > 0
+             && data.context.size() <= 64;
     }
 
     function isValidPriority(data) {
@@ -97,6 +100,21 @@ service cloud.firestore {
              && data.color is string
              && isValidContext(data)
              && (!('archived' in data) || data.archived is bool)
+             && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
+             && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
+    }
+
+    function isValidContextDoc(data, userId) {
+      return data.keys().hasOnly(['userId', 'name', 'color', 'icon', 'order', 'createdAt', 'updatedAt'])
+             && data.userId == userId
+             && data.name is string
+             && data.name.size() > 0
+             && data.name.size() <= 40
+             && data.color is string
+             && data.color.size() <= 32
+             && data.icon is string
+             && data.icon.size() <= 32
+             && data.order is number
              && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));
     }
@@ -236,6 +254,19 @@ service cloud.firestore {
 
         allow update: if isOwner(userId)
                       && isValidProjectDoc(request.resource.data, userId);
+
+        allow delete: if isOwner(userId);
+      }
+
+      // ── Contextos del usuario (Trabajo, Estudio y personalizados) ──
+      match /contexts/{contextId} {
+        allow read: if isOwner(userId);
+
+        allow create: if isOwner(userId)
+                      && isValidContextDoc(request.resource.data, userId);
+
+        allow update: if isOwner(userId)
+                      && isValidContextDoc(request.resource.data, userId);
 
         allow delete: if isOwner(userId);
       }

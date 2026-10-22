@@ -60,7 +60,7 @@ export {
   useUser,
 } from './provider';
 export { FirebaseClientProvider } from './client-provider';
-export { UserDataProvider, useTasks, useProjects, useNotes, useRoutines } from './user-data';
+export { UserDataProvider, useTasks, useProjects, useNotes, useRoutines, useContexts, useActiveContext } from './user-data';
 export { setDocumentNonBlocking, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from './non-blocking-updates';
 export { initiateAnonymousSignIn, initiateEmailSignUp, initiateEmailSignIn } from './non-blocking-login';
 export { FirestorePermissionError, mapAuthError } from './errors';

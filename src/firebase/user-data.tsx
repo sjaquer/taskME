@@ -7,7 +7,10 @@ import { getUserTasksRef } from '@/services/task-service';
 import { getUserProjectsRef } from '@/services/project-service';
 import { getUserNotesRef } from '@/services/note-service';
 import { getUserRoutinesRef } from '@/services/routine-service';
-import type { AppContext, Note, Project, Routine, Task } from '@/types/task';
+import { getUserContextsRef } from '@/services/context-service';
+import { DEFAULT_CONTEXTS, sortContexts } from '@/lib/contexts';
+import { useAppContextStore } from '@/lib/store';
+import type { AppContext, ContextDef, Note, Project, Routine, Task } from '@/types/task';
 
 interface CollectionState<T> {
   data: T[];
@@ -19,6 +22,7 @@ interface UserDataState {
   projects: CollectionState<Project>;
   notes: CollectionState<Note>;
   routines: CollectionState<Routine>;
+  contexts: CollectionState<ContextDef>;
 }
 
 const EMPTY_STATE: CollectionState<never> = { data: [], isLoading: false };
@@ -61,11 +65,13 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   const projectsRef = useMemoFirebase(() => (uid ? getUserProjectsRef(firestore, uid) : null), [firestore, uid]);
   const notesRef = useMemoFirebase(() => (uid ? getUserNotesRef(firestore, uid) : null), [firestore, uid]);
   const routinesRef = useMemoFirebase(() => (uid ? getUserRoutinesRef(firestore, uid) : null), [firestore, uid]);
+  const contextsRef = useMemoFirebase(() => (uid ? getUserContextsRef(firestore, uid) : null), [firestore, uid]);
 
   const tasks = useCollection<Task>(tasksRef);
   const projects = useCollection<Project>(projectsRef);
   const notes = useCollection<Note>(notesRef);
   const routines = useCollection<Routine>(routinesRef);
+  const contexts = useCollection<ContextDef>(contextsRef);
 
   const value = useMemo<UserDataState>(
     () => ({
@@ -73,8 +79,16 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       projects: toState(projects),
       notes: toState(notes),
       routines: toState(routines),
+      // Sin contextos guardados (o sin permiso de lectura) se usan los de fábrica.
+      contexts: {
+        data: contexts.data && contexts.data.length > 0 ? sortContexts(contexts.data) : DEFAULT_CONTEXTS,
+        isLoading: contexts.isLoading,
+      },
     }),
-    [tasks.data, tasks.isLoading, projects.data, projects.isLoading, notes.data, notes.isLoading, routines.data, routines.isLoading]
+    [
+      tasks.data, tasks.isLoading, projects.data, projects.isLoading, notes.data, notes.isLoading,
+      routines.data, routines.isLoading, contexts.data, contexts.isLoading,
+    ]
   );
 
   return <UserDataContext.Provider value={uid ? value : EMPTY_VALUE}>{children}</UserDataContext.Provider>;
@@ -85,6 +99,7 @@ const EMPTY_VALUE: UserDataState = {
   projects: EMPTY_STATE,
   notes: EMPTY_STATE,
   routines: EMPTY_STATE,
+  contexts: { data: DEFAULT_CONTEXTS, isLoading: false },
 };
 
 function useUserData(): UserDataState {
@@ -118,4 +133,22 @@ export function useNotes(context?: AppContext) {
 
 export function useRoutines(context?: AppContext) {
   return useFilteredByContext(useUserData().routines, context);
+}
+
+/** Contextos del usuario, ordenados. Nunca vacío: si no hay guardados, devuelve los de fábrica. */
+export function useContexts() {
+  return useUserData().contexts;
+}
+
+/** True si los contextos que se muestran son los de fábrica (todavía no guardados en Firestore). */
+export function useHasStoredContexts() {
+  const { data } = useUserData().contexts;
+  return data !== DEFAULT_CONTEXTS;
+}
+
+/** Contexto activo (el elegido en la cabecera) o el primero disponible. */
+export function useActiveContext(): ContextDef {
+  const contextId = useAppContextStore((state) => state.context);
+  const { data } = useContexts();
+  return data.find((item) => item.id === contextId) ?? data[0];
 }

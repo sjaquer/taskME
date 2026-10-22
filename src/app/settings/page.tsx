@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   Shield, LogOut, Zap, Layout, Check, RefreshCcw, Fingerprint,
-  Palette, Bell, Trash2,
+  Palette, Bell, Trash2, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -16,6 +16,7 @@ import { logoutUser, saveSettingsToCloud } from "@/services/user-service";
 import { cleanupCompletedTasks } from "@/services/task-service";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NotificationSetup } from "@/components/notification-setup";
+import { ContextsManager } from "@/components/settings/contexts-manager";
 
 const THEME_OPTIONS: { value: AppTheme; label: string; hint: string; color: string }[] = [
   { value: "neon", label: "Neon Verde", hint: "Modo original", color: "#22c55e" },
@@ -95,6 +96,13 @@ export default function SettingsPage() {
           <LogOut className="w-4 h-4" /> Salir
         </Button>
       </div>
+
+      <section id="contextos" className="space-y-3 scroll-mt-24">
+        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
+          <Layers className="w-3.5 h-3.5 text-primary" /> Contextos
+        </h3>
+        <ContextsManager />
+      </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Modules */}

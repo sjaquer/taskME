@@ -1,6 +1,21 @@
 export type Priority = 'baja' | 'media' | 'alta';
 
-export type AppContext = 'Trabajo' | 'Estudio';
+/**
+ * Clave de un contexto: id del documento en users/{uid}/contexts.
+ * Los contextos originales usan sus nombres ('Trabajo', 'Estudio') como id, así
+ * los datos anteriores siguen asociados sin migración.
+ */
+export type AppContext = string;
+
+export interface ContextDef {
+  id: AppContext;
+  name: string;
+  color: string;
+  icon: string;
+  order: number;
+  createdAt?: unknown;
+  updatedAt?: unknown;
+}
 
 export type TaskStatus = 'Pendiente' | 'Haciendo' | 'Hecho';
 

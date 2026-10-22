@@ -20,7 +20,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Field, FormPanel, PrioritySelect, ProjectSelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useFirestore, useUser } from "@/firebase/provider";
-import { useProjects, useTasks } from "@/firebase/user-data";
+import { useContexts, useProjects, useTasks } from "@/firebase/user-data";
+import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { getDueMeta, isTaskStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
@@ -77,9 +78,12 @@ function TicketsPageContent() {
   const [isSaving, setIsSaving] = useState(false);
   const loadedEditId = useRef<string | null>(null);
 
-  // Los tickets viven siempre en el contexto 'Trabajo'.
-  const { data: tasks, isLoading } = useTasks("Trabajo");
-  const { data: projects } = useProjects("Trabajo");
+  // Los tickets viven en el contexto elegido en Ajustes (por defecto, Trabajo).
+  const ticketsContext = useAppContextStore((state) => state.ticketsContext);
+  const { data: contexts } = useContexts();
+  const ticketsContextName = contexts.find((item) => item.id === ticketsContext)?.name ?? ticketsContext;
+  const { data: tasks, isLoading } = useTasks(ticketsContext);
+  const { data: projects } = useProjects(ticketsContext);
   const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);
 
   const tickets = useMemo(() => tasks.filter((task) => task.isTicket), [tasks]);
@@ -159,7 +163,7 @@ function TicketsPageContent() {
         requesterName: result.data.requesterName,
         priority: result.data.priority,
         tags: parseTagInput(result.data.tags),
-        context: "Trabajo" as const,
+        context: ticketsContext,
         isTicket: true,
         userId: user.uid,
         ...(result.data.dueDate ? { dueDate: result.data.dueDate } : {}),
@@ -173,7 +177,7 @@ function TicketsPageContent() {
         toast({ variant: "success", title: "Ticket actualizado" });
       } else {
         await createTask(firestore, user.uid, { ...payload, status: "Pendiente" });
-        toast({ variant: "success", title: "Ticket creado", description: "Se agregó a tu tablero de Trabajo." });
+        toast({ variant: "success", title: "Ticket creado", description: `Se agregó a tu tablero de ${ticketsContextName}.` });
       }
 
       closeForm();

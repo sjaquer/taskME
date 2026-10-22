@@ -20,7 +20,7 @@ import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-
 import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { UserDataProvider } from '@/firebase/user-data';
+import { UserDataProvider, useContexts } from '@/firebase/user-data';
 import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
 import { NotificationMonitor } from './notification-monitor';
@@ -120,6 +120,16 @@ function ClientShellInner({ children }: { children: ReactNode }) {
   const colorMode = useAppContextStore((state) => state.colorMode);
   const visualConfig = useAppContextStore((state) => state.visualConfig);
   const activeModules = useAppContextStore((state) => state.activeModules);
+  const activeContextId = useAppContextStore((state) => state.context);
+  const setContext = useAppContextStore((state) => state.setContext);
+  const { data: contexts, isLoading: contextsLoading } = useContexts();
+
+  // Si el contexto activo se borró (o vino de otro dispositivo), se pasa al primero disponible.
+  useEffect(() => {
+    if (!contextsLoading && !contexts.some((item) => item.id === activeContextId)) {
+      setContext(contexts[0].id);
+    }
+  }, [contexts, contextsLoading, activeContextId, setContext]);
   const navItems = DESKTOP_NAV.filter((item) => item.moduleKey === null || activeModules[item.moduleKey]);
 
   // Activa la transición de colores solo durante un cambio de tema/modo (no al cargar).

@@ -8,7 +8,13 @@ const optionalIsoDate = (message: string) => isoDate(message).optional().or(z.li
 
 export const prioritySchema = z.enum(['baja', 'media', 'alta']);
 export const taskStatusSchema = z.enum(['Pendiente', 'Haciendo', 'Hecho']);
-export const contextSchema = z.enum(['Trabajo', 'Estudio']);
+export const contextSchema = z.string().trim().min(1).max(64);
+
+export const contextDefSchema = z.object({
+  name: z.string().trim().min(1, 'El contexto necesita un nombre').max(40),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color inválido'),
+  icon: z.string().min(1).max(32),
+});
 
 export const taskSchema = z.object({
   title: z.string().trim().min(1, 'El título es requerido').max(120),
