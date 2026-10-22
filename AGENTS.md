@@ -34,11 +34,11 @@ como mínimo `npm run typecheck` y `npm run build` deben pasar.
 
 ```
 src/app/            páginas (todas "use client") y rutas /api
-src/components/     ui/ (shadcn), atoms/molecules/organisms, kanban/, shell y navegación
-src/services/       acceso a Firestore por entidad (task, note, routine, project, user, restore)
-src/firebase/       inicialización, provider, hooks useCollection / useCollectionOnce
+src/components/     ui/ (shadcn), forms/ (campos compartidos), kanban/, atoms/molecules/organisms, shell
+src/services/       escrituras a Firestore por entidad (task, note, routine, project, user, restore, ai-task)
+src/firebase/       inicialización, provider (auth), user-data (lecturas en tiempo real), useCollection
 src/server/         solo servidor: firebase-admin, auth por Bearer token, rate limit
-src/lib/            store, puente nativo, utilidades
+src/lib/            store, tasks.ts (helpers puros), schemas.ts (Zod), puente nativo, utilidades
 src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ```
 
@@ -67,8 +67,14 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ## Convenciones
 
 - UI y mensajes en español. Commits con prefijo convencional (`fix(kanban): …`), en español o inglés.
-- Reutiliza `src/services/*` para leer/escribir Firestore; no llames a Firestore directamente desde páginas.
-- Las queries que se pasan a `useCollection` deben crearse con `useMemoFirebase`.
+- **Lecturas**: usa `useTasks(context?)`, `useProjects`, `useNotes`, `useRoutines` de `@/firebase/user-data`.
+  `UserDataProvider` mantiene una sola suscripción por colección; no abras `onSnapshot` nuevos en páginas.
+- **Escrituras**: usa `src/services/*`; no llames a Firestore directamente desde páginas. Firestore aplica las
+  escrituras locales al instante, así que no hace falta estado optimista propio.
+- **Sesión**: la controla `ShellRouter` en `client-shell.tsx` (invitado o email verificado). Las páginas no
+  redirigen a `/login` por su cuenta.
+- **Formularios**: arma los formularios con `src/components/forms/form-fields.tsx` (FormPanel, Field,
+  PrioritySelect, ProjectSelect, SubmitButton) y valida con los esquemas de `src/lib/schemas.ts`.
 - Valida con Zod todo lo que entra por `/api` y lo que devuelve la IA.
 - Las rutas `/api/v1/*` autenticadas usan `requireUserIdFromRequest` (token de Firebase en `Authorization: Bearer`).
 - Nunca expongas secretos (`GEMINI_API_KEY`, credenciales de Admin) al cliente ni los escribas en archivos versionados.
