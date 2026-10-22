@@ -17,6 +17,7 @@ import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
 import { AboutSection } from "@/components/settings/about-section";
+import { ExportDataButton } from "@/components/settings/export-data-button";
 import { Segmented, SettingRow, SettingSwitch, SettingsSection } from "@/components/settings/settings-ui";
 
 const THEME_OPTIONS: { value: Exclude<AppTheme, "custom">; label: string; color: string }[] = [
@@ -280,6 +281,10 @@ export default function SettingsPage() {
               {isCleaning ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               Limpiar tareas completadas ahora
             </Button>
+          </div>
+          <div className="space-y-2 p-4">
+            <p className="text-[11px] text-muted-foreground">Copia de seguridad con tus contextos, tareas, proyectos, notas y rutinas.</p>
+            <ExportDataButton />
           </div>
         </div>
       </SettingsSection>
