@@ -154,8 +154,6 @@
   html,
   body {
     @apply bg-background text-foreground selection:bg-primary/20 antialiased overflow-x-hidden w-full max-w-full;
-    /* Sin rebote ni "tirar para recargar" accidental en el WebView */
-    overscroll-behavior-y: none;
     font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
   }
 }
@@ -386,6 +384,13 @@
   background-image: 
     linear-gradient(to right, hsl(var(--primary) / 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, hsl(var(--primary) / 0.05) 1px, transparent 1px);
+}
+
+/* Sin rebote ni "tirar para recargar" accidental en el WebView. Solo en <html>:
+   con overflow-x hidden el <body> también es contenedor de scroll, y si él tuviera
+   overscroll-behavior: none el gesto no pasaría a la página y no se podría desplazar. */
+html {
+  overscroll-behavior-y: none;
 }
 
 /* Con el teclado virtual abierto, la barra inferior no tapa el campo activo */
