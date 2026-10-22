@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Filter, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBackDismiss } from "@/hooks/use-back-dismiss";
+import { TASK_SORT_LABELS, type TaskSort } from "@/lib/tasks";
 import type { Priority, Project } from "@/types/task";
 
 const PRIORITY_FILTERS: { value: Priority | "all"; label: string }[] = [
@@ -21,6 +22,10 @@ interface KanbanToolbarProps {
   projectFilter: string;
   onProjectFilterChange: (value: string) => void;
   projects: Project[];
+  onlyOverdue: boolean;
+  onOnlyOverdueChange: (value: boolean) => void;
+  sort: TaskSort;
+  onSortChange: (sort: TaskSort) => void;
   /** Contenido extra del panel de filtros (gestión de proyectos, limpieza, etc.). */
   panelExtras?: ReactNode;
 }
@@ -34,11 +39,15 @@ export function KanbanToolbar({
   projectFilter,
   onProjectFilterChange,
   projects,
+  onlyOverdue,
+  onOnlyOverdueChange,
+  sort,
+  onSortChange,
   panelExtras,
 }: KanbanToolbarProps) {
   const [panelOpen, setPanelOpen] = useState(false);
   useBackDismiss(panelOpen, () => setPanelOpen(false));
-  const activeFilters = (priorityFilter !== "all" ? 1 : 0) + (projectFilter !== "all" ? 1 : 0);
+  const activeFilters = (priorityFilter !== "all" ? 1 : 0) + (projectFilter !== "all" ? 1 : 0) + (onlyOverdue ? 1 : 0);
 
   return (
     <div className="space-y-3">
@@ -85,12 +94,23 @@ export function KanbanToolbar({
 
       {panelOpen && (
         <div className="space-y-4 rounded-2xl border border-border bg-muted/10 p-3">
+          <ChipGroup label="Ordenar">
+            {(Object.keys(TASK_SORT_LABELS) as TaskSort[]).map((value) => (
+              <Chip key={value} active={sort === value} onClick={() => onSortChange(value)}>
+                {TASK_SORT_LABELS[value]}
+              </Chip>
+            ))}
+          </ChipGroup>
+
           <ChipGroup label="Prioridad">
             {PRIORITY_FILTERS.map((filter) => (
               <Chip key={filter.value} active={priorityFilter === filter.value} onClick={() => onPriorityFilterChange(filter.value)}>
                 {filter.label}
               </Chip>
             ))}
+            <Chip active={onlyOverdue} onClick={() => onOnlyOverdueChange(!onlyOverdue)}>
+              Solo vencidas
+            </Chip>
           </ChipGroup>
 
           {projects.length > 0 && (

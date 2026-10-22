@@ -126,10 +126,13 @@ export interface TaskFilters {
   priority: Priority | 'all';
   projectId: string | 'all';
   query: string;
+  onlyOverdue?: boolean;
 }
 
 /** Filtra por prioridad, proyecto y texto (título, descripción o etiqueta). */
-export function filterTasks<T extends { priority: Priority; projectId?: string; title: string; description?: string; tags?: string[] }>(
+export function filterTasks<
+  T extends { priority: Priority; projectId?: string; title: string; description?: string; tags?: string[]; dueDate?: string | Date; dueTime?: string }
+>(
   tasks: T[],
   filters: TaskFilters
 ): T[] {
@@ -137,6 +140,7 @@ export function filterTasks<T extends { priority: Priority; projectId?: string; 
   return tasks.filter((task) => {
     if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
     if (filters.projectId !== 'all' && task.projectId !== filters.projectId) return false;
+    if (filters.onlyOverdue && !getDueMeta(task.dueDate, task.dueTime)?.isOverdue) return false;
     if (!query) return true;
     return (
       task.title.toLowerCase().includes(query) ||
@@ -151,4 +155,44 @@ export function groupTasksByStatus<T extends { status: TaskStatus }>(tasks: T[])
   const grouped = new Map<TaskStatus, T[]>(TASK_STATUSES.map((status) => [status, []]));
   tasks.forEach((task) => grouped.get(task.status)?.push(task));
   return grouped;
+}
+
+export type TaskSort = 'smart' | 'due' | 'priority' | 'recent';
+
+export const TASK_SORT_LABELS: Record<TaskSort, string> = {
+  smart: 'Inteligente',
+  due: 'Vencimiento',
+  priority: 'Prioridad',
+  recent: 'Recientes',
+};
+
+const PRIORITY_ORDER: Record<Priority, number> = { alta: 0, media: 1, baja: 2 };
+
+function toMillis(value: unknown): number {
+  if (value && typeof value === 'object' && 'seconds' in value && typeof (value as { seconds: unknown }).seconds === 'number') {
+    return (value as { seconds: number }).seconds * 1000;
+  }
+  return 0;
+}
+
+type SortableTask = { priority: Priority; dueDate?: string | Date; dueTime?: string; createdAt?: unknown };
+
+/**
+ * Ordena sin modificar la lista original.
+ * - smart: vencidas primero, luego por fecha (sin fecha al final) y prioridad.
+ * - due / priority / recent: por vencimiento, prioridad o creación más reciente.
+ */
+export function sortTasks<T extends SortableTask>(tasks: T[], sort: TaskSort): T[] {
+  const due = (task: T) => getDueDateTime(task.dueDate, task.dueTime)?.getTime() ?? Number.POSITIVE_INFINITY;
+  const byPriority = (a: T, b: T) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+  const byDue = (a: T, b: T) => due(a) - due(b);
+  const byRecent = (a: T, b: T) => toMillis(b.createdAt) - toMillis(a.createdAt);
+
+  const comparators: Record<TaskSort, (a: T, b: T) => number> = {
+    smart: (a, b) => byDue(a, b) || byPriority(a, b) || byRecent(a, b),
+    due: (a, b) => byDue(a, b) || byPriority(a, b),
+    priority: (a, b) => byPriority(a, b) || byDue(a, b),
+    recent: byRecent,
+  };
+  return [...tasks].sort(comparators[sort]);
 }

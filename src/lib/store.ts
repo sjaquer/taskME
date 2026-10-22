@@ -4,6 +4,7 @@ import type { AppContext } from '@/types/task';
 import { DEFAULT_TICKETS_CONTEXT } from '@/lib/contexts';
 import { APP_STATE_STORAGE_KEY, type ColorModePreference } from '@/lib/appearance';
 import { DEFAULT_NAV_ORDER, type NavModule } from '@/lib/navigation';
+import type { TaskSort } from '@/lib/tasks';
 
 export type AppTheme = 'neon' | 'cyan' | 'amber' | 'rose' | 'violet' | 'emerald' | 'indigo' | 'crimson' | 'slate' | 'custom';
 export type HourFormat = '24h' | '12h';
@@ -47,6 +48,9 @@ interface AppState {
   /** Orden de los módulos en la barra de navegación. */
   navOrder: NavModule[];
   setNavOrder: (order: NavModule[]) => void;
+  /** Orden del Tablero (por dispositivo). */
+  kanbanSort: TaskSort;
+  setKanbanSort: (sort: TaskSort) => void;
   hourFormat: HourFormat;
   setHourFormat: (format: HourFormat) => void;
   defaultPage: string;
@@ -85,6 +89,8 @@ export const useAppContextStore = create<AppState>()(
       },
       navOrder: DEFAULT_NAV_ORDER,
       setNavOrder: (navOrder) => set({ navOrder }),
+      kanbanSort: 'smart',
+      setKanbanSort: (kanbanSort) => set({ kanbanSort }),
       toggleModule: (module) => set((state) => ({
         activeModules: {
           ...state.activeModules,

@@ -17,7 +17,7 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useAppContextStore } from "@/lib/store";
 import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
-import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, getDueMeta, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, getDueMeta, isTaskStatus, sortTasks, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase/provider";
@@ -68,6 +68,9 @@ export default function KanbanPage() {
   const [priorityFilter, setPriorityFilter] = useState<Priority | "all">("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [onlyOverdue, setOnlyOverdue] = useState(false);
+  const kanbanSort = useAppContextStore((state) => state.kanbanSort);
+  const setKanbanSort = useAppContextStore((state) => state.setKanbanSort);
 
   const [taskForm, setTaskForm] = useState<TaskFormState>(INITIAL_TASK_FORM);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -87,8 +90,12 @@ export default function KanbanPage() {
   const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);
 
   const visibleTasks = useMemo(
-    () => filterTasks(tasks, { priority: priorityFilter, projectId: projectFilter, query: searchQuery }),
-    [tasks, priorityFilter, projectFilter, searchQuery]
+    () =>
+      sortTasks(
+        filterTasks(tasks, { priority: priorityFilter, projectId: projectFilter, query: searchQuery, onlyOverdue }),
+        kanbanSort
+      ),
+    [tasks, priorityFilter, projectFilter, searchQuery, onlyOverdue, kanbanSort]
   );
   const groupedTasks = useMemo(() => groupTasksByStatus(visibleTasks), [visibleTasks]);
 
@@ -407,6 +414,10 @@ export default function KanbanPage() {
         projectFilter={projectFilter}
         onProjectFilterChange={setProjectFilter}
         projects={activeProjects}
+        onlyOverdue={onlyOverdue}
+        onOnlyOverdueChange={setOnlyOverdue}
+        sort={kanbanSort}
+        onSortChange={setKanbanSort}
         panelExtras={
           <>
             <ProjectManager
