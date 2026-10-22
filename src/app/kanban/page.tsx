@@ -3,8 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
-import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { MAX_TAGS_PER_TASK, TASK_STATUSES, getDueMeta, getPriorityMeta, normalizeTag, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
@@ -56,22 +56,6 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { KanbanColumn } from "@/components/organisms/kanban-column";
 
-// Estados fijos: el Kanban nunca admite estados personalizados adicionales.
-const STATUSES = ["Pendiente", "Haciendo", "Hecho"] as const;
-const MAX_TAGS_PER_TASK = 5;
-
-const TaskSchema = z.object({
-  title: z.string().trim().min(1, "El título es requerido").max(120),
-  description: z.string().trim().optional(),
-  priority: z.enum(["baja", "media", "alta"]),
-  status: z.enum(["Pendiente", "Haciendo", "Hecho"]),
-  tags: z.array(z.string()),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida").optional(),
-  context: z.enum(["Trabajo", "Estudio"]),
-  userId: z.string(),
-  projectId: z.string().optional(),
-});
-
 function getInitialTaskForm(status: string): TaskFormState {
   return {
     title: "",
@@ -82,72 +66,6 @@ function getInitialTaskForm(status: string): TaskFormState {
     dueDate: "",
     projectId: "",
   };
-}
-
-function normalizeTag(tag: string) {
-  return tag.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function parseTagInput(input: string) {
-  const uniqueTags = new Set<string>();
-
-  input
-    .split(",")
-    .map(normalizeTag)
-    .filter(Boolean)
-    .forEach((tag) => {
-      if (uniqueTags.size < MAX_TAGS_PER_TASK) {
-        uniqueTags.add(tag);
-      }
-    });
-
-  return Array.from(uniqueTags);
-}
-
-function toInputDateValue(value: string | Date | undefined) {
-  if (!value) return "";
-  const parsed = typeof value === "string" ? parseISO(value) : value;
-  return isValid(parsed) ? format(parsed, "yyyy-MM-dd") : "";
-}
-
-function toTaskDate(value: string | Date | undefined) {
-  if (!value) return null;
-  const parsed = typeof value === "string" ? parseISO(value) : value;
-  return isValid(parsed) ? parsed : null;
-}
-
-function formatShortDate(value: Date) {
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit",
-    month: "short",
-  }).format(value);
-}
-
-function getDueMeta(dueDate: string | Date | undefined) {
-  const parsed = toTaskDate(dueDate);
-  if (!parsed) return null;
-
-  const daysLeft = differenceInCalendarDays(parsed, new Date());
-  const isOverdue = daysLeft < 0;
-  const isUrgent = daysLeft >= 0 && daysLeft <= 3;
-
-  return {
-    isOverdue,
-    isUrgent,
-    label: isOverdue ? "Vencida" : formatShortDate(parsed),
-  };
-}
-
-function getPriorityMeta(priority: Priority) {
-  if (priority === "alta") {
-    return { label: "Alta", className: "border-red-500/30 bg-red-500/10 text-red-300" };
-  }
-
-  if (priority === "media") {
-    return { label: "Media", className: "border-amber-500/30 bg-amber-500/10 text-amber-300" };
-  }
-
-  return { label: "Baja", className: "border-blue-500/30 bg-blue-500/10 text-blue-300" };
 }
 
 function TaskRow({
@@ -241,7 +159,7 @@ function TaskRow({
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent className="border-border bg-card">
-              {STATUSES.map((status) => (
+              {TASK_STATUSES.map((status) => (
                 <SelectItem key={`${task.id}-${status}`} value={status}>
                   {status}
                 </SelectItem>
@@ -374,8 +292,8 @@ export default function KanbanPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [quickTitle, setQuickTitle] = useState("");
   const [quickPriority, setQuickPriority] = useState<Priority>("media");
-  const [quickStatus, setQuickStatus] = useState<string>(STATUSES[0]);
-  const [taskForm, setTaskForm] = useState<TaskFormState>(getInitialTaskForm(STATUSES[0]));
+  const [quickStatus, setQuickStatus] = useState<string>(TASK_STATUSES[0]);
+  const [taskForm, setTaskForm] = useState<TaskFormState>(getInitialTaskForm(TASK_STATUSES[0]));
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -464,7 +382,7 @@ export default function KanbanPage() {
 
   const groupedTasks = useMemo(() => {
     const grouped = new Map<string, Task[]>();
-    STATUSES.forEach((status) => grouped.set(status, []));
+    TASK_STATUSES.forEach((status) => grouped.set(status, []));
 
     visibleTasks.forEach((task) => {
       if (!grouped.has(task.status)) {
@@ -503,9 +421,9 @@ export default function KanbanPage() {
     } else {
       setEditingTask(null);
       setTaskForm({
-        ...getInitialTaskForm(STATUSES[0]),
+        ...getInitialTaskForm(TASK_STATUSES[0]),
         ...seed,
-        status: seed?.status || STATUSES[0],
+        status: seed?.status || TASK_STATUSES[0],
       });
     }
 
@@ -516,7 +434,7 @@ export default function KanbanPage() {
   const closeTaskForm = () => {
     setFormOpen(false);
     setEditingTask(null);
-    setTaskForm(getInitialTaskForm(STATUSES[0]));
+    setTaskForm(getInitialTaskForm(TASK_STATUSES[0]));
   };
 
   const saveTask = async (draft: TaskFormState) => {
@@ -526,7 +444,7 @@ export default function KanbanPage() {
       title: draft.title.trim(),
       description: draft.description.trim(),
       priority: draft.priority,
-      status: draft.status || STATUSES[0],
+      status: draft.status || TASK_STATUSES[0],
       tags: parseTagInput(draft.tags),
       ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
       context: context as AppContext,
@@ -534,7 +452,7 @@ export default function KanbanPage() {
       ...(draft.projectId ? { projectId: draft.projectId } : {}),
     };
 
-    const result = TaskSchema.safeParse(payload);
+    const result = taskSchema.safeParse(payload);
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;
@@ -571,14 +489,14 @@ export default function KanbanPage() {
         title: quickTitle,
         description: "",
         priority: quickPriority,
-        status: quickStatus || STATUSES[0],
+        status: quickStatus || TASK_STATUSES[0],
         tags: "",
         dueDate: "",
         projectId: "",
       });
       setQuickTitle("");
       setQuickPriority("media");
-      setQuickStatus(STATUSES[0]);
+      setQuickStatus(TASK_STATUSES[0]);
     } finally {
       setIsSaving(false);
     }
@@ -709,11 +627,11 @@ export default function KanbanPage() {
         throw new Error("La IA no devolvió una lista válida de tareas.");
       }
 
-      const targetStatus = STATUSES[0];
+      const targetStatus = TASK_STATUSES[0];
       let createdCount = 0;
 
       for (const item of generatedTasks) {
-        const normalized = TaskSchema.safeParse({
+        const normalized = taskSchema.safeParse({
           title: String(item?.title || "").trim(),
           description: String(item?.description || "").trim(),
           priority: item?.priority,
@@ -993,7 +911,7 @@ export default function KanbanPage() {
             onSubmit={handleSubmitForm}
             onCancel={closeTaskForm}
             isSaving={isSaving}
-            statusOptions={[...STATUSES]}
+            statusOptions={[...TASK_STATUSES]}
             projects={activeProjects}
             maxTags={MAX_TAGS_PER_TASK}
           />
@@ -1027,7 +945,7 @@ export default function KanbanPage() {
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent className="border-border bg-card">
-                    {STATUSES.map((status) => (
+                    {TASK_STATUSES.map((status) => (
                       <SelectItem key={`quick-${status}`} value={status}>
                         {status}
                       </SelectItem>
@@ -1137,7 +1055,7 @@ export default function KanbanPage() {
         ) : viewMode === "flow" ? (
           /* View Mode: FLOW (COLLAPSIBLE VERTICAL LIST) */
           <div className="space-y-4">
-            {STATUSES.map((status) => (
+            {TASK_STATUSES.map((status) => (
               <StatusSection
                 key={status}
                 status={status}
@@ -1154,7 +1072,7 @@ export default function KanbanPage() {
           /* View Mode: BOARD (HORIZONTAL KANBAN COLUMNS) */
           <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
             <div className="flex gap-6 overflow-x-auto pb-6 snap-x scrollbar-hide">
-              {STATUSES.map((status) => (
+              {TASK_STATUSES.map((status) => (
                 <KanbanColumn
                   key={status}
                   status={status}

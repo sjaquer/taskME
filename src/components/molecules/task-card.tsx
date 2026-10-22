@@ -6,9 +6,9 @@ import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar, Ticket } from 'lucide-react';
-import { differenceInDays, isAfter, parseISO } from 'date-fns';
 import { PriorityBadge, NodeId } from '@/components/atoms';
 import { cn } from '@/lib/utils';
+import { getDueMeta } from '@/lib/tasks';
 import { useAppContextStore } from '@/lib/store';
 import type { Task } from '@/types/task';
 
@@ -24,41 +24,8 @@ interface TaskCardProps {
   pendingSync?: boolean;
 }
 
-interface DueStatus {
-  isOverdue: boolean;
-  isUrgent: boolean;
-  daysLeft: number | null;
-  formattedDate: string;
-}
-
-function getDueStatus(dueDate: string | Date | undefined): DueStatus | null {
-  if (!dueDate) return null;
-
-  try {
-    const date = typeof dueDate === 'string' ? parseISO(dueDate) : dueDate as Date;
-    const now = new Date();
-    const daysLeft = differenceInDays(date, now);
-    const isOverdue = isAfter(now, date);
-    const isUrgent = daysLeft <= 3 && daysLeft > 0;
-
-    const formattedDate = new Intl.DateTimeFormat('es-ES', {
-      month: 'short',
-      day: 'numeric',
-    }).format(date);
-
-    return {
-      isOverdue,
-      isUrgent,
-      daysLeft: isOverdue ? null : daysLeft,
-      formattedDate,
-    };
-  } catch {
-    return null;
-  }
-}
-
 export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, selected, onToggleSelect, dragDisabled, pendingSync }: TaskCardProps) {
-  const dueStatus = getDueStatus(task.dueDate);
+  const dueStatus = getDueMeta(task.dueDate);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: isOverlay ? `${task.id}-overlay` : task.id,
     data: { type: 'Task', task },
@@ -248,7 +215,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
                     : 'bg-muted/30 border-border text-muted-foreground/60'
                 )}>
                   <Calendar className="w-3 h-3" />
-                  {dueStatus.isOverdue ? 'CRITICAL' : dueStatus.formattedDate}
+                  {dueStatus.label}
                 </div>
               )}
             </div>

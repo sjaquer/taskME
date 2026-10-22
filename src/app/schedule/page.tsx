@@ -7,6 +7,7 @@ import { es } from "date-fns/locale";
 import { Plus, Inbox, CalendarDays, X } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser, useMemoFirebase } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { z } from "zod";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
@@ -23,15 +23,6 @@ import { buildRoutinesQuery, createRoutine, updateRoutine, deleteRoutine } from 
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Routine, Priority, RoutineFormData } from "@/types/task";
-
-const RoutineSchema = z.object({
-  title: z.string().min(1, "El nombre es requerido").max(100),
-  startTime: z.string().min(1),
-  endTime: z.string().min(1),
-  priority: z.enum(["baja", "media", "alta"]),
-  recurringDays: z.array(z.number()).min(1, "Selecciona al menos un día"),
-  color: z.string(),
-});
 
 const WEEK_DAYS = [
   { label: "L", value: 1 }, { label: "M", value: 2 }, { label: "X", value: 3 },
@@ -107,7 +98,7 @@ export default function SchedulePage() {
   const resetForm = () => { setFormData(INITIAL_FORM); setEditingRoutine(null); };
 
   const handleSaveRoutine = () => {
-    const result = RoutineSchema.safeParse(formData);
+    const result = routineSchema.safeParse(formData);
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;

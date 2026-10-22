@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { z } from "zod";
 import { NotebookText, Plus, Pencil, Trash2, Inbox, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,18 +14,13 @@ import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { noteSchema } from "@/lib/schemas";
 import { buildNotesQuery, createNote, updateNote, deleteNote } from "@/services/note-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Note, NoteCategory } from "@/types/task";
 
 const CATEGORIES: NoteCategory[] = ["Clases", "Tareas", "Grupos", "Trabajo", "Tickets", "Otro"];
-
-const NoteSchema = z.object({
-  title: z.string().trim().min(1, "El título es requerido").max(140),
-  content: z.string().trim().min(1, "Escribe el contenido de la nota").max(5000),
-  category: z.enum(["Clases", "Tareas", "Grupos", "Trabajo", "Tickets", "Otro"]),
-});
 
 interface NoteFormState {
   title: string;
@@ -89,7 +83,7 @@ export default function NotesPage() {
   const handleSubmit = async () => {
     if (!user || !firestore) return;
 
-    const result = NoteSchema.safeParse(form);
+    const result = noteSchema.safeParse(form);
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;

@@ -2,8 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { differenceInCalendarDays, format, isValid, parseISO } from "date-fns";
-import { z } from "zod";
 import {
   Ticket as TicketIcon,
   Plus,
@@ -27,26 +25,13 @@ import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { getDueMeta, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
 import { buildTasksQuery, createTask, deleteTask, updateTask } from "@/services/task-service";
 import { buildProjectsQuery } from "@/services/project-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Priority, Project, Task } from "@/types/task";
-
-const MAX_TAGS = 5;
-
-const TicketSchema = z.object({
-  title: z.string().trim().min(1, "El título es requerido").max(120),
-  requestedAction: z.string().trim().min(1, "Indica la acción que se solicita"),
-  description: z.string().trim().optional(),
-  requesterName: z.string().trim().min(1, "Indica quién lo solicita").max(140),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha límite inválida").optional().or(z.literal("")),
-  reviewDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha de revisión inválida").optional().or(z.literal("")),
-  referenceUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
-  priority: z.enum(["baja", "media", "alta"]),
-  tags: z.string(),
-  projectId: z.string(),
-});
 
 interface TicketFormState {
   title: string;
@@ -73,40 +58,6 @@ const INITIAL_FORM: TicketFormState = {
   tags: "",
   projectId: "",
 };
-
-function normalizeTag(tag: string) {
-  return tag.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function parseTagInput(input: string) {
-  const uniqueTags = new Set<string>();
-  input
-    .split(",")
-    .map(normalizeTag)
-    .filter(Boolean)
-    .forEach((tag) => {
-      if (uniqueTags.size < MAX_TAGS) uniqueTags.add(tag);
-    });
-  return Array.from(uniqueTags);
-}
-
-function toInputDateValue(value: string | Date | undefined) {
-  if (!value) return "";
-  const parsed = typeof value === "string" ? parseISO(value) : value;
-  return isValid(parsed) ? format(parsed, "yyyy-MM-dd") : "";
-}
-
-function formatDeadline(value: string | undefined) {
-  if (!value) return null;
-  const parsed = parseISO(value);
-  if (!isValid(parsed)) return null;
-  const daysLeft = differenceInCalendarDays(parsed, new Date());
-  return {
-    isOverdue: daysLeft < 0,
-    isUrgent: daysLeft >= 0 && daysLeft <= 3,
-    label: new Intl.DateTimeFormat("es-ES", { day: "2-digit", month: "short" }).format(parsed),
-  };
-}
 
 export default function TicketsPage() {
   return (
@@ -158,7 +109,7 @@ function TicketsPageContent() {
     [tickets]
   );
 
-  const overdueCount = pendingTickets.filter((t) => formatDeadline(typeof t.dueDate === "string" ? t.dueDate : undefined)?.isOverdue).length;
+  const overdueCount = pendingTickets.filter((t) => getDueMeta(typeof t.dueDate === "string" ? t.dueDate : undefined)?.isOverdue).length;
   const inProgressCount = pendingTickets.filter((t) => t.status === "Haciendo").length;
 
   const openEditForm = (ticket: Task) => {
@@ -207,7 +158,7 @@ function TicketsPageContent() {
   const handleSubmit = async () => {
     if (!user || !firestore) return;
 
-    const result = TicketSchema.safeParse(form);
+    const result = ticketFormSchema.safeParse(form);
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;
@@ -468,8 +419,8 @@ function TicketsPageContent() {
           </div>
         ) : (
           pendingTickets.map((ticket) => {
-            const dueMeta = formatDeadline(typeof ticket.dueDate === "string" ? ticket.dueDate : undefined);
-            const reviewMeta = formatDeadline(ticket.reviewDate);
+            const dueMeta = getDueMeta(typeof ticket.dueDate === "string" ? ticket.dueDate : undefined);
+            const reviewMeta = getDueMeta(ticket.reviewDate);
             return (
               <div
                 key={ticket.id}
@@ -533,16 +484,6 @@ function TicketsPageContent() {
   );
 }
 
-const PublicTicketSchema = z.object({
-  title: z.string().trim().min(1, "El título es requerido").max(120),
-  requestedAction: z.string().trim().min(1, "Indica la acción que se solicita"),
-  description: z.string().trim().optional(),
-  requesterName: z.string().trim().min(1, "Indica quién lo solicita").max(140),
-  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha límite inválida").optional().or(z.literal("")),
-  referenceUrl: z.string().trim().url("URL inválida").optional().or(z.literal("")),
-  priority: z.enum(["baja", "media", "alta"]),
-});
-
 const PUBLIC_INITIAL_FORM = {
   title: "",
   requestedAction: "",
@@ -560,7 +501,7 @@ function PublicTicketForm() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    const result = PublicTicketSchema.safeParse(form);
+    const result = publicTicketFormSchema.safeParse(form);
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;

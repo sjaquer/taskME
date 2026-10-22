@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/server/firebase-admin';
+import { prioritySchema } from '@/lib/schemas';
 import { consumeRateLimits, getClientIpHash } from '@/server/rate-limit';
 
 export const runtime = 'nodejs';
@@ -16,7 +17,7 @@ const publicTicketSchema = z.object({
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   reviewDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   referenceUrl: z.string().trim().url().max(2000).optional(),
-  priority: z.enum(['baja', 'media', 'alta']),
+  priority: prioritySchema,
   tags: z.array(z.string()).max(5).optional(),
   // Campo trampa: oculto en el formulario, solo lo completan los bots.
   website: z.string().max(200).optional(),
