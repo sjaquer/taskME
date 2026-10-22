@@ -33,7 +33,7 @@ import { StatusSection } from "@/components/kanban/status-section";
 import { KanbanSummary, type KanbanViewMode } from "@/components/kanban/kanban-summary";
 import { KanbanToolbar } from "@/components/kanban/kanban-toolbar";
 import { QuickAddBar } from "@/components/kanban/quick-add-bar";
-import { AiPlanner } from "@/components/kanban/ai-planner";
+import { AiPlanner, type AiTaskDraft } from "@/components/kanban/ai-planner";
 import { KanbanColumn } from "@/components/organisms/kanban-column";
 import type { Priority, ProjectFormData, Task, TaskStatus } from "@/types/task";
 
@@ -297,47 +297,48 @@ export default function KanbanPage() {
     });
   };
 
-  const handleGenerateTasks = async (prompt: string) => {
-    if (!prompt.trim()) return false;
+  // La IA propone; las tareas se crean solo tras confirmar en la vista previa.
+  const handleGenerateTasks = async (prompt: string): Promise<AiTaskDraft[] | null> => {
+    if (!prompt.trim()) return null;
 
     setIsGenerating(true);
     try {
-      const generatedTasks = await generateTasksFromPrompt(user, prompt);
-      const targetStatus = TASK_STATUSES[0];
-      let createdCount = 0;
-
-      for (const item of generatedTasks) {
+      const generated = await generateTasksFromPrompt(user, prompt);
+      const drafts: AiTaskDraft[] = [];
+      for (const item of generated) {
         const normalized = taskSchema.safeParse({
           title: String(item.title ?? "").trim(),
           description: String(item.description ?? "").trim(),
           priority: item.priority,
-          status: targetStatus,
+          status: TASK_STATUSES[0],
           tags: Array.isArray(item.tags) ? parseTagInput(item.tags.map(String).join(",")) : [],
           dueDate: typeof item.dueDate === "string" && item.dueDate.trim() ? item.dueDate : undefined,
           context,
         });
         if (!normalized.success) continue;
-
-        createTask(firestore, user.uid, normalized.data);
-        createdCount += 1;
+        const { title, description, priority, tags, dueDate } = normalized.data;
+        drafts.push({ title, description, priority, tags, dueDate });
       }
 
-      if (createdCount === 0) {
+      if (drafts.length === 0) {
         throw new Error("La IA no generó tareas aprovechables.");
       }
-
-      toast({ variant: "success", title: "Tareas creadas con IA", description: `${createdCount} tareas agregadas a ${targetStatus}.` });
-      return true;
+      return drafts;
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error en IA",
         description: error instanceof Error ? error.message : "No se pudo procesar la solicitud.",
       });
-      return false;
+      return null;
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleConfirmDrafts = (drafts: AiTaskDraft[]) => {
+    drafts.forEach((draft) => createTask(firestore, user.uid, { ...draft, status: TASK_STATUSES[0], context }));
+    toast({ variant: "success", title: "Tareas creadas con IA", description: `${drafts.length} agregadas a ${TASK_STATUSES[0]}.` });
   };
 
   const handleCreateProject = (data: ProjectFormData) => {
@@ -387,7 +388,14 @@ export default function KanbanPage() {
         inputRef={quickAddRef}
       />
 
-      {aiOpen && <AiPlanner isGenerating={isGenerating} onGenerate={handleGenerateTasks} onClose={() => setAiOpen(false)} />}
+      {aiOpen && (
+        <AiPlanner
+          isGenerating={isGenerating}
+          onGenerate={handleGenerateTasks}
+          onConfirm={handleConfirmDrafts}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
 
       {/* Formulario embebido de tarea (crear/editar) — sin modal */}
       {formOpen && (
