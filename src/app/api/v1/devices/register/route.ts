@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
       .limit(1)
       .get();
 
-    const deviceRef = duplicateTokenSnap.empty ? devicesRef.doc() : duplicateTokenSnap.docs[0].ref;
+    const isNewDevice = duplicateTokenSnap.empty;
+    const deviceRef = isNewDevice ? devicesRef.doc() : duplicateTokenSnap.docs[0].ref;
 
     await deviceRef.set(
       {
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
         isActive: true,
         updatedAt: FieldValue.serverTimestamp(),
         lastSeenAt: FieldValue.serverTimestamp(),
-        createdAt: FieldValue.serverTimestamp(),
+        // En un re-registro se conserva la fecha original de alta.
+        ...(isNewDevice ? { createdAt: FieldValue.serverTimestamp() } : {}),
       },
       { merge: true }
     );
