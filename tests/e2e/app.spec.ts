@@ -284,6 +284,8 @@ test.describe('con la app desbloqueada', () => {
     await expect(form.getByRole('img', { name: /ejemplo\.(webp|png|jpg)/ })).toBeVisible();
     await form.getByRole('button', { name: 'Crear tarea' }).click();
 
+    // En el modo flujo de Kanban, "1 imagen" despliega la galería
+    await page.getByRole('button', { name: /1 imagen/ }).click();
     const thumbBtn = page.getByRole('button', { name: /Ver imagen ejemplo\.(webp|png|jpg)/ });
     await expect(thumbBtn).toBeVisible();
     await thumbBtn.click();
@@ -323,7 +325,7 @@ test.describe('con la app desbloqueada', () => {
   test('mantenimiento: limpiar imágenes huérfanas', async ({ page }) => {
     await page.goto('/settings');
     await page.getByRole('button', { name: 'Limpiar imágenes huérfanas' }).click();
-    await expect(page.getByText(/Sin imágenes huérfanas|Limpieza completada/)).toBeVisible();
+    await expect(page.getByText('Sin imágenes huérfanas', { exact: true })).toBeVisible();
   });
 
   test('tickets admin: crear ticket con imagen y ver miniatura', async ({ page }) => {
