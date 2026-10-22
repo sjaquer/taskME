@@ -1,8 +1,8 @@
 'use client';
 
-import { type ReactNode, Suspense, useEffect } from 'react';
+import { type ReactNode, Suspense, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
 import { Toaster } from '@/components/ui/toaster';
@@ -89,18 +89,9 @@ function ShellRouter({ children }: { children: ReactNode }) {
     return (
       <div className="min-h-[100dvh] w-full bg-background transition-colors duration-500">
         <main className="w-full min-h-screen">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="w-full min-h-screen"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <PageTransition pathname={pathname} className="w-full min-h-screen">
+            {children}
+          </PageTransition>
         </main>
       </div>
     );
@@ -130,6 +121,19 @@ function ClientShellInner({ children }: { children: ReactNode }) {
   const visualConfig = useAppContextStore((state) => state.visualConfig);
   const activeModules = useAppContextStore((state) => state.activeModules);
   const navItems = DESKTOP_NAV.filter((item) => item.moduleKey === null || activeModules[item.moduleKey]);
+
+  // Activa la transición de colores solo durante un cambio de tema/modo (no al cargar).
+  const isFirstThemeRender = useRef(true);
+  useEffect(() => {
+    if (isFirstThemeRender.current) {
+      isFirstThemeRender.current = false;
+      return;
+    }
+    const root = document.documentElement;
+    root.classList.add('theme-transition');
+    const timeoutId = setTimeout(() => root.classList.remove('theme-transition'), 400);
+    return () => clearTimeout(timeoutId);
+  }, [theme, colorMode]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -221,18 +225,9 @@ function ClientShellInner({ children }: { children: ReactNode }) {
           "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-4 sm:px-6 md:px-8 lg:px-12 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
           visualConfig.compactMode ? "space-y-4" : "space-y-8"
         )}>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="w-full h-full flex flex-col"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <PageTransition pathname={pathname} className="w-full h-full flex flex-col">
+            {children}
+          </PageTransition>
         </main>
         <BottomNav />
       </div>
@@ -240,3 +235,18 @@ function ClientShellInner({ children }: { children: ReactNode }) {
   );
 }
 
+// Fundido corto al cambiar de página. Sin AnimatePresence mode="wait": la página
+// nueva no espera a que termine la animación de salida de la anterior.
+function PageTransition({ pathname, className, children }: { pathname: string; className: string; children: ReactNode }) {
+  return (
+    <motion.div
+      key={pathname}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}

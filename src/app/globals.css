@@ -33,9 +33,19 @@
     --input: 220 12% 12%;
     --ring: 152 60% 52%;
     --radius: 1rem;
+
+    --chart-1: var(--primary);
+    --chart-2: 199 89% 48%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 0 72% 60%;
+
+    /* Controles nativos (fecha, hora, scrollbars) en el modo correcto */
+    color-scheme: dark;
   }
 
   :root[data-mode='light'] {
+    color-scheme: light;
     /* Light Mode — Crisp Snow & Silk */
     --background: 220 20% 98%;
     --foreground: 220 25% 12%;
@@ -128,7 +138,7 @@
 
 @layer base {
   * {
-    @apply border-border transition-colors duration-300;
+    @apply border-border;
   }
   html,
   body {
@@ -303,6 +313,22 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-primary/30;
+}
+
+/* Transición suave solo mientras cambia el tema o el modo de color
+   (aplicarla siempre a todos los elementos penaliza el rendimiento en el WebView). */
+.theme-transition,
+.theme-transition *,
+.theme-transition *::before,
+.theme-transition *::after {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, fill 300ms ease !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-transition,
+  .theme-transition * {
+    transition: none !important;
+  }
 }
 
 /* ═══════════════════════════════
