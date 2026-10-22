@@ -62,7 +62,7 @@ export default function TermsPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-bold text-foreground uppercase tracking-tight">5. Limitación de Responsabilidad</h2>
             <p>
-              TaskMe se proporciona "tal cual". Aunque nos esforzamos por ofrecer un servicio de alto rendimiento, no garantizamos que la plataforma esté libre de errores o interrupciones.
+              TaskMe se proporciona &ldquo;tal cual&rdquo;. Aunque nos esforzamos por ofrecer un servicio de alto rendimiento, no garantizamos que la plataforma esté libre de errores o interrupciones.
             </p>
           </section>
 

@@ -30,7 +30,7 @@ interface SecurityRuleRequest {
   method: string;
   path: string;
   resource?: {
-    data: any;
+    data: unknown;
   };
 }
 
@@ -126,11 +126,10 @@ export class FirestorePermissionError extends Error {
  * Maps a Firebase Auth error to a user-friendly Spanish message.
  * It also catches infrastructure configuration issues such as blocked API keys.
  */
-export function mapAuthError(error: any): string {
+export function mapAuthError(error: unknown): string {
   if (!error) return "Ocurrió un error inesperado.";
 
-  const code = error.code || "";
-  const message = error.message || "";
+  const { code = "", message = "" } = (typeof error === "object" ? error : {}) as { code?: string; message?: string };
 
   // 1. Check for specific known error codes
   switch (code) {
@@ -168,6 +167,6 @@ export function mapAuthError(error: any): string {
   }
 
   // Fallback to error message or a generic message
-  return error.message || "Ocurrió un error de autenticación.";
+  return message || "Ocurrió un error de autenticación.";
 }
 

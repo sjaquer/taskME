@@ -81,6 +81,8 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   const routines = useCollection<Routine>(routinesRef);
   const contexts = useCollection<ContextDef>(contextsRef);
 
+  // useCollection devuelve un objeto nuevo en cada render: se memoiza por sus
+  // campos para no re-renderizar a todos los consumidores sin cambios reales.
   const value = useMemo<UserDataState>(
     () => ({
       tasks: toState(tasks),
@@ -93,6 +95,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
         isLoading: isPending(contexts),
       },
     }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dependencias declaradas campo por campo
     [
       tasks.data, tasks.isLoading, tasks.error, projects.data, projects.isLoading, projects.error,
       notes.data, notes.isLoading, notes.error, routines.data, routines.isLoading, routines.error,

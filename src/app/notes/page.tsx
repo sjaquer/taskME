@@ -136,7 +136,7 @@ export default function NotesPage() {
     openCreateForm();
     router.replace("/notes");
     // openCreateForm solo cambia estado local; basta con ejecutarlo al tener sesión.
-  }, [user]);
+  }, [user, router]);
 
   if (isUserLoading || !user) return null;
 

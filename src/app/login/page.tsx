@@ -41,8 +41,8 @@ export default function LoginPage() {
           const { GoogleAuthProvider, signInWithCredential } = await import("firebase/auth");
           const credential = GoogleAuthProvider.credential(idToken);
           await signInWithCredential(auth, credential);
-        } catch (err: any) {
-          setErrorMsg("Error de sincronización nativa: " + err.message);
+        } catch (err) {
+          setErrorMsg("Error de sincronización nativa: " + mapAuthError(err));
         } finally {
           setIsLoading(false);
         }
@@ -81,7 +81,7 @@ export default function LoginPage() {
           setErrorMsg("Debes verificar tu correo electrónico antes de entrar.");
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setErrorMsg(mapAuthError(err));
     } finally {
       setIsLoading(false);
@@ -97,7 +97,7 @@ export default function LoginPage() {
       } else {
         await initiateGoogleSignIn(auth);
       }
-    } catch (err: any) {
+    } catch (err) {
       setErrorMsg(mapAuthError(err));
     } finally {
       if (!isNative) setIsLoading(false);
@@ -109,7 +109,8 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await initiateAnonymousSignIn(auth);
-    } catch (err: any) {
+    } catch (err) {
+      console.error("Error al entrar como invitado:", err);
       setErrorMsg("Ocurrió un error al entrar como invitado.");
     } finally {
       setIsLoading(false);
@@ -121,7 +122,8 @@ export default function LoginPage() {
       await resendVerificationEmail(auth);
       setSuccessMsg("Correo de verificación reenviado.");
       setErrorMsg("");
-    } catch (err: any) {
+    } catch (err) {
+      console.error("Error al reenviar el correo de verificación:", err);
       setErrorMsg("No se pudo reenviar el correo. Intenta de nuevo más tarde.");
     }
   };

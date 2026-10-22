@@ -27,7 +27,7 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
   try {
     const decoded = await adminAuth.verifyIdToken(token, true);
     return decoded.uid;
-  } catch (err: any) {
+  } catch (err) {
     // Fallback for local development when Firebase Admin credentials are not fully set up.
     // Decodes the JWT payload locally to extract the user ID without signature verification.
     if (process.env.NODE_ENV === 'development' && !process.env.FIREBASE_PRIVATE_KEY) {
@@ -49,7 +49,7 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
       }
     }
 
-    console.error('Authentication verification failed:', err?.message || err);
+    console.error('Authentication verification failed:', err instanceof Error ? err.message : err);
     throw new RequestAuthError('No se pudo validar tu sesión de Firebase.', 401);
   }
 }

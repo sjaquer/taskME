@@ -24,14 +24,14 @@ function removeUndefinedFields<T>(obj: T): T {
     return obj;
   }
 
-  const cleanObj = {} as any;
+  const cleanObj: Record<string, unknown> = {};
   Object.keys(obj).forEach((key) => {
-    const value = (obj as any)[key];
+    const value = (obj as Record<string, unknown>)[key];
     if (value !== undefined) {
       cleanObj[key] = removeUndefinedFields(value);
     }
   });
-  return cleanObj;
+  return cleanObj as T;
 }
 
 /**
@@ -39,7 +39,8 @@ function removeUndefinedFields<T>(obj: T): T {
  * Does NOT await the write operation internally.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: Record<string, unknown>, options: SetOptions) {
-  setDoc(docRef, removeUndefinedFields(data), options).catch(error => {
+  setDoc(docRef, removeUndefinedFields(data), options).catch((error: unknown) => {
+    console.error('[Firestore] Escritura fallida:', error);
     errorEmitter.emit(
       'permission-error',
       new FirestorePermissionError({
@@ -60,7 +61,8 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: Record<s
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: Record<string, unknown>) {
   const promise = addDoc(colRef, removeUndefinedFields(data))
-    .catch(error => {
+    .catch((error: unknown) => {
+      console.error('[Firestore] Escritura fallida:', error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -80,7 +82,8 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: Record
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: Record<string, unknown>) {
   updateDoc(docRef, removeUndefinedFields(data) as Record<string, FieldValue | Partial<unknown> | undefined>)
-    .catch(error => {
+    .catch((error: unknown) => {
+      console.error('[Firestore] Escritura fallida:', error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
@@ -99,7 +102,8 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: Recor
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
   deleteDoc(docRef)
-    .catch(error => {
+    .catch((error: unknown) => {
+      console.error('[Firestore] Escritura fallida:', error);
       errorEmitter.emit(
         'permission-error',
         new FirestorePermissionError({
