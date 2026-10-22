@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/server/firebase-admin';
 import { prioritySchema } from '@/lib/schemas';
+import { DEFAULT_TICKETS_CONTEXT } from '@/lib/contexts';
 import { consumeRateLimits, getClientIpHash } from '@/server/rate-limit';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,18 @@ const publicTicketSchema = z.object({
 const HOUR_MS = 60 * 60 * 1000;
 const MAX_TICKETS_PER_IP_PER_HOUR = 5;
 const MAX_PUBLIC_TICKETS_PER_DAY = 50;
+
+// Contexto elegido por el dueño en Ajustes (sincronizado en settings/app).
+async function getTicketsContext(ownerRef: FirebaseFirestore.DocumentReference): Promise<string> {
+  try {
+    const settings = await ownerRef.collection('settings').doc('app').get();
+    const value = settings.get('ticketsContext');
+    if (typeof value === 'string' && value.length > 0 && value.length <= 64) return value;
+  } catch (error) {
+    console.error('No se pudo leer el contexto de tickets; se usa el predeterminado:', error);
+  }
+  return DEFAULT_TICKETS_CONTEXT;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -53,7 +66,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const tasksRef = adminDb.collection('users').doc(ownerId).collection('tasks');
+    const ownerRef = adminDb.collection('users').doc(ownerId);
+    const tasksRef = ownerRef.collection('tasks');
     const docRef = await tasksRef.add({
       title: payload.title,
       requestedAction: payload.requestedAction,
@@ -61,7 +75,7 @@ export async function POST(req: NextRequest) {
       requesterName: payload.requesterName,
       priority: payload.priority,
       tags: payload.tags || [],
-      context: 'Trabajo',
+      context: await getTicketsContext(ownerRef),
       status: 'Pendiente',
       isTicket: true,
       userId: ownerId,

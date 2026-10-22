@@ -19,7 +19,7 @@ export async function logoutUser(auth: Auth) {
 export function saveSettingsToCloud(
   firestore: Firestore,
   userId: string,
-  updates: Record<string, unknown>
+  updates: object
 ) {
   const settingsRef = getUserSettingsRef(firestore, userId);
   setDoc(settingsRef, { ...updates, updatedAt: serverTimestamp() }, { merge: true }).catch(

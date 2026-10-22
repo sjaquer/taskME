@@ -26,6 +26,7 @@ import { getVisibleNavItems } from '@/lib/navigation';
 import { NotificationMonitor } from './notification-monitor';
 import { NativeBridgeProvider } from './native-bridge-provider';
 import { AppearanceManager } from './appearance-manager';
+import { SettingsSync } from './settings-sync';
 import { useUser } from '@/firebase';
 import { consumeLaunchRedirect } from '@/lib/launch-state';
 
@@ -38,6 +39,7 @@ export function ClientShell({ children }: { children: ReactNode }) {
       <FirebaseClientProvider>
         <UserDataProvider>
           <AppearanceManager />
+          <SettingsSync />
           <NativeBridgeProvider>
             <ShellRouter>{children}</ShellRouter>
           </NativeBridgeProvider>

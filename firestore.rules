@@ -138,16 +138,27 @@ service cloud.firestore {
     }
 
     function isValidSettingsDoc(data) {
+      // 'context' y 'highPerformanceMode' son campos antiguos: se siguen aceptando
+      // porque las escrituras con merge conservan las claves que ya existen.
       return data.keys().hasOnly([
                'context', 'theme', 'colorMode', 'activeModules', 'highPerformanceMode',
                'hourFormat', 'defaultPage', 'taskRetentionPeriod',
-               'visualConfig', 'updatedAt'
+               'visualConfig', 'updatedAt',
+               'customAccent', 'accentFromContext', 'pureBlack', 'fontScale', 'reduceMotion',
+               'navOrder', 'ticketsContext'
              ])
              && (!('context' in data) || isValidContext(data))
              && (!('theme' in data) || (data.theme is string && data.theme in [
-                  'neon', 'cyan', 'amber', 'rose', 'violet', 'emerald', 'indigo', 'crimson', 'slate'
+                  'neon', 'cyan', 'amber', 'rose', 'violet', 'emerald', 'indigo', 'crimson', 'slate', 'custom'
                 ]))
-             && (!('colorMode' in data) || (data.colorMode is string && data.colorMode in ['dark', 'light']))
+             && (!('colorMode' in data) || (data.colorMode is string && data.colorMode in ['dark', 'light', 'system']))
+             && (!('customAccent' in data) || (data.customAccent is string && data.customAccent.size() <= 16))
+             && (!('accentFromContext' in data) || data.accentFromContext is bool)
+             && (!('pureBlack' in data) || data.pureBlack is bool)
+             && (!('fontScale' in data) || (data.fontScale is number && data.fontScale >= 0.8 && data.fontScale <= 1.4))
+             && (!('reduceMotion' in data) || data.reduceMotion is bool)
+             && (!('navOrder' in data) || (data.navOrder is list && data.navOrder.size() <= 10))
+             && (!('ticketsContext' in data) || (data.ticketsContext is string && data.ticketsContext.size() > 0 && data.ticketsContext.size() <= 64))
              && (!('activeModules' in data) || data.activeModules is map)
              && (!('highPerformanceMode' in data) || data.highPerformanceMode is bool)
              && (!('hourFormat' in data) || (data.hourFormat is string && data.hourFormat in ['24h', '12h']))
