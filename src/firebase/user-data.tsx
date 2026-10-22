@@ -43,8 +43,16 @@ function clearLegacyCollectionCache() {
   }
 }
 
-function toState<T>(result: { data: T[] | null; isLoading: boolean }): CollectionState<T> {
-  return { data: result.data ?? [], isLoading: result.isLoading };
+type CollectionResult<T> = { data: T[] | null; isLoading: boolean; error: unknown };
+
+// Al aparecer la sesión, useCollection informa isLoading=false durante un render
+// antes de suscribirse: sin datos ni error todavía se considera "cargando".
+function isPending<T>(result: CollectionResult<T>): boolean {
+  return result.isLoading || (result.data === null && !result.error);
+}
+
+function toState<T>(result: CollectionResult<T>): CollectionState<T> {
+  return { data: result.data ?? [], isLoading: isPending(result) };
 }
 
 /**
@@ -82,12 +90,13 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       // Sin contextos guardados (o sin permiso de lectura) se usan los de fábrica.
       contexts: {
         data: contexts.data && contexts.data.length > 0 ? sortContexts(contexts.data) : DEFAULT_CONTEXTS,
-        isLoading: contexts.isLoading,
+        isLoading: isPending(contexts),
       },
     }),
     [
-      tasks.data, tasks.isLoading, projects.data, projects.isLoading, notes.data, notes.isLoading,
-      routines.data, routines.isLoading, contexts.data, contexts.isLoading,
+      tasks.data, tasks.isLoading, tasks.error, projects.data, projects.isLoading, projects.error,
+      notes.data, notes.isLoading, notes.error, routines.data, routines.isLoading, routines.error,
+      contexts.data, contexts.isLoading, contexts.error,
     ]
   );
 
