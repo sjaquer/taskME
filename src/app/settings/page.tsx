@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Bell, Check, Compass, Info, Layers, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
+  Bell, Check, Compass, Info, Ticket, Layers, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
 import { AboutSection } from "@/components/settings/about-section";
+import { TicketsSection } from "@/components/settings/tickets-section";
 import { ExportDataButton } from "@/components/settings/export-data-button";
 import { Segmented, SettingRow, SettingSwitch, SettingsSection } from "@/components/settings/settings-ui";
 
@@ -77,6 +78,10 @@ export default function SettingsPage() {
 
       <SettingsSection id="contextos" icon={<Layers className="h-3.5 w-3.5 text-primary" />} title="Contextos">
         <ContextsManager />
+      </SettingsSection>
+
+      <SettingsSection id="tickets" icon={<Ticket className="h-3.5 w-3.5 text-primary" />} title="Tickets">
+        <TicketsSection />
       </SettingsSection>
 
       <SettingsSection id="apariencia" icon={<Palette className="h-3.5 w-3.5 text-primary" />} title="Apariencia">

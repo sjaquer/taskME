@@ -34,6 +34,7 @@ import { ticketFormSchema } from "@/lib/schemas";
 import { createTask, deleteTask, updateTask } from "@/services/task-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
+import { shareTicketFormLink } from "@/components/tickets/share-ticket-link";
 import type { Priority, Task } from "@/types/task";
 
 interface TicketFormState {
@@ -121,23 +122,6 @@ function TicketsPageContent() {
         .some((field) => field?.toLowerCase().includes(query))
     );
   }, [view, pendingTickets, doneTickets, searchQuery]);
-
-  // Enlace al formulario público (/tickets), para que otros te envíen solicitudes.
-  const handleShareForm = async () => {
-    const url = `${window.location.origin}/tickets`;
-    try {
-      if (typeof navigator.share === "function") {
-        await navigator.share({ title: "Enviar un ticket", text: "Envíame tu solicitud desde aquí:", url });
-        return;
-      }
-      await navigator.clipboard.writeText(url);
-      toast({ variant: "success", title: "Enlace copiado", description: url });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      console.warn("No se pudo compartir el enlace:", error);
-      toast({ variant: "warning", title: "Copia el enlace manualmente", description: url });
-    }
-  };
 
   const overdueCount = pendingTickets.filter((t) => getDueMeta(typeof t.dueDate === "string" ? t.dueDate : undefined)?.isOverdue).length;
   const inProgressCount = pendingTickets.filter((t) => t.status === "Haciendo").length;
@@ -389,12 +373,12 @@ function TicketsPageContent() {
           </Link>
           <button
             type="button"
-            onClick={handleShareForm}
+            onClick={shareTicketFormLink}
             aria-label="Compartir el formulario público de tickets"
-            title="Compartir formulario público"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-primary"
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl border border-border px-3 text-xs font-semibold text-muted-foreground hover:text-primary"
           >
             <Share2 className="h-4 w-4" />
+            Compartir
           </button>
         </div>
         <div className="relative">

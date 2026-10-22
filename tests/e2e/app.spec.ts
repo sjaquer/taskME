@@ -243,6 +243,14 @@ test.describe('con la app desbloqueada', () => {
     expect(navLabels.join(' ')).not.toMatch(/tickets/i);
   });
 
+  test('Ajustes tiene la sección Tickets: compartir enlace y administrar', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page.getByRole('button', { name: 'Compartir enlace del formulario' })).toBeVisible();
+    await page.getByRole('link', { name: 'Administrar' }).click();
+    await expect(page).toHaveURL(/\/tickets\/admin$/);
+    await expect(page.getByRole('button', { name: 'Compartir el formulario público de tickets' })).toHaveText('Compartir');
+  });
+
   test('sin conexión aparece el aviso', async ({ page, context }) => {
     await openKanban(page);
     await context.setOffline(true);
