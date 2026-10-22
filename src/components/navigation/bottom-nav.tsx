@@ -3,11 +3,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGrid, Clock, Ticket, NotebookText, Settings } from "lucide-react";
+import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContextStore } from "@/lib/store";
 
 const NAV_ITEMS = [
+  { icon: Home, label: "Inicio", href: "/", moduleKey: "dashboard" as const },
   { icon: LayoutGrid, label: "Tablero", href: "/kanban", moduleKey: "kanban" as const },
   { icon: Clock, label: "Horario", href: "/schedule", moduleKey: "schedule" as const },
   { icon: Ticket, label: "Tickets", href: "/tickets", moduleKey: null },

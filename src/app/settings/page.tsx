@@ -103,7 +103,7 @@ export default function SettingsPage() {
             <Layout className="w-3.5 h-3.5 text-primary" /> Módulos del Sistema
           </h3>
           <div className="glass-card p-5 space-y-4">
-            <ModuleToggle label="Terminal" active={activeModules.dashboard} onToggle={() => handleToggleModule("dashboard")} />
+            <ModuleToggle label="Inicio (Dashboard)" active={activeModules.dashboard} onToggle={() => handleToggleModule("dashboard")} />
             <ModuleToggle label="Tablero" active={activeModules.kanban} onToggle={() => handleToggleModule("kanban")} />
             <ModuleToggle label="Horario" active={activeModules.schedule} onToggle={() => handleToggleModule("schedule")} />
           </div>

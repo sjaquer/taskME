@@ -8,12 +8,10 @@ import {
   Target,
   AlertTriangle,
   ArrowUpRight,
-  Terminal,
   Activity,
   Check,
   Cpu,
   Layers,
-  ShieldCheck,
   Zap,
   Compass,
   ListTodo,
@@ -26,25 +24,34 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
-import { MetricCard, SystemFeature } from "@/components/molecules";
-import { StatusIndicator, SectionLabel } from "@/components/atoms";
+import { MetricCard } from "@/components/molecules";
+import { SectionLabel } from "@/components/atoms";
 import { buildTasksQuery, completeTask } from "@/services/task-service";
+import { consumeLaunchRedirect } from "@/lib/launch-state";
 import type { Task } from "@/types/task";
 
 export default function Home() {
-  const { context, defaultPage } = useAppContextStore();
+  const { context, defaultPage, activeModules } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const dashboardEnabled = activeModules.dashboard;
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login");
-    } else if (!isUserLoading && user) {
-      const targetPage = (defaultPage && defaultPage !== "/") ? defaultPage : "/kanban";
-      router.push(targetPage);
+    if (isUserLoading) return;
+    if (!user) {
+      router.replace("/login");
+      return;
     }
-  }, [user, isUserLoading, router, defaultPage]);
+    if (!dashboardEnabled) {
+      router.replace(defaultPage && defaultPage !== "/" ? defaultPage : "/kanban");
+      return;
+    }
+    // Solo al abrir la app se salta a la página de inicio elegida; luego "/" muestra el Dashboard.
+    if (consumeLaunchRedirect() && defaultPage && defaultPage !== "/") {
+      router.replace(defaultPage);
+    }
+  }, [user, isUserLoading, router, defaultPage, dashboardEnabled]);
 
   const tasksQuery = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -79,53 +86,7 @@ export default function Home() {
     toast({ variant: "success", title: "Nodo Finalizado", description: "Operación completada." });
   };
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full animate-pulse">
-      {/* Header Skeleton */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-        <div className="space-y-4 max-w-2xl w-full">
-          <div className="flex flex-wrap items-center gap-3">
-             <Skeleton className="h-7 w-28 bg-muted/30 rounded-md" />
-             <Skeleton className="h-7 w-20 bg-muted/30 rounded-md" />
-          </div>
-          <div className="space-y-3">
-            <Skeleton className="h-12 md:h-16 w-3/4 max-w-md bg-muted/30 rounded-lg" />
-            <Skeleton className="h-4 w-64 bg-muted/30 rounded-full" />
-          </div>
-        </div>
-        <Skeleton className="h-16 w-full lg:w-48 bg-muted/30 rounded-2xl" />
-      </div>
-
-      {/* Metrics Skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl bg-muted/30" />)}
-      </div>
-
-      {/* Quick Orientation Skeleton */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-muted/30" />)}
-      </div>
-
-      {/* Main Content Skeleton */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8 space-y-8">
-          <div className="flex items-center justify-between border-b border-border pb-4">
-             <Skeleton className="h-6 w-48 bg-muted/30 rounded-md" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl bg-muted/30" />)}
-          </div>
-        </div>
-        <div className="lg:col-span-4 space-y-6">
-          <Skeleton className="h-[26rem] rounded-2xl bg-muted/30 w-full" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-  if (isUserLoading || !user || isTasksLoading) return <DashboardSkeleton />;
+  if (isUserLoading || !user || !dashboardEnabled || isTasksLoading) return <DashboardSkeleton />;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full">
@@ -339,5 +300,51 @@ function DashboardSkeleton() {
         </div>
       </div>
     </motion.div>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-10 md:space-y-12 pb-12 px-0 max-w-[1400px] mx-auto w-full animate-pulse">
+      {/* Header Skeleton */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div className="space-y-4 max-w-2xl w-full">
+          <div className="flex flex-wrap items-center gap-3">
+             <Skeleton className="h-7 w-28 bg-muted/30 rounded-md" />
+             <Skeleton className="h-7 w-20 bg-muted/30 rounded-md" />
+          </div>
+          <div className="space-y-3">
+            <Skeleton className="h-12 md:h-16 w-3/4 max-w-md bg-muted/30 rounded-lg" />
+            <Skeleton className="h-4 w-64 bg-muted/30 rounded-full" />
+          </div>
+        </div>
+        <Skeleton className="h-16 w-full lg:w-48 bg-muted/30 rounded-2xl" />
+      </div>
+
+      {/* Metrics Skeleton */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-36 rounded-2xl bg-muted/30" />)}
+      </div>
+
+      {/* Quick Orientation Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        {[...Array(3)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl bg-muted/30" />)}
+      </div>
+
+      {/* Main Content Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-8">
+          <div className="flex items-center justify-between border-b border-border pb-4">
+             <Skeleton className="h-6 w-48 bg-muted/30 rounded-md" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-56 rounded-2xl bg-muted/30" />)}
+          </div>
+        </div>
+        <div className="lg:col-span-4 space-y-6">
+          <Skeleton className="h-[26rem] rounded-2xl bg-muted/30 w-full" />
+        </div>
+      </div>
+    </div>
   );
 }

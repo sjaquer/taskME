@@ -16,7 +16,7 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-react';
+import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
@@ -26,14 +26,18 @@ import { NotificationMonitor } from './notification-monitor';
 import { isNativeAndroidContainer } from '@/lib/native-bridge';
 import { NativeBridgeProvider } from './native-bridge-provider';
 import { useUser } from '@/firebase';
+import { consumeLaunchRedirect } from '@/lib/launch-state';
 
 const DESKTOP_NAV = [
-  { icon: LayoutGrid, label: "Tablero", href: "/kanban" },
-  { icon: Clock, label: "Horario", href: "/schedule" },
-  { icon: Ticket, label: "Tickets", href: "/tickets" },
-  { icon: NotebookText, label: "Notas", href: "/notes" },
-  { icon: Settings, label: "Perfil", href: "/settings" },
-];
+  { icon: Home, label: "Inicio", href: "/", moduleKey: "dashboard" as const },
+  { icon: LayoutGrid, label: "Tablero", href: "/kanban", moduleKey: "kanban" as const },
+  { icon: Clock, label: "Horario", href: "/schedule", moduleKey: "schedule" as const },
+  { icon: Ticket, label: "Tickets", href: "/tickets", moduleKey: null },
+  { icon: NotebookText, label: "Notas", href: "/notes", moduleKey: null },
+  { icon: Settings, label: "Perfil", href: "/settings", moduleKey: null },
+] as const;
+
+const PUBLIC_ROUTES = ['/login', '/privacy', '/terms'];
 
 export function ClientShell({ children }: { children: ReactNode }) {
   return (
@@ -52,7 +56,14 @@ function ShellRouter({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user } = useUser();
 
-  const PUBLIC_ROUTES = ['/login', '/privacy', '/terms'];
+  // Si la app se abrió directamente en otra pantalla (deep link de una notificación,
+  // por ejemplo), ya no corresponde saltar a la página de inicio al visitar "/".
+  useEffect(() => {
+    if (pathname !== '/' && !PUBLIC_ROUTES.includes(pathname)) {
+      consumeLaunchRedirect();
+    }
+  }, [pathname]);
+
   // /tickets es público solo para visitantes sin sesión (crear un ticket);
   // una vez autenticado, el dueño ve el shell completo con la gestión de tickets.
   const isPublic = PUBLIC_ROUTES.includes(pathname) || (pathname === '/tickets' && !user);
@@ -96,6 +107,8 @@ function ClientShellInner({ children }: { children: ReactNode }) {
   const theme = useAppContextStore((state) => state.theme);
   const colorMode = useAppContextStore((state) => state.colorMode);
   const visualConfig = useAppContextStore((state) => state.visualConfig);
+  const activeModules = useAppContextStore((state) => state.activeModules);
+  const navItems = DESKTOP_NAV.filter((item) => item.moduleKey === null || activeModules[item.moduleKey]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -152,7 +165,7 @@ function ClientShellInner({ children }: { children: ReactNode }) {
         </SidebarHeader>
         <SidebarContent className={cn("transition-all duration-300", state === "collapsed" ? "px-2" : "px-6")}>
           <SidebarMenu className="gap-3">
-            {DESKTOP_NAV.map((item) => {
+            {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <SidebarMenuItem key={item.href}>
