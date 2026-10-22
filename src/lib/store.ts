@@ -84,7 +84,6 @@ export const useAppContextStore = create<AppState>()(
         dashboard: true,
         kanban: true,
         schedule: true,
-        tickets: true,
         notes: true,
       },
       navOrder: DEFAULT_NAV_ORDER,

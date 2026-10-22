@@ -1,6 +1,8 @@
-import { Clock, Home, LayoutGrid, NotebookText, Settings, Ticket, type LucideIcon } from 'lucide-react';
+import { Clock, Home, LayoutGrid, NotebookText, Settings, type LucideIcon } from 'lucide-react';
 
-export type NavModule = 'dashboard' | 'kanban' | 'schedule' | 'tickets' | 'notes';
+// Tickets no va en la navegación: /tickets es el formulario público y la
+// gestión se abre desde ahí (botón "Administrar") o desde el Tablero.
+export type NavModule = 'dashboard' | 'kanban' | 'schedule' | 'notes';
 
 export interface NavItem {
   key: NavModule | 'settings';
@@ -13,18 +15,20 @@ export const NAV_MODULES: Record<NavModule, NavItem> = {
   dashboard: { key: 'dashboard', icon: Home, label: 'Inicio', href: '/' },
   kanban: { key: 'kanban', icon: LayoutGrid, label: 'Tablero', href: '/kanban' },
   schedule: { key: 'schedule', icon: Clock, label: 'Horario', href: '/schedule' },
-  tickets: { key: 'tickets', icon: Ticket, label: 'Tickets', href: '/tickets' },
   notes: { key: 'notes', icon: NotebookText, label: 'Notas', href: '/notes' },
 };
 
-export const DEFAULT_NAV_ORDER: NavModule[] = ['dashboard', 'kanban', 'schedule', 'tickets', 'notes'];
+export const DEFAULT_NAV_ORDER: NavModule[] = ['dashboard', 'kanban', 'schedule', 'notes'];
 
 // Ajustes siempre queda al final y no se puede ocultar.
 const SETTINGS_ITEM: NavItem = { key: 'settings', icon: Settings, label: 'Ajustes', href: '/settings' };
 
-/** Orden guardado, completado con módulos nuevos que aún no estén en la lista. */
-export function normalizeNavOrder(order: NavModule[] | undefined): NavModule[] {
-  const known = (order ?? []).filter((key) => key in NAV_MODULES);
+/**
+ * Orden guardado, sin módulos que ya no existen (p. ej. 'tickets' de versiones
+ * anteriores) y completado con los nuevos que aún no estén en la lista.
+ */
+export function normalizeNavOrder(order: readonly string[] | undefined): NavModule[] {
+  const known = (order ?? []).filter((key): key is NavModule => key in NAV_MODULES);
   return [...new Set([...known, ...DEFAULT_NAV_ORDER])];
 }
 

@@ -31,7 +31,8 @@ import { DeviceState } from './device-state';
 import { useUser } from '@/firebase';
 import { consumeLaunchRedirect } from '@/lib/launch-state';
 
-const PUBLIC_ROUTES = ['/login', '/privacy', '/terms'];
+// /tickets es el formulario público que se comparte; la gestión está en /tickets/admin.
+const PUBLIC_ROUTES = ['/login', '/privacy', '/terms', '/tickets'];
 
 export function ClientShell({ children }: { children: ReactNode }) {
   const reduceMotion = useAppContextStore((state) => state.reduceMotion);
@@ -69,9 +70,7 @@ function ShellRouter({ children }: { children: ReactNode }) {
     }
   }, [pathname]);
 
-  // /tickets es público solo para visitantes sin sesión (crear un ticket);
-  // una vez autenticado, el dueño ve el shell completo con la gestión de tickets.
-  const isPublic = PUBLIC_ROUTES.includes(pathname) || (pathname === '/tickets' && !user);
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
   const isAuthorized = canEnterApp(user);
 
   // Control de sesión central para todas las rutas privadas.

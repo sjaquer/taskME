@@ -238,7 +238,6 @@ export default function SettingsPage() {
                 <SelectItem value="/">Inicio</SelectItem>
                 <SelectItem value="/kanban">Tablero</SelectItem>
                 <SelectItem value="/schedule">Horario</SelectItem>
-                <SelectItem value="/tickets">Tickets</SelectItem>
                 <SelectItem value="/notes">Notas</SelectItem>
               </SelectContent>
             </Select>

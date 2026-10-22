@@ -30,6 +30,8 @@ export default function Home() {
   const firestore = useFirestore();
   const router = useRouter();
   const dashboardEnabled = activeModules.dashboard;
+  // "/tickets" ya no es una página de inicio válida (ahora es el formulario público).
+  const startPage = defaultPage && defaultPage !== "/" && defaultPage !== "/tickets" ? defaultPage : null;
   const activeContext = useActiveContext();
   const { data: tasks, isLoading: isTasksLoading } = useTasks(activeContext.id);
   const { data: routines } = useRoutines(activeContext.id);
@@ -39,14 +41,14 @@ export default function Home() {
     // La sesión la controla el shell (AuthGate); aquí solo se decide la página de inicio.
     if (isUserLoading || !user) return;
     if (!dashboardEnabled) {
-      router.replace(defaultPage && defaultPage !== "/" ? defaultPage : "/kanban");
+      router.replace(startPage ?? "/kanban");
       return;
     }
     // Solo al abrir la app se salta a la página de inicio elegida; luego "/" muestra el Dashboard.
-    if (consumeLaunchRedirect() && defaultPage && defaultPage !== "/") {
-      router.replace(defaultPage);
+    if (consumeLaunchRedirect() && startPage) {
+      router.replace(startPage);
     }
-  }, [user, isUserLoading, router, defaultPage, dashboardEnabled]);
+  }, [user, isUserLoading, router, startPage, dashboardEnabled]);
 
   useEffect(() => {
     const intervalId = setInterval(() => setNow(new Date()), 60_000);

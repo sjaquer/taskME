@@ -214,7 +214,7 @@ export default function KanbanPage() {
   // Los tickets tienen campos propios: se editan en su página.
   const handleEdit = (task: Task) => {
     if (task.isTicket) {
-      router.push(`/tickets?edit=${task.id}`);
+      router.push(`/tickets/admin?edit=${task.id}`);
       return;
     }
     openTaskForm(undefined, task);

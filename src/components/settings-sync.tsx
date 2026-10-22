@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useFirestore, useUser } from '@/firebase/provider';
 import { useAppContextStore } from '@/lib/store';
 import { getUserSettingsRef, saveSettingsToCloud } from '@/services/user-service';
+import { normalizeNavOrder } from '@/lib/navigation';
 
 // Preferencias que se sincronizan entre dispositivos. El contexto activo queda
 // por dispositivo a propósito (el teléfono puede estar en otro que el PC).
@@ -30,10 +31,10 @@ const syncedSettingsSchema = z.object({
     dashboard: z.boolean(),
     kanban: z.boolean(),
     schedule: z.boolean(),
-    tickets: z.boolean(),
     notes: z.boolean(),
   }),
-  navOrder: z.array(z.enum(['dashboard', 'kanban', 'schedule', 'tickets', 'notes'])).max(10),
+  // Se aceptan claves antiguas (p. ej. 'tickets') y se descartan al normalizar.
+  navOrder: z.array(z.string()).max(10).transform((order) => normalizeNavOrder(order)),
   taskRetentionPeriod: z.enum(['weekly', 'monthly', 'quarterly', 'yearly']),
   ticketsContext: z.string().min(1).max(64),
 });

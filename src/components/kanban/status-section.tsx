@@ -147,7 +147,7 @@ function TaskRow({ task, project, onEdit, onDelete, onMove, onToggleChecklistIte
         <DropdownMenuContent align="end" className="w-48 rounded-2xl border-border bg-card p-1.5">
           {task.isTicket ? (
             <DropdownMenuItem asChild className="rounded-xl">
-              <Link href={`/tickets?edit=${task.id}`}>
+              <Link href={`/tickets/admin?edit=${task.id}`}>
                 <Pencil className="mr-2 h-4 w-4" /> Editar ticket
               </Link>
             </DropdownMenuItem>

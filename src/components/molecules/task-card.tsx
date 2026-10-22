@@ -118,7 +118,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
               <div className="hidden md:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
                 {task.isTicket ? (
                   <Link
-                    href={`/tickets?edit=${task.id}`}
+                    href={`/tickets/admin?edit=${task.id}`}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-primary transition-all border border-transparent hover:border-border"
@@ -163,7 +163,7 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
 
           {/* Title and Description */}
           <div
-            onClick={() => (task.isTicket ? router.push(`/tickets?edit=${task.id}`) : onEdit(task))}
+            onClick={() => (task.isTicket ? router.push(`/tickets/admin?edit=${task.id}`) : onEdit(task))}
             className="space-y-2 cursor-pointer group/content"
           >
             <h4 className="text-[14px] md:text-[15px] font-black leading-tight tracking-tight group-hover/content:text-primary transition-colors pr-2">
