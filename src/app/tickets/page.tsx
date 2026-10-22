@@ -29,6 +29,8 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { buildTasksQuery, createTask, deleteTask, updateTask } from "@/services/task-service";
 import { buildProjectsQuery } from "@/services/project-service";
+import { restoreUserDocument } from "@/services/restore-service";
+import { toastWithUndo } from "@/components/undo-toast";
 import type { Priority, Project, Task } from "@/types/task";
 
 const MAX_TAGS = 5;
@@ -245,8 +247,17 @@ function TicketsPageContent() {
 
   const handleDelete = (ticketId: string) => {
     if (!user || !firestore) return;
+    const deletedTicket = tickets.find((ticket) => ticket.id === ticketId);
     deleteTask(firestore, user.uid, ticketId);
-    toast({ variant: "warning", title: "Ticket eliminado" });
+    if (!deletedTicket) {
+      toast({ variant: "warning", title: "Ticket eliminado" });
+      return;
+    }
+    toastWithUndo({
+      title: "Ticket eliminado",
+      description: deletedTicket.title,
+      onUndo: () => restoreUserDocument(firestore, user.uid, "tasks", deletedTicket),
+    });
   };
 
   const handleMove = (ticketId: string, status: string) => {

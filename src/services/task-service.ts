@@ -123,6 +123,13 @@ export function deleteTask(firestore: Firestore, userId: string, taskId: string)
   deleteDocumentNonBlocking(docRef);
 }
 
+/** Borra varias tareas en un solo batch (p. ej. "Limpiar Hechos"). */
+export function deleteTasks(firestore: Firestore, userId: string, taskIds: string[]) {
+  const batch = writeBatch(firestore);
+  taskIds.forEach((taskId) => batch.delete(getTaskDocRef(firestore, userId, taskId)));
+  return batch.commit();
+}
+
 export function completeTask(firestore: Firestore, userId: string, taskId: string) {
   updateTask(firestore, userId, taskId, { status: 'Hecho' });
 }

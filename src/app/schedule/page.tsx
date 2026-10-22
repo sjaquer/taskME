@@ -20,6 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
 import { ScheduleItem } from "@/components/molecules";
 import { buildRoutinesQuery, createRoutine, updateRoutine, deleteRoutine } from "@/services/routine-service";
+import { restoreUserDocument } from "@/services/restore-service";
+import { toastWithUndo } from "@/components/undo-toast";
 import type { Routine, Priority, RoutineFormData } from "@/types/task";
 
 const RoutineSchema = z.object({
@@ -156,8 +158,17 @@ export default function SchedulePage() {
   };
 
   const handleDeleteRoutine = (routineId: string) => {
+    const deletedRoutine = routines?.find((routine) => routine.id === routineId);
     deleteRoutine(firestore, user.uid, routineId);
-    toast({ title: "Rutina eliminada", variant: "warning" });
+    if (!deletedRoutine) {
+      toast({ title: "Rutina eliminada", variant: "warning" });
+      return;
+    }
+    toastWithUndo({
+      title: "Rutina eliminada",
+      description: deletedRoutine.title,
+      onUndo: () => restoreUserDocument(firestore, user.uid, "routines", deletedRoutine),
+    });
   };
 
   return (

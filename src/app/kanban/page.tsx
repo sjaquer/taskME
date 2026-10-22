@@ -17,7 +17,9 @@ import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useMemoFirebase, useUser } from "@/firebase/provider";
 import { useCollection } from "@/firebase/firestore/use-collection";
-import { buildTasksQuery, createTask, deleteTask, updateTask } from "@/services/task-service";
+import { buildTasksQuery, createTask, deleteTask, deleteTasks, updateTask } from "@/services/task-service";
+import { restoreUserDocument, restoreUserDocuments } from "@/services/restore-service";
+import { toastWithUndo } from "@/components/undo-toast";
 import { buildProjectsQuery, createProject, updateProject, archiveProject } from "@/services/project-service";
 import { TaskFormPanel, type TaskFormState } from "@/components/kanban/task-form-panel";
 import { ProjectManager } from "@/components/kanban/project-manager";
@@ -379,6 +381,7 @@ export default function KanbanPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingProject, setIsSavingProject] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [confirmClearCompleted, setConfirmClearCompleted] = useState(false);
 
   // Drag and Drop Activation Sensors
   const sensors = useSensors(
@@ -587,10 +590,21 @@ export default function KanbanPage() {
 
   const handleDeleteTask = (taskId: string) => {
     if (!user || !firestore) return;
+    const deletedTask = tasks.find((task) => task.id === taskId);
 
     setTasks((previous) => previous.filter((task) => task.id !== taskId));
     deleteTask(firestore, user.uid, taskId);
-    toast({ variant: "warning", title: "Tarea eliminada" });
+
+    // Una tarea recién creada aún tiene id temporal: no hay documento que restaurar.
+    if (!deletedTask || taskId.startsWith("temp-")) {
+      toast({ variant: "warning", title: "Tarea eliminada" });
+      return;
+    }
+    toastWithUndo({
+      title: "Tarea eliminada",
+      description: deletedTask.title,
+      onUndo: () => restoreUserDocument(firestore, user.uid, "tasks", deletedTask),
+    });
   };
 
   const handleMoveTask = (taskId: string, status: string) => {
@@ -621,21 +635,46 @@ export default function KanbanPage() {
     }
   };
 
+  // Sin diálogo modal: el primer toque pide confirmación y el segundo borra.
+  useEffect(() => {
+    if (!confirmClearCompleted) return;
+    const timeoutId = setTimeout(() => setConfirmClearCompleted(false), 4000);
+    return () => clearTimeout(timeoutId);
+  }, [confirmClearCompleted]);
+
   const handleClearCompleted = async () => {
     if (!user || !firestore) return;
-    const completedList = tasks.filter((task) => task.status === "Hecho");
+    const completedList = tasks.filter((task) => task.status === "Hecho" && !task.id.startsWith("temp-"));
     if (completedList.length === 0) {
       toast({ variant: "warning", title: "Sin tareas hechas", description: "No hay tareas completadas para limpiar." });
       return;
     }
 
-    setTasks((previous) => previous.filter((task) => task.status !== "Hecho"));
+    if (!confirmClearCompleted) {
+      setConfirmClearCompleted(true);
+      return;
+    }
+    setConfirmClearCompleted(false);
 
-    for (const task of completedList) {
-      await deleteTask(firestore, user.uid, task.id);
+    setTasks((previous) => previous.filter((task) => task.status !== "Hecho"));
+    try {
+      await deleteTasks(firestore, user.uid, completedList.map((task) => task.id));
+    } catch (error) {
+      console.error("Error al limpiar tareas completadas:", error);
+      toast({ variant: "destructive", title: "Error", description: "No se pudieron eliminar las tareas completadas." });
+      return;
     }
 
-    toast({ variant: "success", title: "Tablero Limpio", description: `Se archivaron ${completedList.length} tareas.` });
+    toastWithUndo({
+      title: "Tablero limpio",
+      description: `Se eliminaron ${completedList.length} tareas completadas.`,
+      onUndo: () => {
+        restoreUserDocuments(firestore, user.uid, "tasks", completedList).catch((error) => {
+          console.error("Error al restaurar tareas:", error);
+          toast({ variant: "destructive", title: "Error", description: "No se pudieron restaurar las tareas." });
+        });
+      },
+    });
   };
 
   const handleGenerateTasks = async () => {
@@ -889,7 +928,9 @@ export default function KanbanPage() {
                 onClick={handleClearCompleted}
                 className="h-12 w-full sm:w-auto rounded-2xl border-red-500/20 hover:border-red-500/40 bg-red-500/5 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 active:scale-95 transition-all"
               >
-                Limpiar Hechos
+                {confirmClearCompleted
+                  ? `¿Borrar ${completedTasks} hechas? Toca otra vez`
+                  : "Limpiar Hechos"}
               </Button>
             </div>
           </div>

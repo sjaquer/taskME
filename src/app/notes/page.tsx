@@ -16,6 +16,8 @@ import { useCollection } from "@/firebase/firestore/use-collection";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { buildNotesQuery, createNote, updateNote, deleteNote } from "@/services/note-service";
+import { restoreUserDocument } from "@/services/restore-service";
+import { toastWithUndo } from "@/components/undo-toast";
 import type { Note, NoteCategory } from "@/types/task";
 
 const CATEGORIES: NoteCategory[] = ["Clases", "Tareas", "Grupos", "Trabajo", "Tickets", "Otro"];
@@ -110,8 +112,17 @@ export default function NotesPage() {
 
   const handleDelete = (noteId: string) => {
     if (!user || !firestore) return;
+    const deletedNote = notes?.find((note) => note.id === noteId);
     deleteNote(firestore, user.uid, noteId);
-    toast({ variant: "warning", title: "Nota eliminada" });
+    if (!deletedNote) {
+      toast({ variant: "warning", title: "Nota eliminada" });
+      return;
+    }
+    toastWithUndo({
+      title: "Nota eliminada",
+      description: deletedNote.title,
+      onUndo: () => restoreUserDocument(firestore, user.uid, "notes", deletedNote),
+    });
   };
 
   if (isUserLoading || !user) return null;
