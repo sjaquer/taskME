@@ -4,6 +4,7 @@ import { useCallback, useEffect } from 'react';
 import { differenceInMinutes, format, isToday, isValid, parseISO } from 'date-fns';
 import { NotificationService } from '@/services/notification-service';
 import type { Routine, Task } from '@/types/task';
+import { getDueDateTime } from '@/lib/tasks';
 
 const NOTIFIED_STORAGE_KEY = 'taskme:notified';
 const NOTIFIED_TTL_MS = 48 * 60 * 60 * 1000;
@@ -55,8 +56,9 @@ export function useNotifications(tasks: Task[] = [], routines: Routine[] = [], e
     tasks.forEach((task) => {
       if (!task.dueDate || task.status === 'Hecho') return;
 
-      const isDateOnly = typeof task.dueDate === 'string' && DATE_ONLY_PATTERN.test(task.dueDate);
-      const dueDate = typeof task.dueDate === 'string' ? parseISO(task.dueDate) : new Date(task.dueDate);
+      // Con hora (dueTime) se avisa en la hora previa; sin hora, una vez el día que vence.
+      const isDateOnly = !task.dueTime && typeof task.dueDate === 'string' && DATE_ONLY_PATTERN.test(task.dueDate);
+      const dueDate = getDueDateTime(task.dueDate, task.dueTime) ?? (typeof task.dueDate === 'string' ? parseISO(task.dueDate) : new Date(task.dueDate));
       if (!isValid(dueDate) || !isToday(dueDate)) return;
 
       if (isDateOnly) {

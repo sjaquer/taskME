@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Check, ChevronDown, MoreHorizontal, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ListChecks, MoreHorizontal, Pencil, Plus, Repeat, Ticket, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { TASK_STATUSES, getDueMeta } from "@/lib/tasks";
+import { RECURRENCE_LABELS, TASK_STATUSES, getChecklistProgress, getDueMeta } from "@/lib/tasks";
 import type { Priority, Project, Task, TaskStatus } from "@/types/task";
 
 const PRIORITY_DOT: Record<Priority, string> = {
@@ -26,12 +27,15 @@ interface TaskRowProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onMove: (taskId: string, status: TaskStatus) => void;
+  onToggleChecklistItem: (task: Task, itemId: string) => void;
 }
 
 /** Fila compacta: círculo para completar, título, metadatos y menú de acciones. */
-function TaskRow({ task, project, onEdit, onDelete, onMove }: TaskRowProps) {
-  const dueMeta = task.status === "Hecho" ? null : getDueMeta(task.dueDate);
+function TaskRow({ task, project, onEdit, onDelete, onMove, onToggleChecklistItem }: TaskRowProps) {
+  const dueMeta = task.status === "Hecho" ? null : getDueMeta(task.dueDate, task.dueTime);
   const isDone = task.status === "Hecho";
+  const progress = getChecklistProgress(task.checklist);
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   return (
     <div className="group flex items-start gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-muted/20">
@@ -47,7 +51,8 @@ function TaskRow({ task, project, onEdit, onDelete, onMove }: TaskRowProps) {
         {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
       </button>
 
-      <button type="button" onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
+      <div className="min-w-0 flex-1">
+      <button type="button" onClick={() => onEdit(task)} className="w-full text-left">
         <p className={cn("text-sm font-semibold leading-snug", isDone && "text-muted-foreground line-through")}>{task.title}</p>
         {task.description && !isDone && (
           <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
@@ -80,11 +85,57 @@ function TaskRow({ task, project, onEdit, onDelete, onMove }: TaskRowProps) {
               {task.requesterName || "Ticket"}
             </span>
           )}
+          {task.recurrence && (
+            <span className="flex items-center gap-1" title={RECURRENCE_LABELS[task.recurrence]}>
+              <Repeat className="h-3 w-3" />
+              <span className="sr-only">{RECURRENCE_LABELS[task.recurrence]}</span>
+            </span>
+          )}
           {task.tags?.slice(0, 2).map((tag) => (
             <span key={tag}>#{tag}</span>
           ))}
         </div>
       </button>
+      {progress && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setChecklistOpen((open) => !open)}
+            aria-expanded={checklistOpen}
+            className={cn(
+              "flex items-center gap-1 rounded-md text-[11px] hover:text-foreground",
+              progress.done === progress.total ? "text-primary" : "text-muted-foreground"
+            )}
+          >
+            <ListChecks className="h-3 w-3" />
+            {progress.done}/{progress.total} subtareas
+          </button>
+          {checklistOpen && (
+            <ul className="mt-1.5 space-y-1">
+              {task.checklist!.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => onToggleChecklistItem(task, item.id)}
+                    className="flex w-full items-center gap-2 py-0.5 text-left text-xs"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                        item.done ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40"
+                      )}
+                    >
+                      {item.done && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                    </span>
+                    <span className={cn(item.done && "text-muted-foreground line-through")}>{item.text}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      </div>
 
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -130,12 +181,23 @@ interface StatusSectionProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onMove: (taskId: string, status: TaskStatus) => void;
+  onToggleChecklistItem: (task: Task, itemId: string) => void;
   /** Acción extra en el encabezado (p. ej. "Limpiar" en Hecho). */
   headerAction?: React.ReactNode;
 }
 
 /** Vista "Lista": tareas de un estado en una sección plegable. */
-export function StatusSection({ status, tasks, projectsById, onAdd, onEdit, onDelete, onMove, headerAction }: StatusSectionProps) {
+export function StatusSection({
+  status,
+  tasks,
+  projectsById,
+  onAdd,
+  onEdit,
+  onDelete,
+  onMove,
+  onToggleChecklistItem,
+  headerAction,
+}: StatusSectionProps) {
   return (
     <details open={status !== "Hecho"} className="group">
       <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-2">
@@ -168,6 +230,7 @@ export function StatusSection({ status, tasks, projectsById, onAdd, onEdit, onDe
               onEdit={onEdit}
               onDelete={onDelete}
               onMove={onMove}
+              onToggleChecklistItem={onToggleChecklistItem}
             />
           ))
         ) : (

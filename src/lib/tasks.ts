@@ -1,5 +1,5 @@
-import { differenceInCalendarDays, format, isValid, parseISO } from 'date-fns';
-import type { Priority, TaskStatus } from '@/types/task';
+import { addDays, addMonths, addWeeks, differenceInCalendarDays, format, isBefore, isValid, parseISO, startOfDay } from 'date-fns';
+import type { Priority, Recurrence, TaskStatus } from '@/types/task';
 
 // Estados fijos: el Kanban nunca admite estados personalizados adicionales.
 export const TASK_STATUSES: readonly TaskStatus[] = ['Pendiente', 'Haciendo', 'Hecho'];
@@ -55,21 +55,61 @@ export interface DueMeta {
   label: string;
 }
 
+/** Fecha y hora de vencimiento combinadas (la hora es opcional). */
+export function getDueDateTime(dueDate: string | Date | undefined | null, dueTime?: string): Date | null {
+  const parsed = toDate(dueDate);
+  if (!parsed) return null;
+  if (!dueTime || !/^\d{2}:\d{2}$/.test(dueTime)) return parsed;
+  const [hours, minutes] = dueTime.split(':').map(Number);
+  const withTime = new Date(parsed);
+  withTime.setHours(hours, minutes, 0, 0);
+  return withTime;
+}
+
 /**
- * Estado de vencimiento por días calendario: una tarea que vence hoy no está vencida.
+ * Estado de vencimiento por días calendario: una tarea que vence hoy no está
+ * vencida, salvo que tenga hora y esa hora ya pasó.
  */
-export function getDueMeta(dueDate: string | Date | undefined | null): DueMeta | null {
+export function getDueMeta(dueDate: string | Date | undefined | null, dueTime?: string): DueMeta | null {
   const parsed = toDate(dueDate);
   if (!parsed) return null;
 
-  const daysLeft = differenceInCalendarDays(parsed, new Date());
-  const isOverdue = daysLeft < 0;
+  const now = new Date();
+  const daysLeft = differenceInCalendarDays(parsed, now);
+  const withTime = dueTime ? getDueDateTime(parsed, dueTime) : null;
+  const isOverdue = daysLeft < 0 || (daysLeft === 0 && withTime !== null && isBefore(withTime, now));
+  const dayLabel = daysLeft === 0 ? 'Hoy' : daysLeft === 1 ? 'Mañana' : formatShortDate(parsed);
   return {
     isOverdue,
     isUrgent: !isOverdue && daysLeft <= URGENT_DAYS,
     daysLeft,
-    label: isOverdue ? 'Vencida' : formatShortDate(parsed),
+    label: isOverdue ? 'Vencida' : dueTime ? `${dayLabel} · ${dueTime}` : dayLabel,
   };
+}
+
+export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+  daily: 'Cada día',
+  weekly: 'Cada semana',
+  monthly: 'Cada mes',
+};
+
+/**
+ * Próxima fecha de una tarea recurrente. Si se completó con atraso, avanza
+ * hasta hoy o después para no crear ocurrencias ya vencidas.
+ */
+export function getNextDueDate(dueDate: string, recurrence: Recurrence): string {
+  const step = (date: Date) =>
+    recurrence === 'daily' ? addDays(date, 1) : recurrence === 'weekly' ? addWeeks(date, 1) : addMonths(date, 1);
+  const today = startOfDay(new Date());
+  let next = step(parseISO(dueDate));
+  while (isBefore(next, today)) next = step(next);
+  return format(next, 'yyyy-MM-dd');
+}
+
+/** Progreso de subtareas, o null si no tiene. */
+export function getChecklistProgress(checklist: { done: boolean }[] | undefined) {
+  if (!checklist || checklist.length === 0) return null;
+  return { done: checklist.filter((item) => item.done).length, total: checklist.length };
 }
 
 const PRIORITY_META: Record<Priority, { label: string; className: string }> = {

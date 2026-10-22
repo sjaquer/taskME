@@ -11,7 +11,7 @@ import { haptic } from "@/lib/native-features";
 import { consumeLaunchRedirect } from "@/lib/launch-state";
 import { getDueMeta } from "@/lib/tasks";
 import { cn, formatTime } from "@/lib/utils";
-import { updateTask } from "@/services/task-service";
+import { setTaskStatus } from "@/services/task-service";
 import type { Priority, Routine, Task } from "@/types/task";
 
 const PRIORITY_RANK: Record<Priority, number> = { alta: 0, media: 1, baja: 2 };
@@ -61,7 +61,7 @@ export default function Home() {
 
   const summary = useMemo(() => {
     const open = tasks.filter((task) => task.status !== "Hecho");
-    const withDue = open.map((task) => ({ task, due: getDueMeta(task.dueDate) }));
+    const withDue = open.map((task) => ({ task, due: getDueMeta(task.dueDate, task.dueTime) }));
     const forToday = withDue
       .filter(({ due }) => due && due.daysLeft <= 0)
       .sort((a, b) => (a.due!.daysLeft - b.due!.daysLeft) || PRIORITY_RANK[a.task.priority] - PRIORITY_RANK[b.task.priority])
@@ -106,7 +106,7 @@ export default function Home() {
   const firstName = user.displayName?.split(" ")[0];
   const toggleTask = (task: Task) => {
     haptic();
-    updateTask(firestore, user.uid, task.id, { status: task.status === "Hecho" ? "Pendiente" : "Hecho" });
+    setTaskStatus(firestore, user.uid, task, task.status === "Hecho" ? "Pendiente" : "Hecho");
   };
 
   return (
@@ -225,7 +225,7 @@ function RoutineNow({
 }
 
 function TaskLine({ task, onToggle }: { task: Task; onToggle: (task: Task) => void }) {
-  const due = getDueMeta(task.dueDate);
+  const due = getDueMeta(task.dueDate, task.dueTime);
   const isDone = task.status === "Hecho";
   return (
     <div className="flex items-center gap-3 rounded-xl px-1 py-2">
@@ -245,7 +245,7 @@ function TaskLine({ task, onToggle }: { task: Task; onToggle: (task: Task) => vo
       {due && (
         <span className={cn("flex shrink-0 items-center gap-1 text-[11px]", due.isOverdue ? "text-red-400" : "text-muted-foreground")}>
           <CalendarDays className="h-3 w-3" />
-          {due.daysLeft === 0 ? "Hoy" : due.label}
+          {due.label}
         </span>
       )}
     </div>

@@ -19,6 +19,15 @@ export interface ContextDef {
 
 export type TaskStatus = 'Pendiente' | 'Haciendo' | 'Hecho';
 
+export type Recurrence = 'daily' | 'weekly' | 'monthly';
+
+/** Subtarea dentro de una tarea. */
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 // ── Kanban Tasks (tablero) ─────────────────────────────────
 export interface Task {
   id: string;
@@ -29,7 +38,11 @@ export interface Task {
   context: AppContext;
   userId: string;
   tags?: string[];
-  dueDate?: string | Date;   // ISO datetime (opcional)
+  dueDate?: string | Date;   // YYYY-MM-DD (opcional)
+  dueTime?: string;          // "HH:mm" (opcional, requiere dueDate)
+  checklist?: ChecklistItem[];
+  /** Al completarla se crea la siguiente ocurrencia (requiere dueDate). */
+  recurrence?: Recurrence;
   projectId?: string;
   // ── Campos de Ticket (cuando isTicket es true) ────────────
   isTicket?: boolean;

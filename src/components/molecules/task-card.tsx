@@ -25,7 +25,7 @@ interface TaskCardProps {
 }
 
 export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, selected, onToggleSelect, dragDisabled, pendingSync }: TaskCardProps) {
-  const dueStatus = getDueMeta(task.dueDate);
+  const dueStatus = getDueMeta(task.dueDate, task.dueTime);
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: isOverlay ? `${task.id}-overlay` : task.id,
     data: { type: 'Task', task },

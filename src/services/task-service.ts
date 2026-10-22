@@ -6,6 +6,7 @@ import {
   query,
   where,
   serverTimestamp,
+  deleteField,
   getDocs,
   writeBatch,
   Firestore,
@@ -17,7 +18,8 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { AppContext, Priority, TaskStatus } from '@/types/task';
+import type { AppContext, ChecklistItem, Priority, Recurrence, Task, TaskStatus } from '@/types/task';
+import { getNextDueDate } from '@/lib/tasks';
 import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
@@ -73,6 +75,9 @@ export interface TaskInput {
   status: TaskStatus;
   tags?: string[];
   dueDate?: string;
+  dueTime?: string;
+  checklist?: ChecklistItem[];
+  recurrence?: Recurrence;
   context: AppContext;
   projectId?: string;
   isTicket?: boolean;
@@ -92,15 +97,24 @@ export function createTask(firestore: Firestore, userId: string, data: TaskInput
   });
 }
 
+/** Campos opcionales que se pueden quitar al editar (fecha, hora, proyecto…). */
+export type ClearableTaskField = 'dueDate' | 'dueTime' | 'recurrence' | 'projectId';
+
+/**
+ * Actualiza una tarea. updateDoc solo agrega/modifica campos: los opcionales que
+ * el usuario vació deben listarse en `clear` para eliminarlos del documento.
+ */
 export function updateTask(
   firestore: Firestore,
   userId: string,
   taskId: string,
-  data: Partial<TaskInput>
+  data: Partial<TaskInput>,
+  clear: ClearableTaskField[] = []
 ) {
   const docRef = getTaskDocRef(firestore, userId, taskId);
   updateDocumentNonBlocking(docRef, {
     ...data,
+    ...Object.fromEntries(clear.map((field) => [field, deleteField()])),
     updatedAt: serverTimestamp(),
   });
 }
@@ -117,6 +131,30 @@ export function deleteTasks(firestore: Firestore, userId: string, taskIds: strin
   return batch.commit();
 }
 
-export function completeTask(firestore: Firestore, userId: string, taskId: string) {
-  updateTask(firestore, userId, taskId, { status: 'Hecho' });
+
+/**
+ * Cambia el estado de una tarea. Si se completa una tarea recurrente, crea la
+ * siguiente ocurrencia (pendiente, con subtareas desmarcadas) y devuelve su fecha.
+ */
+export function setTaskStatus(firestore: Firestore, userId: string, task: Task, status: TaskStatus): string | null {
+  updateTask(firestore, userId, task.id, { status });
+
+  const dueDate = typeof task.dueDate === 'string' ? task.dueDate : undefined;
+  if (status !== 'Hecho' || task.status === 'Hecho' || !task.recurrence || !dueDate) return null;
+
+  const nextDueDate = getNextDueDate(dueDate, task.recurrence);
+  createTask(firestore, userId, {
+    title: task.title,
+    description: task.description,
+    priority: task.priority,
+    status: 'Pendiente',
+    tags: task.tags,
+    dueDate: nextDueDate,
+    dueTime: task.dueTime,
+    checklist: task.checklist?.map((item) => ({ ...item, done: false })),
+    recurrence: task.recurrence,
+    context: task.context,
+    projectId: task.projectId,
+  });
+  return nextDueDate;
 }

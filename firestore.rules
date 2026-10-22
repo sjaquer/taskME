@@ -44,7 +44,8 @@ service cloud.firestore {
       return data.keys().hasOnly([
                'userId', 'title', 'description', 'priority', 'status', 'tags',
                'dueDate', 'context', 'projectId', 'isTicket', 'requestedAction',
-               'requesterName', 'reviewDate', 'referenceUrl', 'createdAt', 'updatedAt'
+               'requesterName', 'reviewDate', 'referenceUrl', 'createdAt', 'updatedAt',
+               'dueTime', 'checklist', 'recurrence'
              ])
              && data.userId == userId
              && data.title is string
@@ -58,6 +59,9 @@ service cloud.firestore {
              && (!('tags' in data) || isValidTags(data.tags))
              && (!('dueDate' in data) || (data.dueDate is string || isValidTimestampField(data.dueDate)))
              && (!('projectId' in data) || data.projectId is string)
+             && (!('dueTime' in data) || (data.dueTime is string && data.dueTime.matches('^[0-2][0-9]:[0-5][0-9]$')))
+             && (!('checklist' in data) || (data.checklist is list && data.checklist.size() <= 30))
+             && (!('recurrence' in data) || (data.recurrence is string && data.recurrence in ['daily', 'weekly', 'monthly']))
              && (!('isTicket' in data) || data.isTicket is bool)
              && (!('requestedAction' in data) || (data.requestedAction is string && data.requestedAction.size() <= 2000))
              && (!('requesterName' in data) || (data.requesterName is string && data.requesterName.size() <= 140))

@@ -17,12 +17,12 @@ import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useAppContextStore } from "@/lib/store";
 import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
-import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, getDueMeta, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useActiveContext, useProjects, useTasks } from "@/firebase/user-data";
-import { createTask, deleteTask, deleteTasks, updateTask } from "@/services/task-service";
+import { createTask, deleteTask, deleteTasks, setTaskStatus, updateTask } from "@/services/task-service";
 import { createProject, updateProject, archiveProject } from "@/services/project-service";
 import { restoreUserDocument, restoreUserDocuments } from "@/services/restore-service";
 import { generateTasksFromPrompt } from "@/services/ai-task-service";
@@ -44,6 +44,9 @@ const INITIAL_TASK_FORM: TaskFormState = {
   status: TASK_STATUSES[0],
   tags: "",
   dueDate: "",
+  dueTime: "",
+  recurrence: "",
+  checklist: [],
   projectId: "",
 };
 
@@ -132,6 +135,9 @@ export default function KanbanPage() {
         status: task.status,
         tags: task.tags?.join(", ") || "",
         dueDate: toInputDateValue(task.dueDate),
+        dueTime: task.dueTime || "",
+        recurrence: task.recurrence || "",
+        checklist: task.checklist || [],
         projectId: task.projectId || "",
       });
     } else {
@@ -160,6 +166,10 @@ export default function KanbanPage() {
       status: draft.status || TASK_STATUSES[0],
       tags: parseTagInput(draft.tags),
       ...(draft.dueDate ? { dueDate: draft.dueDate } : {}),
+      ...(draft.dueDate && draft.dueTime ? { dueTime: draft.dueTime } : {}),
+      ...(draft.dueDate && draft.recurrence ? { recurrence: draft.recurrence } : {}),
+      // Se descartan subtareas vacías (p. ej. una recién agregada sin texto).
+      checklist: draft.checklist.filter((item) => item.text.trim()),
       context,
       ...(draft.projectId ? { projectId: draft.projectId } : {}),
     });
@@ -170,7 +180,10 @@ export default function KanbanPage() {
     }
 
     if (taskToUpdate) {
-      updateTask(firestore, user.uid, taskToUpdate.id, result.data);
+      const cleared = (["dueDate", "dueTime", "recurrence", "projectId"] as const).filter(
+        (field) => !(field in result.data) && taskToUpdate[field] !== undefined
+      );
+      updateTask(firestore, user.uid, taskToUpdate.id, result.data, [...cleared]);
       toast({ variant: "success", title: "Tarea actualizada" });
     } else {
       createTask(firestore, user.uid, result.data);
@@ -217,8 +230,20 @@ export default function KanbanPage() {
   };
 
   const handleMoveTask = (taskId: string, status: TaskStatus) => {
+    const task = tasks.find((item) => item.id === taskId);
+    if (!task) return;
     haptic();
-    updateTask(firestore, user.uid, taskId, { status });
+    const nextDueDate = setTaskStatus(firestore, user.uid, task, status);
+    if (nextDueDate) {
+      toast({ variant: "success", title: "Tarea recurrente", description: `Próxima: ${getDueMeta(nextDueDate, task.dueTime)?.label ?? nextDueDate}.` });
+    }
+  };
+
+  const handleToggleChecklistItem = (task: Task, itemId: string) => {
+    haptic();
+    updateTask(firestore, user.uid, task.id, {
+      checklist: (task.checklist ?? []).map((item) => (item.id === itemId ? { ...item, done: !item.done } : item)),
+    });
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -431,6 +456,7 @@ export default function KanbanPage() {
                 onEdit={handleEdit}
                 onDelete={handleDeleteTask}
                 onMove={handleMoveTask}
+                onToggleChecklistItem={handleToggleChecklistItem}
                 headerAction={status === "Hecho" && stats.completed > 0 ? clearCompletedButton : undefined}
               />
             ))}

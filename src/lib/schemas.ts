@@ -16,16 +16,36 @@ export const contextDefSchema = z.object({
   icon: z.string().min(1).max(32),
 });
 
-export const taskSchema = z.object({
-  title: z.string().trim().min(1, 'El título es requerido').max(120),
-  description: z.string().trim().max(2000).optional(),
-  priority: prioritySchema,
-  status: taskStatusSchema,
-  tags: z.array(z.string()),
-  dueDate: isoDate('Fecha inválida').optional(),
-  context: contextSchema,
-  projectId: z.string().optional(),
+export const recurrenceSchema = z.enum(['daily', 'weekly', 'monthly']);
+
+export const checklistItemSchema = z.object({
+  id: z.string().min(1).max(40),
+  text: z.string().trim().min(1, 'La subtarea no puede estar vacía').max(200),
+  done: z.boolean(),
 });
+
+export const taskSchema = z
+  .object({
+    title: z.string().trim().min(1, 'El título es requerido').max(120),
+    description: z.string().trim().max(2000).optional(),
+    priority: prioritySchema,
+    status: taskStatusSchema,
+    tags: z.array(z.string()),
+    dueDate: isoDate('Fecha inválida').optional(),
+    dueTime: z.string().regex(/^\d{2}:\d{2}$/, 'Hora inválida').optional(),
+    checklist: z.array(checklistItemSchema).max(30, 'Máximo 30 subtareas').optional(),
+    recurrence: recurrenceSchema.optional(),
+    context: contextSchema,
+    projectId: z.string().optional(),
+  })
+  .refine((task) => !task.dueTime || task.dueDate, {
+    message: 'Para poner hora, elige también una fecha',
+    path: ['dueTime'],
+  })
+  .refine((task) => !task.recurrence || task.dueDate, {
+    message: 'Una tarea que se repite necesita fecha',
+    path: ['recurrence'],
+  });
 
 export const ticketFormSchema = z.object({
   title: z.string().trim().min(1, 'El título es requerido').max(120),
