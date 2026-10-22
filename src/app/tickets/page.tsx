@@ -4,7 +4,6 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Ticket as TicketIcon,
-  Plus,
   Pencil,
   Trash2,
   Link as LinkIcon,
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
 import { Field, FormPanel, PrioritySelect, ProjectSelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useContexts, useProjects, useTasks } from "@/firebase/user-data";
@@ -213,43 +213,17 @@ function TicketsPageContent() {
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto pb-12 w-full">
-      {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase flex items-center gap-2">
-            <TicketIcon className="w-6 h-6 text-primary" /> Tickets
-          </h1>
-        </div>
-        <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em]">
-          Solicitudes de trabajo de terceros
-        </p>
-      </div>
-
-      {/* Resumen de pendientes */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Pendientes</p>
-          <p className="mt-1 text-2xl font-black tracking-tight text-foreground">{pendingTickets.length}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">En progreso</p>
-          <p className="mt-1 text-2xl font-black tracking-tight text-primary">{inProgressCount}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Vencidos</p>
-          <p className="mt-1 text-2xl font-black tracking-tight text-red-400">{overdueCount}</p>
-        </div>
-      </div>
-
-      {!formOpen && (
-        <Button
-          type="button"
-          onClick={openCreateForm}
-          className="h-12 w-full rounded-2xl bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Nuevo Ticket
-        </Button>
-      )}
+      <PageHeader
+        title="Tickets"
+        summary={
+          <>
+            {pendingTickets.length} pendientes · {inProgressCount} en curso
+            {overdueCount > 0 && <span className="text-red-400"> · {overdueCount} vencidos</span>}
+          </>
+        }
+        actionLabel={formOpen ? undefined : "Nuevo"}
+        onAction={openCreateForm}
+      />
 
       {/* Formulario embebido — sin modal */}
       {formOpen && (

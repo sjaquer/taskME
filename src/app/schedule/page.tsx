@@ -4,19 +4,18 @@ import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { format, addDays, startOfWeek, isSameDay, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { Plus, Inbox, CalendarDays } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useActiveContext, useRoutines } from "@/firebase/user-data";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Field, FormPanel, PrioritySelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TacticalButton } from "@/components/atoms";
 import { ScheduleItem } from "@/components/molecules";
+import { PageHeader } from "@/components/layout/page-header";
 import { createRoutine, updateRoutine, deleteRoutine } from "@/services/routine-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
@@ -153,28 +152,12 @@ export default function SchedulePage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl mx-auto pb-12 w-full">
-      {/* Header */}
-      <div className="flex flex-col gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-              Horario <span className="text-primary italic glow-text">{activeContext.name}</span>
-            </h2>
-            <Badge variant="outline" className="h-5 rounded-full border-primary/20 text-primary bg-primary/5 px-2 font-black text-[11px] font-data">
-              {dailyRoutines.length} BLOQUES
-            </Badge>
-          </div>
-          <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em] flex items-center gap-2">
-            <CalendarDays className="w-3 h-3 text-primary/40" /> Rutinas Semanales
-          </p>
-        </div>
-
-        {!formOpen && (
-          <TacticalButton className="w-full" onClick={openCreateForm}>
-            <Plus className="w-4 h-4 mr-2" /> Nueva Rutina
-          </TacticalButton>
-        )}
-      </div>
+      <PageHeader
+        title="Horario"
+        summary={`${dailyRoutines.length} ${dailyRoutines.length === 1 ? "bloque" : "bloques"} el ${format(selectedDate, "EEEE", { locale: es })} · ${activeContext.name}`}
+        actionLabel={formOpen ? undefined : "Nueva"}
+        onAction={openCreateForm}
+      />
 
       {/* Formulario embebido (crear/editar) — sin modal */}
       {formOpen && (
@@ -255,13 +238,13 @@ export default function SchedulePage() {
         {days.map((day) => {
           const isSelected = isSameDay(day, selectedDate);
           return (
-            <button key={day.toString()} onClick={() => setSelectedDate(day)} className={cn(
-              "flex-shrink-0 w-16 py-3 rounded-2xl flex flex-col items-center gap-1 transition-all border",
+            <button key={day.toString()} type="button" aria-pressed={isSelected} onClick={() => setSelectedDate(day)} className={cn(
+              "flex-shrink-0 w-14 py-2.5 rounded-2xl flex flex-col items-center gap-0.5 transition-colors border",
               isSelected
-                ? "bg-primary text-primary-foreground border-primary scale-105 shadow-lg"
-                : "glass-card border-border"
+                ? "bg-primary/15 text-primary border-primary/50"
+                : "border-border text-foreground hover:bg-muted/30"
             )}>
-              <span className={cn("text-[10px] uppercase font-black tracking-widest", isSelected ? "text-black/60" : "text-muted-foreground/50")}>
+              <span className={cn("text-[10px] uppercase font-bold tracking-wide", isSelected ? "text-primary/80" : "text-muted-foreground/60")}>
                 {format(day, "EEE", { locale: es })}
               </span>
               <span className="text-lg font-black font-data">{format(day, "d")}</span>
@@ -286,9 +269,9 @@ export default function SchedulePage() {
               />
             ))
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 opacity-[0.15]">
-              <Inbox className="w-12 h-12 mb-2" />
-              <p className="text-[11px] font-black uppercase tracking-[0.4em]">Sin Rutinas</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Inbox className="mb-2 h-8 w-8 text-muted-foreground/40" />
+              <p className="text-sm text-muted-foreground">No hay rutinas este día.</p>
             </div>
           )}
         </AnimatePresence>

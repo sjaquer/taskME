@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { NotebookText, Plus, Pencil, Trash2, Inbox } from "lucide-react";
+import { Pencil, Trash2, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/layout/page-header";
 import { Field, FormPanel, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useAppContextStore } from "@/lib/store";
 import { useFirestore, useUser } from "@/firebase/provider";
@@ -113,25 +114,12 @@ export default function NotesPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl mx-auto pb-12 w-full">
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl md:text-4xl font-black tracking-tighter uppercase flex items-center gap-2">
-          <NotebookText className="w-6 h-6 text-primary" /> Notas <span className="text-primary italic glow-text">{activeContext.name}</span>
-        </h1>
-        <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.4em]">
-          Recordatorios y apuntes rápidos
-        </p>
-      </div>
-
-      {!formOpen && (
-        <Button
-          type="button"
-          onClick={openCreateForm}
-          className="h-12 w-full rounded-2xl bg-primary text-xs font-black uppercase tracking-widest text-primary-foreground hover:bg-primary/95"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Nueva Nota
-        </Button>
-      )}
+      <PageHeader
+        title="Notas"
+        summary={`${notes.length} ${notes.length === 1 ? "nota" : "notas"} en ${activeContext.name}`}
+        actionLabel={formOpen ? undefined : "Nueva"}
+        onAction={openCreateForm}
+      />
 
       {/* Formulario embebido — sin modal */}
       {formOpen && (
@@ -174,33 +162,20 @@ export default function NotesPage() {
       )}
 
       {/* Filtro por categoría */}
-      <div className="flex items-center gap-1 flex-wrap bg-muted/30 p-1 rounded-2xl border border-border">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setCategoryFilter("all")}
-          className={cn(
-            "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all",
-            categoryFilter === "all" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Todas
-        </Button>
-        {CATEGORIES.map((cat) => (
-          <Button
+      <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" role="group" aria-label="Filtrar por categoría">
+        {(["all", ...CATEGORIES] as const).map((cat) => (
+          <button
             key={cat}
             type="button"
-            variant="ghost"
-            size="sm"
+            aria-pressed={categoryFilter === cat}
             onClick={() => setCategoryFilter(cat)}
             className={cn(
-              "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all",
-              categoryFilter === cat ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-foreground"
+              "flex h-8 shrink-0 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+              categoryFilter === cat ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
             )}
           >
-            {cat}
-          </Button>
+            {cat === "all" ? "Todas" : cat}
+          </button>
         ))}
       </div>
 
