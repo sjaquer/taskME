@@ -2,6 +2,9 @@ import type {NextConfig} from 'next';
 import packageJson from './package.json';
 
 const nextConfig: NextConfig = {
+  // Carpeta de compilación configurable: permite correr un segundo servidor
+  // (p. ej. pruebas con emuladores) sin pisar el .next del `npm run dev` principal.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   env: {
     NEXT_PUBLIC_APP_VERSION: packageJson.version,
   },
