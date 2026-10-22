@@ -11,6 +11,8 @@ import {
   CalendarCheck,
   UserRound,
   Inbox,
+  Search,
+  Share2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { Segmented } from "@/components/forms/segmented";
 import { Field, FormPanel, PrioritySelect, ProjectSelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useContexts, useProjects, useTasks } from "@/firebase/user-data";
@@ -25,7 +28,7 @@ import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
-import { getDueMeta, isTaskStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { getDueMeta, isTaskStatus, parseTagInput, sortTasks, toInputDateValue } from "@/lib/tasks";
 import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
 import { createTask, deleteTask, updateTask } from "@/services/task-service";
 import { restoreUserDocument } from "@/services/restore-service";
@@ -87,18 +90,52 @@ function TicketsPageContent() {
   const { data: projects } = useProjects(ticketsContext);
   const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);
 
+  const [view, setView] = useState<"pending" | "history">("pending");
+  const [searchQuery, setSearchQuery] = useState("");
+
   const tickets = useMemo(() => tasks.filter((task) => task.isTicket), [tasks]);
   const pendingTickets = useMemo(
     () =>
       tickets
         .filter((t) => t.status !== "Hecho")
         .sort((a, b) => {
-          const aDate = a.reviewDate || (typeof a.dueDate === "string" ? a.dueDate : "");
-          const bDate = b.reviewDate || (typeof b.dueDate === "string" ? b.dueDate : "");
+          // Por fecha de revisión o límite; los que no tienen fecha van al final.
+          const aDate = a.reviewDate || (typeof a.dueDate === "string" ? a.dueDate : "") || "9999";
+          const bDate = b.reviewDate || (typeof b.dueDate === "string" ? b.dueDate : "") || "9999";
           return aDate.localeCompare(bDate);
         }),
     [tickets]
   );
+  const doneTickets = useMemo(
+    () => sortTasks(tickets.filter((t) => t.status === "Hecho"), "recent"),
+    [tickets]
+  );
+  const visibleTickets = useMemo(() => {
+    const list = view === "pending" ? pendingTickets : doneTickets;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return list;
+    return list.filter((ticket) =>
+      [ticket.title, ticket.requestedAction, ticket.requesterName, ticket.description]
+        .some((field) => field?.toLowerCase().includes(query))
+    );
+  }, [view, pendingTickets, doneTickets, searchQuery]);
+
+  // Enlace al formulario público: quien no tiene sesión ve el formulario en /tickets.
+  const handleShareForm = async () => {
+    const url = `${window.location.origin}/tickets`;
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({ title: "Enviar un ticket", text: "Envíame tu solicitud desde aquí:", url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast({ variant: "success", title: "Enlace copiado", description: url });
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      console.warn("No se pudo compartir el enlace:", error);
+      toast({ variant: "warning", title: "Copia el enlace manualmente", description: url });
+    }
+  };
 
   const overdueCount = pendingTickets.filter((t) => getDueMeta(typeof t.dueDate === "string" ? t.dueDate : undefined)?.isOverdue).length;
   const inProgressCount = pendingTickets.filter((t) => t.status === "Haciendo").length;
@@ -328,20 +365,55 @@ function TicketsPageContent() {
         </FormPanel>
       )}
 
-      {/* Lista de tickets pendientes */}
-      <div className="space-y-3 border-t border-border/40 pt-6">
-        <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground">Tickets pendientes</h2>
+      {/* Lista de tickets */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Segmented
+            ariaLabel="Ver tickets"
+            value={view}
+            onChange={setView}
+            options={[
+              { value: "pending", label: `Pendientes (${pendingTickets.length})` },
+              { value: "history", label: `Historial (${doneTickets.length})` },
+            ]}
+          />
+          <button
+            type="button"
+            onClick={handleShareForm}
+            aria-label="Compartir el formulario público de tickets"
+            title="Compartir formulario público"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-primary"
+          >
+            <Share2 className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Buscar por título, acción o solicitante"
+            aria-label="Buscar tickets"
+            className="h-10 w-full rounded-xl border border-border bg-transparent pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+          />
+        </div>
         {isLoading ? (
           <div className="space-y-3">
             {[0, 1].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl border border-border bg-muted/15" />)}
           </div>
-        ) : pendingTickets.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/10 px-6 py-12 text-center">
-            <Inbox className="mx-auto w-10 h-10 text-muted-foreground/30" />
-            <p className="mt-3 text-sm font-bold text-foreground">No tienes tickets pendientes.</p>
+        ) : visibleTickets.length === 0 ? (
+          <div className="px-6 py-12 text-center">
+            <Inbox className="mx-auto h-8 w-8 text-muted-foreground/40" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              {searchQuery.trim()
+                ? "Ningún ticket coincide con la búsqueda."
+                : view === "pending"
+                  ? "No tienes tickets pendientes."
+                  : "Todavía no hay tickets completados."}
+            </p>
           </div>
         ) : (
-          pendingTickets.map((ticket) => {
+          visibleTickets.map((ticket) => {
             const dueMeta = getDueMeta(typeof ticket.dueDate === "string" ? ticket.dueDate : undefined);
             const reviewMeta = getDueMeta(ticket.reviewDate);
             return (
