@@ -2,9 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Inbox } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Pencil, Pin, PinOff, Search, Trash2, Inbox } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +16,7 @@ import { toast } from "@/hooks/use-toast";
 import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { noteSchema } from "@/lib/schemas";
+import { getTimestampMillis } from "@/lib/tasks";
 import { createNote, updateNote, deleteNote } from "@/services/note-service";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
@@ -50,10 +49,26 @@ export default function NotesPage() {
 
   const { data: notes, isLoading } = useNotes(context);
 
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Fijadas primero; luego la última editada arriba.
   const visibleNotes = useMemo(() => {
-    if (categoryFilter === "all") return notes;
-    return notes.filter((note) => note.category === categoryFilter);
-  }, [notes, categoryFilter]);
+    const query = searchQuery.trim().toLowerCase();
+    return notes
+      .filter((note) => categoryFilter === "all" || note.category === categoryFilter)
+      .filter((note) => !query || note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query))
+      .sort(
+        (a, b) =>
+          Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)) ||
+          getTimestampMillis(b.updatedAt) - getTimestampMillis(a.updatedAt)
+      );
+  }, [notes, categoryFilter, searchQuery]);
+
+  const togglePin = (note: Note) => {
+    if (!user) return;
+    haptic();
+    updateNote(firestore, user.uid, note.id, { pinned: !note.pinned });
+  };
 
   const openCreateForm = () => {
     setEditingNote(null);
@@ -184,6 +199,17 @@ export default function NotesPage() {
         </FormPanel>
       )}
 
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+        <input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Buscar en notas"
+          aria-label="Buscar notas"
+          className="h-10 w-full rounded-xl border border-border bg-transparent pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+        />
+      </div>
+
       {/* Filtro por categoría */}
       <div className="flex gap-1.5 overflow-x-auto scrollbar-hide" role="group" aria-label="Filtrar por categoría">
         {(["all", ...CATEGORIES] as const).map((cat) => (
@@ -209,34 +235,68 @@ export default function NotesPage() {
             {[0, 1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-2xl border border-border bg-muted/15" />)}
           </div>
         ) : visibleNotes.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/10 px-6 py-12 text-center">
-            <Inbox className="mx-auto w-10 h-10 text-muted-foreground/30" />
-            <p className="mt-3 text-sm font-bold text-foreground">No hay notas en esta categoría.</p>
+          <div className="px-6 py-12 text-center">
+            <Inbox className="mx-auto h-8 w-8 text-muted-foreground/40" />
+            <p className="mt-3 text-sm text-muted-foreground">
+              {searchQuery.trim() ? "Ninguna nota coincide con la búsqueda." : "No hay notas en esta categoría."}
+            </p>
           </div>
         ) : (
           visibleNotes.map((note) => (
-            <div key={note.id} className="rounded-2xl border border-border bg-card/70 p-4 space-y-2">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest border-border bg-muted/40 text-muted-foreground">
-                    {note.category}
-                  </Badge>
-                  <h4 className="text-[15px] font-black leading-tight text-foreground">{note.title}</h4>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button type="button" variant="ghost" size="icon" onClick={() => openEditForm(note)} className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary">
+            <article key={note.id} className="group rounded-2xl border border-border p-4 transition-colors hover:border-primary/30">
+              <div className="flex items-start gap-2">
+                <button type="button" onClick={() => openEditForm(note)} className="min-w-0 flex-1 text-left">
+                  <p className="text-[11px] text-muted-foreground">{note.category}</p>
+                  <h4 className="mt-0.5 font-semibold leading-snug">{note.title}</h4>
+                </button>
+                <div className="flex shrink-0 items-center">
+                  <IconAction
+                    label={note.pinned ? `Desfijar "${note.title}"` : `Fijar "${note.title}"`}
+                    onClick={() => togglePin(note)}
+                    className={note.pinned ? "text-primary" : undefined}
+                  >
+                    {note.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+                  </IconAction>
+                  <IconAction label={`Editar "${note.title}"`} onClick={() => openEditForm(note)}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => handleDelete(note.id)} className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-red-400">
+                  </IconAction>
+                  <IconAction label={`Eliminar "${note.title}"`} onClick={() => handleDelete(note.id)} className="hover:text-red-400">
                     <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </IconAction>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{note.content}</p>
-            </div>
+              <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{note.content}</p>
+            </article>
           ))
         )}
       </div>
     </div>
+  );
+}
+
+function IconAction({
+  label,
+  onClick,
+  className,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground",
+        className
+      )}
+    >
+      {children}
+    </button>
   );
 }

@@ -47,7 +47,7 @@ export function updateNote(
   firestore: Firestore,
   userId: string,
   noteId: string,
-  data: Partial<{ title: string; content: string; category: NoteCategory }>
+  data: Partial<{ title: string; content: string; category: NoteCategory; pinned: boolean }>
 ) {
   const docRef = getNoteDocRef(firestore, userId, noteId);
   updateDocumentNonBlocking(docRef, {

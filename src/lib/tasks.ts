@@ -168,7 +168,8 @@ export const TASK_SORT_LABELS: Record<TaskSort, string> = {
 
 const PRIORITY_ORDER: Record<Priority, number> = { alta: 0, media: 1, baja: 2 };
 
-function toMillis(value: unknown): number {
+/** Milisegundos de un Timestamp de Firestore (o de su forma serializada); 0 si no hay. */
+export function getTimestampMillis(value: unknown): number {
   if (value && typeof value === 'object' && 'seconds' in value && typeof (value as { seconds: unknown }).seconds === 'number') {
     return (value as { seconds: number }).seconds * 1000;
   }
@@ -186,7 +187,7 @@ export function sortTasks<T extends SortableTask>(tasks: T[], sort: TaskSort): T
   const due = (task: T) => getDueDateTime(task.dueDate, task.dueTime)?.getTime() ?? Number.POSITIVE_INFINITY;
   const byPriority = (a: T, b: T) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
   const byDue = (a: T, b: T) => due(a) - due(b);
-  const byRecent = (a: T, b: T) => toMillis(b.createdAt) - toMillis(a.createdAt);
+  const byRecent = (a: T, b: T) => getTimestampMillis(b.createdAt) - getTimestampMillis(a.createdAt);
 
   const comparators: Record<TaskSort, (a: T, b: T) => number> = {
     smart: (a, b) => byDue(a, b) || byPriority(a, b) || byRecent(a, b),

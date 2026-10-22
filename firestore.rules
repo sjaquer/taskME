@@ -126,7 +126,7 @@ service cloud.firestore {
     function isValidNoteDoc(data, userId) {
       return data.keys().hasOnly([
                'userId', 'title', 'content', 'category', 'context',
-               'createdAt', 'updatedAt'
+               'createdAt', 'updatedAt', 'pinned'
              ])
              && data.userId == userId
              && data.title is string
@@ -136,6 +136,7 @@ service cloud.firestore {
              && data.content.size() <= 5000
              && data.category is string
              && data.category in ['Clases', 'Tareas', 'Grupos', 'Trabajo', 'Tickets', 'Otro']
+             && (!('pinned' in data) || data.pinned is bool)
              && isValidContext(data)
              && (!('createdAt' in data) || isValidTimestampField(data.createdAt))
              && (!('updatedAt' in data) || isValidTimestampField(data.updatedAt));

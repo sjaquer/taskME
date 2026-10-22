@@ -107,6 +107,8 @@ export interface Note {
   category: NoteCategory;
   context: AppContext;
   userId: string;
+  /** Fijada arriba de la lista. */
+  pinned?: boolean;
   createdAt?: unknown;
   updatedAt?: unknown;
 }
