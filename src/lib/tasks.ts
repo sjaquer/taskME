@@ -77,3 +77,34 @@ const PRIORITY_META: Record<Priority, { label: string; className: string }> = {
 export function getPriorityMeta(priority: Priority) {
   return PRIORITY_META[priority] ?? PRIORITY_META.media;
 }
+
+export interface TaskFilters {
+  priority: Priority | 'all';
+  projectId: string | 'all';
+  query: string;
+}
+
+/** Filtra por prioridad, proyecto y texto (título, descripción o etiqueta). */
+export function filterTasks<T extends { priority: Priority; projectId?: string; title: string; description?: string; tags?: string[] }>(
+  tasks: T[],
+  filters: TaskFilters
+): T[] {
+  const query = filters.query.trim().toLowerCase();
+  return tasks.filter((task) => {
+    if (filters.priority !== 'all' && task.priority !== filters.priority) return false;
+    if (filters.projectId !== 'all' && task.projectId !== filters.projectId) return false;
+    if (!query) return true;
+    return (
+      task.title.toLowerCase().includes(query) ||
+      (task.description || '').toLowerCase().includes(query) ||
+      (task.tags || []).some((tag) => normalizeTag(tag).includes(query))
+    );
+  });
+}
+
+/** Agrupa por estado manteniendo siempre las tres columnas, aunque estén vacías. */
+export function groupTasksByStatus<T extends { status: TaskStatus }>(tasks: T[]): Map<TaskStatus, T[]> {
+  const grouped = new Map<TaskStatus, T[]>(TASK_STATUSES.map((status) => [status, []]));
+  tasks.forEach((task) => grouped.get(task.status)?.push(task));
+  return grouped;
+}

@@ -13,8 +13,9 @@ interface KanbanColumnProps {
   tasks: Task[];
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
-  selectedTaskIds: Set<string>;
-  onToggleTaskSelection: (taskId: string) => void;
+  /** Selección múltiple: solo se muestra el selector si se pasa onToggleTaskSelection. */
+  selectedTaskIds?: Set<string>;
+  onToggleTaskSelection?: (taskId: string) => void;
   disableDrag?: boolean;
   pendingTaskIds?: Set<string>;
 }
@@ -59,8 +60,8 @@ export function KanbanColumn({ status, tasks, onDelete, onEdit, selectedTaskIds,
                 task={task}
                 onDelete={onDelete}
                 onEdit={onEdit}
-                selectable
-                selected={selectedTaskIds.has(task.id)}
+                selectable={Boolean(onToggleTaskSelection)}
+                selected={selectedTaskIds?.has(task.id)}
                 onToggleSelect={onToggleTaskSelection}
                 dragDisabled={disableDrag}
                 pendingSync={pendingTaskIds?.has(task.id)}

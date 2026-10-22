@@ -20,10 +20,10 @@ interface ProjectManagerProps {
   onCreate: (data: ProjectFormData) => void;
   onUpdate: (projectId: string, data: ProjectFormData) => void;
   onArchive: (projectId: string) => void;
-  isSaving: boolean;
+  isSaving?: boolean;
 }
 
-export function ProjectManager({ projects, onCreate, onUpdate, onArchive, isSaving }: ProjectManagerProps) {
+export function ProjectManager({ projects, onCreate, onUpdate, onArchive, isSaving = false }: ProjectManagerProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form, setForm] = useState<ProjectFormData>(INITIAL_FORM);
@@ -125,7 +125,7 @@ export function ProjectManager({ projects, onCreate, onUpdate, onArchive, isSavi
                     onClick={() => setForm({ ...form, color })}
                     className={cn(
                       'w-7 h-7 rounded-full border-2 transition-all',
-                      form.color === color ? 'border-white scale-110' : 'border-transparent opacity-60 hover:opacity-100'
+                      form.color === color ? 'border-foreground scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                     )}
                     style={{ backgroundColor: color }}
                   />
