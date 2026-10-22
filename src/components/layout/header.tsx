@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { ContextSwitcher } from "@/components/layout/context-switcher";
+import { resolveColorMode } from "@/lib/appearance";
 
 export function Header() {
   const { colorMode, setColorMode } = useAppContextStore();
@@ -31,11 +32,16 @@ export function Header() {
         <ContextSwitcher />
 
         <button
-          onClick={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
+          onClick={() => {
+            // En modo Sistema se alterna respecto de lo que se ve ahora.
+            const shown = colorMode === 'system' ? resolveColorMode('system') : colorMode;
+            setColorMode(shown === 'dark' ? 'light' : 'dark');
+          }}
           className="p-2.5 rounded-full bg-muted/30 border border-border text-muted-foreground hover:text-foreground transition-all"
-          aria-label="Toggle theme"
+          aria-label="Cambiar entre modo claro y oscuro"
         >
-          {colorMode === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          <Sun className="w-4 h-4 hidden dark:block" />
+          <Moon className="w-4 h-4 block dark:hidden" />
         </button>
       </div>
     </header>

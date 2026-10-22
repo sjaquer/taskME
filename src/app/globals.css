@@ -69,6 +69,17 @@
     --ring: 152 65% 38%;
   }
 
+  /* Negro puro (AMOLED) en modo oscuro */
+  :root[data-mode='dark'][data-black='true'] {
+    --background: 0 0% 0%;
+    --card: 0 0% 4%;
+    --popover: 0 0% 6%;
+    --secondary: 0 0% 9%;
+    --muted: 0 0% 10%;
+    --border: 0 0% 13%;
+    --input: 0 0% 10%;
+  }
+
   :root[data-theme='neon'] {
     --primary: 152 60% 52%;
     --accent: 152 60% 52%;
@@ -329,6 +340,16 @@
   .theme-transition * {
     transition: none !important;
   }
+}
+
+/* Ajuste "Reducir movimiento" */
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ═══════════════════════════════

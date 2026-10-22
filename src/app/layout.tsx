@@ -1,6 +1,7 @@
 
 import type { Metadata, Viewport } from 'next';
 import { ClientShell } from '@/components/client-shell';
+import { APPEARANCE_BOOT_SCRIPT } from '@/lib/appearance';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -36,8 +37,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className="dark">
+    <html lang="es" className="dark" suppressHydrationWarning>
       <head>
+        {/* Aplica el tema guardado antes del primer pintado */}
+        <script dangerouslySetInnerHTML={{ __html: APPEARANCE_BOOT_SCRIPT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet" />

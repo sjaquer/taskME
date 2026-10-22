@@ -1,8 +1,8 @@
 'use client';
 
-import { type ReactNode, Suspense, useEffect, useRef } from 'react';
+import { type ReactNode, Suspense, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, MotionConfig } from 'framer-motion';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
 import { Toaster } from '@/components/ui/toaster';
@@ -16,42 +16,35 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { UserDataProvider, useContexts } from '@/firebase/user-data';
 import { cn } from '@/lib/utils';
 import { useAppContextStore } from '@/lib/store';
+import { getVisibleNavItems } from '@/lib/navigation';
 import { NotificationMonitor } from './notification-monitor';
-import { isNativeAndroidContainer } from '@/lib/native-bridge';
 import { NativeBridgeProvider } from './native-bridge-provider';
+import { AppearanceManager } from './appearance-manager';
 import { useUser } from '@/firebase';
 import { consumeLaunchRedirect } from '@/lib/launch-state';
-
-const DESKTOP_NAV = [
-  { icon: Home, label: "Inicio", href: "/", moduleKey: "dashboard" as const },
-  { icon: LayoutGrid, label: "Tablero", href: "/kanban", moduleKey: "kanban" as const },
-  { icon: Clock, label: "Horario", href: "/schedule", moduleKey: "schedule" as const },
-  { icon: Ticket, label: "Tickets", href: "/tickets", moduleKey: null },
-  { icon: NotebookText, label: "Notas", href: "/notes", moduleKey: null },
-  { icon: Settings, label: "Perfil", href: "/settings", moduleKey: null },
-] as const;
 
 const PUBLIC_ROUTES = ['/login', '/privacy', '/terms'];
 
 export function ClientShell({ children }: { children: ReactNode }) {
+  const reduceMotion = useAppContextStore((state) => state.reduceMotion);
   return (
-    <>
+    <MotionConfig reducedMotion={reduceMotion ? 'always' : 'user'}>
       <FirebaseClientProvider>
         <UserDataProvider>
+          <AppearanceManager />
           <NativeBridgeProvider>
             <ShellRouter>{children}</ShellRouter>
           </NativeBridgeProvider>
         </UserDataProvider>
       </FirebaseClientProvider>
       <Toaster />
-    </>
+    </MotionConfig>
   );
 }
 
@@ -116,8 +109,6 @@ function ShellRouter({ children }: { children: ReactNode }) {
 function ClientShellInner({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const theme = useAppContextStore((state) => state.theme);
-  const colorMode = useAppContextStore((state) => state.colorMode);
   const visualConfig = useAppContextStore((state) => state.visualConfig);
   const activeModules = useAppContextStore((state) => state.activeModules);
   const activeContextId = useAppContextStore((state) => state.context);
@@ -130,50 +121,8 @@ function ClientShellInner({ children }: { children: ReactNode }) {
       setContext(contexts[0].id);
     }
   }, [contexts, contextsLoading, activeContextId, setContext]);
-  const navItems = DESKTOP_NAV.filter((item) => item.moduleKey === null || activeModules[item.moduleKey]);
-
-  // Activa la transición de colores solo durante un cambio de tema/modo (no al cargar).
-  const isFirstThemeRender = useRef(true);
-  useEffect(() => {
-    if (isFirstThemeRender.current) {
-      isFirstThemeRender.current = false;
-      return;
-    }
-    const root = document.documentElement;
-    root.classList.add('theme-transition');
-    const timeoutId = setTimeout(() => root.classList.remove('theme-transition'), 400);
-    return () => clearTimeout(timeoutId);
-  }, [theme, colorMode]);
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
-
-  useEffect(() => {
-    document.documentElement.dataset.mode = colorMode;
-    if (colorMode === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.add('light');
-      document.documentElement.classList.remove('dark');
-    }
-  }, [colorMode]);
-
-  useEffect(() => {
-    document.documentElement.dataset.grid = String(visualConfig.showGrid);
-    document.documentElement.dataset.glow = String(visualConfig.glowEnabled);
-    document.documentElement.dataset.compact = String(visualConfig.compactMode);
-    document.documentElement.style.setProperty('--glass-intensity', String(visualConfig.glassIntensity));
-  }, [visualConfig]);
-
-  useEffect(() => {
-    if (isNativeAndroidContainer()) {
-      document.documentElement.dataset.shell = 'android-webview';
-    } else {
-      delete document.documentElement.dataset.shell;
-    }
-  }, []);
+  const navOrder = useAppContextStore((state) => state.navOrder);
+  const navItems = getVisibleNavItems(navOrder, activeModules);
 
   return (
     <div className={cn(

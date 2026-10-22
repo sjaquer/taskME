@@ -2,32 +2,39 @@
 
 import { useState } from "react";
 import {
-  Shield, LogOut, Zap, Layout, Check, RefreshCcw, Fingerprint,
-  Palette, Bell, Trash2, Layers,
+  Bell, Check, Compass, Fingerprint, Layers, LogOut, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUser, useAuth, useFirestore } from "@/firebase";
 import { useAppContextStore } from "@/lib/store";
-import type { AppTheme, TaskRetentionPeriod } from "@/lib/store";
+import type { AppTheme, HourFormat, TaskRetentionPeriod } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { logoutUser, saveSettingsToCloud } from "@/services/user-service";
+import { logoutUser } from "@/services/user-service";
 import { cleanupCompletedTasks } from "@/services/task-service";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
+import { NavigationSettings } from "@/components/settings/navigation-settings";
+import { Segmented, SettingRow, SettingSwitch, SettingsSection } from "@/components/settings/settings-ui";
 
-const THEME_OPTIONS: { value: AppTheme; label: string; hint: string; color: string }[] = [
-  { value: "neon", label: "Neon Verde", hint: "Modo original", color: "#22c55e" },
-  { value: "cyan", label: "Cyan", hint: "Frío y técnico", color: "#06b6d4" },
-  { value: "amber", label: "Amber", hint: "Cálido y enfocado", color: "#f59e0b" },
-  { value: "rose", label: "Rose", hint: "Alto contraste", color: "#f43f5e" },
-  { value: "violet", label: "Violet", hint: "Profundo y suave", color: "#8b5cf6" },
-  { value: "emerald", label: "Emerald", hint: "Naturaleza digital", color: "#10b981" },
-  { value: "indigo", label: "Indigo", hint: "Elegancia nocturna", color: "#6366f1" },
-  { value: "crimson", label: "Crimson", hint: "Poder y energía", color: "#dc2626" },
-  { value: "slate", label: "Slate", hint: "Neutral y sobrio", color: "#64748b" },
+const THEME_OPTIONS: { value: Exclude<AppTheme, "custom">; label: string; color: string }[] = [
+  { value: "neon", label: "Verde", color: "#22c55e" },
+  { value: "emerald", label: "Esmeralda", color: "#10b981" },
+  { value: "cyan", label: "Cyan", color: "#06b6d4" },
+  { value: "indigo", label: "Índigo", color: "#6366f1" },
+  { value: "violet", label: "Violeta", color: "#8b5cf6" },
+  { value: "rose", label: "Rosa", color: "#f43f5e" },
+  { value: "crimson", label: "Carmesí", color: "#dc2626" },
+  { value: "amber", label: "Ámbar", color: "#f59e0b" },
+  { value: "slate", label: "Pizarra", color: "#64748b" },
+];
+
+const FONT_SCALES = [
+  { value: 0.9, label: "A−" },
+  { value: 1, label: "A" },
+  { value: 1.1, label: "A+" },
+  { value: 1.2, label: "A++" },
 ];
 
 export default function SettingsPage() {
@@ -35,9 +42,9 @@ export default function SettingsPage() {
   const auth = useAuth();
   const firestore = useFirestore();
   const {
-    activeModules, toggleModule,
     theme, setTheme,
     colorMode, setColorMode,
+    customAccent, accentFromContext, pureBlack, fontScale, reduceMotion, updateAppearance,
     visualConfig, updateVisualConfig,
     hourFormat, setHourFormat,
     defaultPage, setDefaultPage,
@@ -51,17 +58,8 @@ export default function SettingsPage() {
     window.location.href = "/login";
   };
 
-  const handleToggleModule = (module: keyof typeof activeModules) => {
-    toggleModule(module);
-    if (firestore && user) {
-      saveSettingsToCloud(firestore, user.uid, {
-        activeModules: { ...activeModules, [module]: !activeModules[module] },
-      });
-    }
-  };
-
   const handleCleanupNow = async () => {
-    if (!firestore || !user) return;
+    if (!user) return;
     setIsCleaning(true);
     try {
       const deletedCount = await cleanupCompletedTasks(firestore, user.uid, taskRetentionPeriod);
@@ -70,7 +68,8 @@ export default function SettingsPage() {
         title: deletedCount > 0 ? "Limpieza completada" : "Nada que limpiar",
         description: deletedCount > 0 ? `Se eliminaron ${deletedCount} tarea(s) completadas.` : "No hay tareas completadas fuera del periodo elegido.",
       });
-    } catch {
+    } catch (error) {
+      console.error("Error al limpiar tareas completadas:", error);
       toast({ variant: "destructive", title: "Error", description: "No se pudo completar la limpieza." });
     } finally {
       setIsCleaning(false);
@@ -78,270 +77,231 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto py-4 px-0">
-      {/* Header */}
+    <div className="mx-auto w-full max-w-3xl space-y-8 pb-12">
       <div className="flex items-center justify-between gap-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase">
-            Configuraciones
-          </h2>
+        <div className="min-w-0 space-y-1">
+          <h2 className="text-2xl font-black tracking-tight md:text-3xl">Ajustes</h2>
           {user?.email && (
-            <p className="text-[11px] text-muted-foreground font-black uppercase tracking-[0.4em] flex items-center gap-2">
-              <Fingerprint className="w-3 h-3 text-primary/40" />
-              <span className="font-data">{user.email}</span>
+            <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+              <Fingerprint className="h-3.5 w-3.5 shrink-0 text-primary/60" />
+              <span className="truncate font-data">{user.email}</span>
             </p>
           )}
         </div>
-        <Button onClick={handleLogout} variant="destructive" className="rounded-xl font-black uppercase text-[9px] tracking-widest gap-2 shrink-0">
-          <LogOut className="w-4 h-4" /> Salir
+        <Button onClick={handleLogout} variant="outline" className="shrink-0 gap-2 rounded-xl text-xs font-bold">
+          <LogOut className="h-4 w-4" /> Salir
         </Button>
       </div>
 
-      <section id="contextos" className="space-y-3 scroll-mt-24">
-        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-          <Layers className="w-3.5 h-3.5 text-primary" /> Contextos
-        </h3>
+      <SettingsSection id="contextos" icon={<Layers className="h-3.5 w-3.5 text-primary" />} title="Contextos">
         <ContextsManager />
-      </section>
+      </SettingsSection>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Modules */}
-        <section className="space-y-3">
-          <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-            <Layout className="w-3.5 h-3.5 text-primary" /> Módulos del Sistema
-          </h3>
-          <div className="glass-card p-5 space-y-4">
-            <ModuleToggle label="Inicio (Dashboard)" active={activeModules.dashboard} onToggle={() => handleToggleModule("dashboard")} />
-            <ModuleToggle label="Tablero" active={activeModules.kanban} onToggle={() => handleToggleModule("kanban")} />
-            <ModuleToggle label="Horario" active={activeModules.schedule} onToggle={() => handleToggleModule("schedule")} />
-          </div>
-        </section>
+      <SettingsSection id="apariencia" icon={<Palette className="h-3.5 w-3.5 text-primary" />} title="Apariencia">
+        <div className="glass-card divide-y divide-border">
+          <SettingRow label="Modo" stacked>
+            <Segmented
+              ariaLabel="Modo de color"
+              value={colorMode}
+              onChange={setColorMode}
+              options={[
+                { value: "dark", label: <><Moon className="h-3.5 w-3.5" /> Oscuro</> },
+                { value: "light", label: <><Sun className="h-3.5 w-3.5" /> Claro</> },
+                { value: "system", label: <><Monitor className="h-3.5 w-3.5" /> Sistema</> },
+              ]}
+            />
+          </SettingRow>
 
-        {/* Maintenance */}
-        <section className="space-y-3">
-          <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-            <Shield className="w-3.5 h-3.5 text-primary" /> Mantenimiento
-          </h3>
-          <div className="glass-card p-5 space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-primary">Periodo de retención</Label>
-              <p className="text-[10px] text-muted-foreground">Las tareas completadas nunca se borran solas. Elige a partir de qué antigüedad se pueden limpiar manualmente.</p>
-              <Select value={taskRetentionPeriod} onValueChange={(value) => setTaskRetentionPeriod(value as TaskRetentionPeriod)}>
-                <SelectTrigger className="w-full bg-muted/30 border-border h-11 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="weekly" className="text-[10px] font-black uppercase">Semanal (7 días)</SelectItem>
-                  <SelectItem value="monthly" className="text-[10px] font-black uppercase">Mensual (30 días)</SelectItem>
-                  <SelectItem value="quarterly" className="text-[10px] font-black uppercase">Trimestral (90 días)</SelectItem>
-                  <SelectItem value="yearly" className="text-[10px] font-black uppercase">Anual (365 días)</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="space-y-3 p-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-semibold">Color de acento</p>
+              <p className="text-[11px] text-muted-foreground">
+                {accentFromContext ? "Se usa el color del contexto activo." : "Botones, selección y detalles destacados."}
+              </p>
             </div>
-            <Button onClick={handleCleanupNow} disabled={isCleaning} variant="outline" className="w-full h-11 rounded-xl border-border bg-muted/20 text-[9px] font-black uppercase tracking-widest gap-2 hover:bg-muted/40">
-              {isCleaning ? <RefreshCcw className="w-4 h-4 animate-spin text-primary" /> : <Trash2 className="w-4 h-4 text-primary" />}
+            <div className={cn("flex flex-wrap gap-2.5", accentFromContext && "pointer-events-none opacity-40")}>
+              {THEME_OPTIONS.map((option) => (
+                <AccentSwatch
+                  key={option.value}
+                  color={option.color}
+                  label={option.label}
+                  selected={theme === option.value}
+                  onClick={() => setTheme(option.value)}
+                />
+              ))}
+              <label
+                className={cn(
+                  "relative flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2",
+                  theme === "custom" ? "border-foreground" : "border-dashed border-muted-foreground/40"
+                )}
+                style={theme === "custom" ? { backgroundColor: customAccent } : undefined}
+                title="Color personalizado"
+              >
+                {theme === "custom" ? <Check className="h-4 w-4 text-white mix-blend-difference" /> : <Palette className="h-4 w-4 text-muted-foreground" />}
+                <input
+                  type="color"
+                  value={customAccent}
+                  aria-label="Color personalizado"
+                  onChange={(event) => {
+                    updateAppearance({ customAccent: event.target.value });
+                    setTheme("custom");
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                />
+              </label>
+            </div>
+          </div>
+
+          <SettingSwitch
+            label="Acento según el contexto"
+            description="Cada contexto tiñe la app con su propio color."
+            checked={accentFromContext}
+            onCheckedChange={(checked) => updateAppearance({ accentFromContext: checked })}
+          />
+          <SettingSwitch
+            label="Negro puro"
+            description="Fondo totalmente negro en modo oscuro; ahorra batería en pantallas AMOLED."
+            checked={pureBlack}
+            onCheckedChange={(checked) => updateAppearance({ pureBlack: checked })}
+          />
+          <SettingRow label="Tamaño del texto" stacked>
+            <Segmented
+              ariaLabel="Tamaño del texto"
+              value={fontScale}
+              onChange={(value) => updateAppearance({ fontScale: value })}
+              options={FONT_SCALES}
+            />
+          </SettingRow>
+          <SettingSwitch
+            label="Reducir movimiento"
+            description="Quita animaciones y transiciones."
+            checked={reduceMotion}
+            onCheckedChange={(checked) => updateAppearance({ reduceMotion: checked })}
+          />
+          <SettingSwitch
+            label="Modo compacto"
+            description="Menos espacio entre elementos para ver más a la vez."
+            checked={visualConfig.compactMode}
+            onCheckedChange={(checked) => updateVisualConfig({ compactMode: checked })}
+          />
+
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between p-4 text-sm font-semibold">
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" /> Efectos visuales
+              </span>
+              <span className="text-[11px] font-normal text-muted-foreground group-open:hidden">Brillo, rejilla y transparencia</span>
+            </summary>
+            <div className="divide-y divide-border border-t border-border">
+              <SettingSwitch
+                label="Efectos de brillo"
+                description="Resplandor en tarjetas e indicadores."
+                checked={visualConfig.glowEnabled}
+                onCheckedChange={(checked) => updateVisualConfig({ glowEnabled: checked })}
+              />
+              <SettingSwitch
+                label="Rejilla de fondo"
+                description="Patrón técnico detrás del contenido."
+                checked={visualConfig.showGrid}
+                onCheckedChange={(checked) => updateVisualConfig({ showGrid: checked })}
+              />
+              <SettingRow label="Opacidad de tarjetas" stacked>
+                <Segmented
+                  ariaLabel="Opacidad de tarjetas"
+                  value={visualConfig.glassIntensity}
+                  onChange={(value) => updateVisualConfig({ glassIntensity: value })}
+                  options={[0.4, 0.6, 0.8, 1].map((value) => ({ value, label: `${value * 100}%` }))}
+                />
+              </SettingRow>
+            </div>
+          </details>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection id="navegacion" icon={<Compass className="h-3.5 w-3.5 text-primary" />} title="Navegación">
+        <NavigationSettings />
+        <div className="glass-card divide-y divide-border">
+          <SettingRow label="Página de inicio" description="Lo primero que ves al abrir la app." stacked>
+            <Select value={defaultPage} onValueChange={setDefaultPage}>
+              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-muted/30 sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-border bg-card">
+                <SelectItem value="/">Inicio</SelectItem>
+                <SelectItem value="/kanban">Tablero</SelectItem>
+                <SelectItem value="/schedule">Horario</SelectItem>
+                <SelectItem value="/tickets">Tickets</SelectItem>
+                <SelectItem value="/notes">Notas</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <SettingRow label="Formato de hora" stacked>
+            <Segmented<HourFormat>
+              ariaLabel="Formato de hora"
+              value={hourFormat}
+              onChange={setHourFormat}
+              options={[
+                { value: "24h", label: "24 h" },
+                { value: "12h", label: "12 h" },
+              ]}
+            />
+          </SettingRow>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection id="mantenimiento" icon={<Shield className="h-3.5 w-3.5 text-primary" />} title="Mantenimiento">
+        <div className="glass-card divide-y divide-border">
+          <SettingRow
+            label="Antigüedad para limpiar"
+            description="Las tareas completadas nunca se borran solas; elige desde cuándo se pueden limpiar."
+            stacked
+          >
+            <Select value={taskRetentionPeriod} onValueChange={(value) => setTaskRetentionPeriod(value as TaskRetentionPeriod)}>
+              <SelectTrigger className="h-10 w-full rounded-xl border-border bg-muted/30 sm:w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="border-border bg-card">
+                <SelectItem value="weekly">7 días</SelectItem>
+                <SelectItem value="monthly">30 días</SelectItem>
+                <SelectItem value="quarterly">90 días</SelectItem>
+                <SelectItem value="yearly">365 días</SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingRow>
+          <div className="p-4">
+            <Button onClick={handleCleanupNow} disabled={isCleaning} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
+              {isCleaning ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               Limpiar tareas completadas ahora
             </Button>
           </div>
-        </section>
-      </div>
-
-      <section className="space-y-3">
-        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-          <Palette className="w-3.5 h-3.5 text-primary" /> Apariencia y Estilo
-        </h3>
-        <div className="glass-card p-5 space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Modo de Color</Label>
-              <div className="flex p-1 bg-muted/30 border border-border rounded-2xl h-14">
-                <button
-                  onClick={() => setColorMode("dark")}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    colorMode === "dark" ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Fingerprint className="w-4 h-4" /> Dark Mode
-                </button>
-                <button
-                  onClick={() => setColorMode("light")}
-                  className={`flex-1 flex items-center justify-center gap-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    colorMode === "light" ? "bg-foreground text-background shadow-lg" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Zap className="w-4 h-4" /> Light Mode
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Tema del Sistema</Label>
-              <Select value={theme} onValueChange={(value) => setTheme(value as AppTheme)}>
-                <SelectTrigger className="bg-muted/30 border-border h-14 rounded-2xl text-[11px] font-black uppercase tracking-wider px-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: THEME_OPTIONS.find(o => o.value === theme)?.color }} />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  {THEME_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value} className="text-[11px] font-black uppercase tracking-wider py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: option.color }} />
-                        {option.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label className="text-[11px] uppercase font-black text-muted-foreground/50 tracking-widest">Paleta de Colores Expandida</Label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-              {THEME_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setTheme(option.value)}
-                  className={`relative flex flex-col items-center gap-3 rounded-2xl border p-4 transition-all ${
-                    theme === option.value
-                      ? "border-primary bg-primary/10 shadow-[0_0_20px_hsl(var(--primary)/0.15)]"
-                      : "border-border bg-muted/20 hover:bg-muted/40"
-                  }`}
-                >
-                  <div 
-                    className="w-8 h-8 rounded-full shadow-inner flex items-center justify-center border-4 border-black/5" 
-                    style={{ backgroundColor: option.color }}
-                  >
-                    {theme === option.value && <Check className="w-4 h-4 text-white font-bold" />}
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-[9px] font-black uppercase tracking-widest ${theme === option.value ? 'text-primary' : 'text-muted-foreground'}`}>
-                      {option.label}
-                    </p>
-                    <p className="text-[8px] text-muted-foreground/40 lowercase tracking-normal mt-0.5">{option.hint}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-6 space-y-6">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" />
-              <h4 className="text-[11px] uppercase font-black tracking-widest">Preferencias Visuales</h4>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
-              <PreferenceToggle 
-                label="Efectos de Brillo (Glow)" 
-                description="Habilita resplandores neón en tarjetas e indicadores."
-                active={visualConfig.glowEnabled}
-                onToggle={() => updateVisualConfig({ glowEnabled: !visualConfig.glowEnabled })}
-              />
-              <PreferenceToggle 
-                label="Rejilla de Fondo" 
-                description="Muestra un patrón técnico de red en el fondo."
-                active={visualConfig.showGrid}
-                onToggle={() => updateVisualConfig({ showGrid: !visualConfig.showGrid })}
-              />
-              <PreferenceToggle 
-                label="Modo Compacto" 
-                description="Reduce espaciado para ver más contenido a la vez."
-                active={visualConfig.compactMode}
-                onToggle={() => updateVisualConfig({ compactMode: !visualConfig.compactMode })}
-              />
-              <div className="flex items-center justify-between group">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-bold">Opacidad Glass</p>
-                  <p className="text-[10px] text-muted-foreground">Controla la transparencia de las tarjetas.</p>
-                </div>
-                <div className="flex items-center gap-3 bg-muted/30 p-1.5 rounded-xl border border-border">
-                   {[0.4, 0.6, 0.8, 1.0].map((v) => (
-                     <button
-                       key={v}
-                       onClick={() => updateVisualConfig({ glassIntensity: v })}
-                       className={`w-8 h-8 rounded-lg text-[9px] font-black transition-all ${
-                         visualConfig.glassIntensity === v ? "bg-primary text-primary-foreground" : "hover:bg-primary/10 text-muted-foreground"
-                       }`}
-                     >
-                       {v * 100}%
-                     </button>
-                   ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-border pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Formato de Hora</Label>
-              <Select value={hourFormat} onValueChange={(value) => setHourFormat(value as any)}>
-                <SelectTrigger className="bg-muted/30 border-border h-12 rounded-xl text-[11px] font-black uppercase tracking-wider">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="24h" className="text-[11px] font-black uppercase tracking-wider">24 Horas</SelectItem>
-                  <SelectItem value="12h" className="text-[11px] font-black uppercase tracking-wider">12 Horas (AM/PM)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[11px] uppercase font-black text-primary tracking-widest">Página de Inicio</Label>
-              <Select value={defaultPage} onValueChange={(value) => setDefaultPage(value)}>
-                <SelectTrigger className="bg-muted/30 border-border h-12 rounded-xl text-[11px] font-black uppercase tracking-wider">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="/" className="text-[11px] font-black uppercase tracking-wider">Dashboard</SelectItem>
-                  <SelectItem value="/kanban" className="text-[11px] font-black uppercase tracking-wider">Kanban</SelectItem>
-                  <SelectItem value="/schedule" className="text-[11px] font-black uppercase tracking-wider">Horario</SelectItem>
-                  <SelectItem value="/tickets" className="text-[11px] font-black uppercase tracking-wider">Tickets</SelectItem>
-                  <SelectItem value="/notes" className="text-[11px] font-black uppercase tracking-wider">Notas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
         </div>
-      </section>
+      </SettingsSection>
 
-      <section className="space-y-3">
-        <h3 className="text-[11px] uppercase font-black text-muted-foreground tracking-[0.3em] flex items-center gap-2">
-          <Bell className="w-3.5 h-3.5 text-primary" /> Notificaciones
-        </h3>
-        <div className="glass-card p-5 space-y-3">
-          <p className="text-[11px] text-muted-foreground">
-            Configura aqui los permisos para alertas del navegador y la integracion con la app Android.
-          </p>
-          <NotificationSetup className="h-11 rounded-xl text-[10px] tracking-[0.2em]" />
+      <SettingsSection id="notificaciones" icon={<Bell className="h-3.5 w-3.5 text-primary" />} title="Notificaciones">
+        <div className="glass-card space-y-3 p-4">
+          <p className="text-[11px] text-muted-foreground">Permisos para alertas del navegador y la app Android.</p>
+          <NotificationSetup className="h-10 rounded-xl text-[10px] tracking-[0.2em]" />
         </div>
-      </section>
+      </SettingsSection>
     </div>
   );
 }
 
-function ModuleToggle({ label, active, onToggle }: { label: string; active: boolean; onToggle: () => void }) {
+function AccentSwatch({ color, label, selected, onClick }: { color: string; label: string; selected: boolean; onClick: () => void }) {
   return (
-    <div className="flex items-center justify-between group">
-      <div className="space-y-0.5">
-        <p className="text-xs font-bold group-hover:text-primary transition-colors">{label}</p>
-        <p className="text-[11px] text-muted-foreground uppercase font-data">{active ? "En línea" : "Desconectado"}</p>
-      </div>
-      <Switch checked={active} onCheckedChange={onToggle} className="scale-75" />
-    </div>
-  );
-}
-
-function PreferenceToggle({ label, description, active, onToggle }: { label: string; description: string; active: boolean; onToggle: () => void }) {
-  return (
-    <div className="flex items-center justify-between group">
-      <div className="space-y-0.5">
-        <p className="text-xs font-bold group-hover:text-primary transition-colors">{label}</p>
-        <p className="text-[10px] text-muted-foreground">{description}</p>
-      </div>
-      <Switch checked={active} onCheckedChange={onToggle} className="scale-75" />
-    </div>
+    <button
+      type="button"
+      title={label}
+      aria-label={`Acento ${label}`}
+      aria-pressed={selected}
+      onClick={onClick}
+      className={cn(
+        "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-transform",
+        selected ? "scale-110 border-foreground" : "border-transparent hover:scale-105"
+      )}
+      style={{ backgroundColor: color }}
+    >
+      {selected && <Check className="h-4 w-4 text-white" />}
+    </button>
   );
 }

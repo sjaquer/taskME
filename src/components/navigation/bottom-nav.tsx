@@ -1,28 +1,16 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LayoutGrid, Clock, Ticket, NotebookText, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAppContextStore } from "@/lib/store";
-
-const NAV_ITEMS = [
-  { icon: Home, label: "Inicio", href: "/", moduleKey: "dashboard" as const },
-  { icon: LayoutGrid, label: "Tablero", href: "/kanban", moduleKey: "kanban" as const },
-  { icon: Clock, label: "Horario", href: "/schedule", moduleKey: "schedule" as const },
-  { icon: Ticket, label: "Tickets", href: "/tickets", moduleKey: null },
-  { icon: NotebookText, label: "Notas", href: "/notes", moduleKey: null },
-  { icon: Settings, label: "Perfil", href: "/settings", moduleKey: null },
-] as const;
+import { getVisibleNavItems } from "@/lib/navigation";
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { activeModules } = useAppContextStore();
-
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => item.moduleKey === null || activeModules[item.moduleKey]
-  );
+  const activeModules = useAppContextStore((state) => state.activeModules);
+  const navOrder = useAppContextStore((state) => state.navOrder);
+  const visibleItems = getVisibleNavItems(navOrder, activeModules);
 
   return (
     <nav className="fixed bottom-4 left-3 right-3 z-50 glass-blur gpu-blur border border-border rounded-2xl px-1.5 py-1 md:hidden transition-all duration-500 shadow-2xl pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
@@ -33,6 +21,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "relative flex flex-col items-center justify-center gap-0.5",
                 "flex-1 min-h-[48px] py-1 px-0.5 rounded-xl",
