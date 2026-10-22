@@ -62,8 +62,8 @@ export class NotificationService {
 
     try {
       const notification = new Notification(title, {
-        icon: '/site.webmanifest',
-        badge: '/favicon.ico',
+        icon: '/web-app-manifest-192x192.png',
+        badge: '/favicon-96x96.png',
         ...options,
       });
 
@@ -86,21 +86,15 @@ export class NotificationService {
   }
 
   /**
-   * Envía notificación de tarea próxima a vencer
+   * Envía notificación de tarea con hora que vence pronto
    */
-  static taskDueNotification(taskTitle: string, minutesLeft: number): Notification | null {
+  static taskDueNotification(taskId: string, taskTitle: string, minutesLeft: number): Notification | null {
     const hoursLeft = Math.floor(minutesLeft / 60);
-
-    let timeText = '';
-    if (hoursLeft > 0) {
-      timeText = `en ${hoursLeft}h`;
-    } else {
-      timeText = `en ${minutesLeft}m`;
-    }
+    const timeText = hoursLeft > 0 ? `en ${hoursLeft}h` : `en ${minutesLeft}m`;
 
     return this.send(`⏰ Tarea próxima: ${taskTitle}`, {
       body: `Vence ${timeText}`,
-      tag: `task-${taskTitle}`,
+      tag: `task-${taskId}`,
       requireInteraction: minutesLeft < 15, // Mayor interacción si es muy pronto
       onClick: () => {
         window.location.href = '/kanban';
@@ -109,12 +103,25 @@ export class NotificationService {
   }
 
   /**
-   * Envía notificación de rutina en progreso
+   * Envía notificación de tarea que vence hoy (fecha sin hora)
    */
-  static routineStartsNotification(routineTitle: string): Notification | null {
-    return this.send(`🚀 Rutina iniciada: ${routineTitle}`, {
-      body: 'Es hora de comenzar esta actividad',
-      tag: `routine-${routineTitle}`,
+  static taskDueTodayNotification(taskId: string, taskTitle: string): Notification | null {
+    return this.send(`📅 Vence hoy: ${taskTitle}`, {
+      body: 'Esta tarea tiene como fecha límite el día de hoy.',
+      tag: `task-${taskId}`,
+      onClick: () => {
+        window.location.href = '/kanban';
+      },
+    });
+  }
+
+  /**
+   * Envía notificación de rutina por comenzar
+   */
+  static routineStartsNotification(routineId: string, routineTitle: string): Notification | null {
+    return this.send(`🚀 Rutina por comenzar: ${routineTitle}`, {
+      body: 'Empieza en unos minutos',
+      tag: `routine-${routineId}`,
       onClick: () => {
         window.location.href = '/schedule';
       },

@@ -14,6 +14,7 @@ import {
   collection,
   onSnapshot,
 } from 'firebase/firestore';
+import type { Routine, Task } from '@/types/task';
 
 /**
  * Componente que monitorea tareas, eventos y rutinas próximos
@@ -23,15 +24,15 @@ export function NotificationMonitor() {
   const { user } = useUser();
   const firestore = useFirestore();
   const searchParams = useSearchParams();
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [routines, setRoutines] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [routines, setRoutines] = useState<Routine[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(NotificationService.isEnabled());
   const nativeRegistrationRef = useRef<string | null>(null);
   const openedNotificationRef = useRef<string | null>(null);
   const appOpenLoggedRef = useRef<string | null>(null);
 
   // Inicializar el hook de notificaciones
-  const { isEnabled } = useNotifications(
+  useNotifications(
     tasks,
     routines,
     notificationsEnabled
@@ -97,10 +98,7 @@ export function NotificationMonitor() {
 
     const userTasksRef = collection(firestore, 'users', user.uid, 'tasks');
     const unsubscribe = onSnapshot(userTasksRef, (snapshot) => {
-      const tasksList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const tasksList = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Task);
       setTasks(tasksList);
     });
 
@@ -113,10 +111,7 @@ export function NotificationMonitor() {
 
     const userRoutinesRef = collection(firestore, 'users', user.uid, 'routines');
     const unsubscribe = onSnapshot(userRoutinesRef, (snapshot) => {
-      const routinesList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      const routinesList = snapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Routine);
       setRoutines(routinesList);
     });
 
