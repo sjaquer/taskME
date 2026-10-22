@@ -5,6 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Field, FormPanel, PrioritySelect, ProjectSelect, SubmitButton, fieldInputClassName } from '@/components/forms/form-fields';
 import { ChecklistEditor } from '@/components/forms/checklist-editor';
+import { AttachmentField } from '@/components/attachments/attachment-field';
+import type { AttachmentDraft } from '@/services/attachment-service';
 import { RECURRENCE_LABELS } from '@/lib/tasks';
 import type { ChecklistItem, Priority, Project, Recurrence } from '@/types/task';
 
@@ -18,6 +20,7 @@ export interface TaskFormState {
   dueTime: string;
   recurrence: Recurrence | '';
   checklist: ChecklistItem[];
+  attachments: AttachmentDraft[];
   projectId: string;
 }
 
@@ -142,6 +145,10 @@ export function TaskFormPanel({
 
       <Field label="Subtareas">
         <ChecklistEditor value={value.checklist} onChange={(checklist) => onChange({ checklist })} />
+      </Field>
+
+      <Field label="Imágenes">
+        <AttachmentField value={value.attachments} onChange={(attachments) => onChange({ attachments })} />
       </Field>
 
       <SubmitButton onClick={onSubmit} isSaving={isSaving}>

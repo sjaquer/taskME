@@ -22,7 +22,8 @@ import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useActiveContext, useProjects, useTasks } from "@/firebase/user-data";
-import { createTask, deleteTask, deleteTasks, setTaskStatus, updateTask } from "@/services/task-service";
+import { createTask, deleteTask, deleteTasks, newTaskId, setTaskStatus, updateTask } from "@/services/task-service";
+import { scheduleAttachmentDeletion, syncAttachments, toAttachmentMeta } from "@/services/attachment-service";
 import { createProject, updateProject, archiveProject } from "@/services/project-service";
 import { restoreUserDocument, restoreUserDocuments } from "@/services/restore-service";
 import { generateTasksFromPrompt } from "@/services/ai-task-service";
@@ -47,6 +48,7 @@ const INITIAL_TASK_FORM: TaskFormState = {
   dueTime: "",
   recurrence: "",
   checklist: [],
+  attachments: [],
   projectId: "",
 };
 
@@ -145,6 +147,7 @@ export default function KanbanPage() {
         dueTime: task.dueTime || "",
         recurrence: task.recurrence || "",
         checklist: task.checklist || [],
+        attachments: task.attachments || [],
         projectId: task.projectId || "",
       });
     } else {
@@ -177,6 +180,7 @@ export default function KanbanPage() {
       ...(draft.dueDate && draft.recurrence ? { recurrence: draft.recurrence } : {}),
       // Se descartan subtareas vacías (p. ej. una recién agregada sin texto).
       checklist: draft.checklist.filter((item) => item.text.trim()),
+      attachments: draft.attachments.map(toAttachmentMeta),
       context,
       ...(draft.projectId ? { projectId: draft.projectId } : {}),
     });
@@ -186,6 +190,13 @@ export default function KanbanPage() {
       return false;
     }
 
+    // Las imágenes nuevas se guardan aparte (una por documento); la tarea solo lleva miniaturas.
+    const taskId = taskToUpdate?.id ?? newTaskId(firestore, user.uid);
+    syncAttachments(firestore, user.uid, { type: "task", id: taskId }, draft.attachments, taskToUpdate?.attachments).catch((error) => {
+      console.error("Error al guardar imágenes:", error);
+      toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar las imágenes." });
+    });
+
     if (taskToUpdate) {
       const cleared = (["dueDate", "dueTime", "recurrence", "projectId"] as const).filter(
         (field) => !(field in result.data) && taskToUpdate[field] !== undefined
@@ -193,7 +204,7 @@ export default function KanbanPage() {
       updateTask(firestore, user.uid, taskToUpdate.id, result.data, [...cleared]);
       toast({ variant: "success", title: "Tarea actualizada" });
     } else {
-      createTask(firestore, user.uid, result.data);
+      createTask(firestore, user.uid, result.data, taskId);
       if (!silent) toast({ variant: "success", title: "Tarea creada" });
     }
     return true;
@@ -229,10 +240,15 @@ export default function KanbanPage() {
       toast({ variant: "warning", title: "Tarea eliminada" });
       return;
     }
+    // Las imágenes se borran recién cuando ya no se puede deshacer.
+    const cancelImageDeletion = scheduleAttachmentDeletion(firestore, user.uid, (deletedTask.attachments ?? []).map((a) => a.id));
     toastWithUndo({
       title: "Tarea eliminada",
       description: deletedTask.title,
-      onUndo: () => restoreUserDocument(firestore, user.uid, "tasks", deletedTask),
+      onUndo: () => {
+        cancelImageDeletion();
+        restoreUserDocument(firestore, user.uid, "tasks", deletedTask);
+      },
     });
   };
 
@@ -285,10 +301,16 @@ export default function KanbanPage() {
       return;
     }
 
+    const cancelImageDeletion = scheduleAttachmentDeletion(
+      firestore,
+      user.uid,
+      completedList.flatMap((task) => (task.attachments ?? []).map((a) => a.id))
+    );
     toastWithUndo({
       title: "Tablero limpio",
       description: `Se eliminaron ${completedList.length} tareas completadas.`,
       onUndo: () => {
+        cancelImageDeletion();
         restoreUserDocuments(firestore, user.uid, "tasks", completedList).catch((error) => {
           console.error("Error al restaurar tareas:", error);
           toast({ variant: "destructive", title: "Error", description: "No se pudieron restaurar las tareas." });

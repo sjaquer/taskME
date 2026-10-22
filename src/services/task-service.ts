@@ -15,10 +15,11 @@ import {
 } from 'firebase/firestore';
 import {
   addDocumentNonBlocking,
+  setDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { AppContext, ChecklistItem, Priority, Recurrence, Task, TaskStatus } from '@/types/task';
+import type { AppContext, AttachmentMeta, ChecklistItem, Priority, Recurrence, Task, TaskStatus } from '@/types/task';
 import { getNextDueDate } from '@/lib/tasks';
 import type { TaskRetentionPeriod } from '@/lib/store';
 
@@ -78,6 +79,7 @@ export interface TaskInput {
   dueTime?: string;
   checklist?: ChecklistItem[];
   recurrence?: Recurrence;
+  attachments?: AttachmentMeta[];
   context: AppContext;
   projectId?: string;
   isTicket?: boolean;
@@ -87,14 +89,23 @@ export interface TaskInput {
   referenceUrl?: string;
 }
 
-export function createTask(firestore: Firestore, userId: string, data: TaskInput) {
-  const colRef = getUserTasksRef(firestore, userId);
-  return addDocumentNonBlocking(colRef, {
+/** Id para una tarea nueva (sirve para enlazarle imágenes antes de crearla). */
+export function newTaskId(firestore: Firestore, userId: string): string {
+  return doc(getUserTasksRef(firestore, userId)).id;
+}
+
+export function createTask(firestore: Firestore, userId: string, data: TaskInput, taskId?: string) {
+  const payload = {
     ...data,
     userId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+  if (taskId) {
+    setDocumentNonBlocking(getTaskDocRef(firestore, userId, taskId), payload, {});
+    return Promise.resolve(getTaskDocRef(firestore, userId, taskId));
+  }
+  return addDocumentNonBlocking(getUserTasksRef(firestore, userId), payload);
 }
 
 /** Campos opcionales que se pueden quitar al editar (fecha, hora, proyecto…). */

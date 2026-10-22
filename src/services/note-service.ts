@@ -10,10 +10,11 @@ import {
 } from 'firebase/firestore';
 import {
   addDocumentNonBlocking,
+  setDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { AppContext, NoteCategory } from '@/types/task';
+import type { AppContext, AttachmentMeta, NoteCategory } from '@/types/task';
 
 // ── NOTES (recordatorios y apuntes libres) ─────────────────
 export function getUserNotesRef(firestore: Firestore, userId: string): CollectionReference {
@@ -24,6 +25,11 @@ function getNoteDocRef(firestore: Firestore, userId: string, noteId: string): Do
   return doc(firestore, 'users', userId, 'notes', noteId);
 }
 
+/** Id para una nota nueva (sirve para enlazarle imágenes antes de crearla). */
+export function newNoteId(firestore: Firestore, userId: string): string {
+  return doc(getUserNotesRef(firestore, userId)).id;
+}
+
 export function createNote(
   firestore: Firestore,
   userId: string,
@@ -32,22 +38,23 @@ export function createNote(
     content: string;
     category: NoteCategory;
     context: AppContext;
-  }
+    attachments?: AttachmentMeta[];
+  },
+  noteId?: string
 ) {
-  const colRef = getUserNotesRef(firestore, userId);
-  return addDocumentNonBlocking(colRef, {
-    ...data,
-    userId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  const payload = { ...data, userId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+  if (noteId) {
+    setDocumentNonBlocking(getNoteDocRef(firestore, userId, noteId), payload, {});
+    return;
+  }
+  return addDocumentNonBlocking(getUserNotesRef(firestore, userId), payload);
 }
 
 export function updateNote(
   firestore: Firestore,
   userId: string,
   noteId: string,
-  data: Partial<{ title: string; content: string; category: NoteCategory; pinned: boolean }>
+  data: Partial<{ title: string; content: string; category: NoteCategory; pinned: boolean; attachments: AttachmentMeta[] }>
 ) {
   const docRef = getNoteDocRef(firestore, userId, noteId);
   updateDocumentNonBlocking(docRef, {

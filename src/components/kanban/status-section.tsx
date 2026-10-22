@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Check, ChevronDown, ListChecks, MoreHorizontal, Pencil, Plus, Repeat, Ticket, Trash2 } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ListChecks, MoreHorizontal, Paperclip, Pencil, Plus, Repeat, Ticket, Trash2 } from "lucide-react";
+import { AttachmentGallery } from "@/components/attachments/attachment-gallery";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +37,8 @@ function TaskRow({ task, project, onEdit, onDelete, onMove, onToggleChecklistIte
   const isDone = task.status === "Hecho";
   const progress = getChecklistProgress(task.checklist);
   const [checklistOpen, setChecklistOpen] = useState(false);
+  const [imagesOpen, setImagesOpen] = useState(false);
+  const imageCount = task.attachments?.length ?? 0;
 
   return (
     <div className="group flex items-start gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-muted/20">
@@ -96,6 +99,20 @@ function TaskRow({ task, project, onEdit, onDelete, onMove, onToggleChecklistIte
           ))}
         </div>
       </button>
+      {imageCount > 0 && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setImagesOpen((open) => !open)}
+            aria-expanded={imagesOpen}
+            className="flex items-center gap-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground"
+          >
+            <Paperclip className="h-3 w-3" />
+            {imageCount === 1 ? "1 imagen" : `${imageCount} imágenes`}
+          </button>
+          {imagesOpen && <AttachmentGallery attachments={task.attachments!} className="mt-1.5" />}
+        </div>
+      )}
       {progress && (
         <div className="mt-1">
           <button

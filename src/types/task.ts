@@ -21,6 +21,22 @@ export type TaskStatus = 'Pendiente' | 'Haciendo' | 'Hecho';
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly';
 
+/**
+ * Imagen adjunta. La imagen completa (base64) vive en users/{uid}/attachments/{id};
+ * aquí solo se guardan los datos y una miniatura para mostrarla sin descargarla.
+ */
+export interface AttachmentMeta {
+  id: string;
+  name: string;
+  mime: 'image/webp' | 'image/jpeg' | 'image/png';
+  /** Bytes de la imagen comprimida. */
+  size: number;
+  width: number;
+  height: number;
+  /** Miniatura como data URL. */
+  thumb: string;
+}
+
 /** Subtarea dentro de una tarea. */
 export interface ChecklistItem {
   id: string;
@@ -43,6 +59,7 @@ export interface Task {
   checklist?: ChecklistItem[];
   /** Al completarla se crea la siguiente ocurrencia (requiere dueDate). */
   recurrence?: Recurrence;
+  attachments?: AttachmentMeta[];
   projectId?: string;
   // ── Campos de Ticket (cuando isTicket es true) ────────────
   isTicket?: boolean;
@@ -109,6 +126,7 @@ export interface Note {
   userId: string;
   /** Fijada arriba de la lista. */
   pinned?: boolean;
+  attachments?: AttachmentMeta[];
   createdAt?: unknown;
   updatedAt?: unknown;
 }

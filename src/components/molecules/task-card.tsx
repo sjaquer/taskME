@@ -5,7 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar, Ticket } from 'lucide-react';
+import { GripVertical, Edit3, Trash2, CheckCircle2, Tags, AlertCircle, Calendar, Ticket, Paperclip } from 'lucide-react';
 import { PriorityBadge, NodeId } from '@/components/atoms';
 import { cn } from '@/lib/utils';
 import { getDueMeta } from '@/lib/tasks';
@@ -180,6 +180,13 @@ export function TaskCard({ task, onDelete, onEdit, isOverlay, selectable, select
               </p>
             )}
           </div>
+
+          {(task.attachments?.length ?? 0) > 0 && (
+            <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Paperclip className="h-3 w-3" />
+              {task.attachments!.length === 1 ? '1 imagen' : `${task.attachments!.length} imágenes`}
+            </p>
+          )}
 
           {/* Tags Section */}
           {task.tags && task.tags.length > 0 && (

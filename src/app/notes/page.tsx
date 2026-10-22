@@ -17,7 +17,10 @@ import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { noteSchema } from "@/lib/schemas";
 import { getTimestampMillis } from "@/lib/tasks";
-import { createNote, updateNote, deleteNote } from "@/services/note-service";
+import { createNote, newNoteId, updateNote, deleteNote } from "@/services/note-service";
+import { scheduleAttachmentDeletion, syncAttachments, toAttachmentMeta, type AttachmentDraft } from "@/services/attachment-service";
+import { AttachmentField } from "@/components/attachments/attachment-field";
+import { AttachmentGallery } from "@/components/attachments/attachment-gallery";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import type { Note, NoteCategory } from "@/types/task";
@@ -28,9 +31,10 @@ interface NoteFormState {
   title: string;
   content: string;
   category: NoteCategory;
+  attachments: AttachmentDraft[];
 }
 
-const INITIAL_FORM: NoteFormState = { title: "", content: "", category: "Otro" };
+const INITIAL_FORM: NoteFormState = { title: "", content: "", category: "Otro", attachments: [] };
 
 export default function NotesPage() {
   const { context } = useAppContextStore();
@@ -79,7 +83,7 @@ export default function NotesPage() {
 
   const openEditForm = (note: Note) => {
     setEditingNote(note);
-    setForm({ title: note.title, content: note.content, category: note.category });
+    setForm({ title: note.title, content: note.content, category: note.category, attachments: note.attachments ?? [] });
     setFormOpen(true);
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
@@ -93,7 +97,7 @@ export default function NotesPage() {
   const handleSubmit = async () => {
     if (!user || !firestore) return;
 
-    const result = noteSchema.safeParse(form);
+    const result = noteSchema.safeParse({ ...form, attachments: form.attachments.map(toAttachmentMeta) });
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;
@@ -101,11 +105,17 @@ export default function NotesPage() {
 
     setIsSaving(true);
     try {
+      // Las imágenes nuevas se guardan aparte (una por documento); la nota solo lleva miniaturas.
+      const noteId = editingNote?.id ?? newNoteId(firestore, user.uid);
+      syncAttachments(firestore, user.uid, { type: "note", id: noteId }, form.attachments, editingNote?.attachments).catch((error) => {
+        console.error("Error al guardar imágenes:", error);
+        toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar las imágenes." });
+      });
       if (editingNote) {
-        updateNote(firestore, user.uid, editingNote.id, result.data);
+        updateNote(firestore, user.uid, editingNote.id, { ...result.data, attachments: result.data.attachments ?? [] });
         toast({ variant: "success", title: "Nota actualizada" });
       } else {
-        createNote(firestore, user.uid, { ...result.data, context });
+        createNote(firestore, user.uid, { ...result.data, context }, noteId);
         toast({ variant: "success", title: "Nota creada" });
       }
       closeForm();
@@ -123,10 +133,14 @@ export default function NotesPage() {
       toast({ variant: "warning", title: "Nota eliminada" });
       return;
     }
+    const cancelImageDeletion = scheduleAttachmentDeletion(firestore, user.uid, (deletedNote.attachments ?? []).map((a) => a.id));
     toastWithUndo({
       title: "Nota eliminada",
       description: deletedNote.title,
-      onUndo: () => restoreUserDocument(firestore, user.uid, "notes", deletedNote),
+      onUndo: () => {
+        cancelImageDeletion();
+        restoreUserDocument(firestore, user.uid, "notes", deletedNote);
+      },
     });
   };
 
@@ -191,6 +205,10 @@ export default function NotesPage() {
               placeholder="Escribe tu recordatorio o apunte..."
               className="min-h-[140px] rounded-2xl border-border bg-muted/20"
             />
+          </Field>
+
+          <Field label="Imágenes">
+            <AttachmentField value={form.attachments} onChange={(attachments) => setForm((current) => ({ ...current, attachments }))} />
           </Field>
 
           <SubmitButton onClick={handleSubmit} isSaving={isSaving}>
@@ -266,6 +284,7 @@ export default function NotesPage() {
                 </div>
               </div>
               <p className="mt-2 line-clamp-6 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{note.content}</p>
+              {note.attachments && note.attachments.length > 0 && <AttachmentGallery attachments={note.attachments} className="mt-3" />}
             </article>
           ))
         )}
