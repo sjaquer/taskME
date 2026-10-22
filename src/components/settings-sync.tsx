@@ -17,6 +17,7 @@ const syncedSettingsSchema = z.object({
   pureBlack: z.boolean(),
   fontScale: z.number().min(0.8).max(1.4),
   reduceMotion: z.boolean(),
+  haptics: z.boolean(),
   visualConfig: z.object({
     glassIntensity: z.number(),
     glowEnabled: z.boolean(),

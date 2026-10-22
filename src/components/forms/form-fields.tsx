@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { PRIORITIES, getPriorityMeta } from '@/lib/tasks';
+import { useBackDismiss } from '@/hooks/use-back-dismiss';
 import type { Priority, Project } from '@/types/task';
 
 const NO_PROJECT_VALUE = 'sin-proyecto';
@@ -15,7 +16,10 @@ const NO_PROJECT_VALUE = 'sin-proyecto';
 export const FormPanel = forwardRef<
   HTMLDivElement,
   { title: string; onClose: () => void; children: ReactNode; className?: string }
->(({ title, onClose, children, className }, ref) => (
+>(({ title, onClose, children, className }, ref) => {
+  // El botón atrás de Android cierra el formulario en lugar de salir de la página.
+  useBackDismiss(true, onClose);
+  return (
   <div ref={ref} className={cn('glass-card-elevated border border-border rounded-3xl p-5 sm:p-6 space-y-4 w-full', className)}>
     <div className="flex items-center justify-between border-b border-border/40 pb-3">
       <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">{title}</h3>
@@ -30,7 +34,8 @@ export const FormPanel = forwardRef<
     </div>
     {children}
   </div>
-));
+  );
+});
 FormPanel.displayName = 'FormPanel';
 
 export function FieldLabel({ children, className }: { children: ReactNode; className?: string }) {

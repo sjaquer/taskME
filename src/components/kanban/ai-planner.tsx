@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useBackDismiss } from "@/hooks/use-back-dismiss";
+import { VoiceButton } from "@/components/forms/voice-button";
 
 interface AiPlannerProps {
   isGenerating: boolean;
@@ -15,6 +17,7 @@ interface AiPlannerProps {
 /** Convierte texto libre en tareas usando /api/v1/ai/tasks. */
 export function AiPlanner({ isGenerating, onGenerate, onClose }: AiPlannerProps) {
   const [prompt, setPrompt] = useState("");
+  useBackDismiss(true, onClose);
 
   const handleGenerate = async () => {
     if (await onGenerate(prompt)) {
@@ -45,6 +48,9 @@ export function AiPlanner({ isGenerating, onGenerate, onClose }: AiPlannerProps)
         className="min-h-[110px] rounded-xl border-border bg-background/50 text-base sm:text-sm leading-relaxed"
         autoFocus
       />
+      <div className="flex justify-end">
+        <VoiceButton onText={(text) => setPrompt((current) => (current ? `${current} ${text}` : text))} />
+      </div>
       <Button
         type="button"
         onClick={handleGenerate}

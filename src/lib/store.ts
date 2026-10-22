@@ -39,7 +39,9 @@ interface AppState {
   /** Escala del texto: 0.9, 1, 1.1 o 1.2. */
   fontScale: number;
   reduceMotion: boolean;
-  updateAppearance: (patch: Partial<Pick<AppState, 'customAccent' | 'accentFromContext' | 'pureBlack' | 'fontScale' | 'reduceMotion'>>) => void;
+  /** Vibración corta al completar o borrar. */
+  haptics: boolean;
+  updateAppearance: (patch: Partial<Pick<AppState, 'customAccent' | 'accentFromContext' | 'pureBlack' | 'fontScale' | 'reduceMotion' | 'haptics'>>) => void;
   activeModules: ModuleFlags;
   toggleModule: (module: keyof ModuleFlags) => void;
   /** Orden de los módulos en la barra de navegación. */
@@ -72,6 +74,7 @@ export const useAppContextStore = create<AppState>()(
       pureBlack: false,
       fontScale: 1,
       reduceMotion: false,
+      haptics: true,
       updateAppearance: (patch) => set(patch),
       activeModules: {
         dashboard: true,

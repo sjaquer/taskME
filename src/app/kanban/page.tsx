@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useAppContextStore } from "@/lib/store";
+import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
@@ -190,6 +191,7 @@ export default function KanbanPage() {
 
   const handleDeleteTask = (taskId: string) => {
     const deletedTask = tasks.find((task) => task.id === taskId);
+    haptic(25);
     deleteTask(firestore, user.uid, taskId);
 
     if (!deletedTask) {
@@ -204,6 +206,7 @@ export default function KanbanPage() {
   };
 
   const handleMoveTask = (taskId: string, status: TaskStatus) => {
+    haptic();
     updateTask(firestore, user.uid, taskId, { status });
   };
 

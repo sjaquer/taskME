@@ -145,7 +145,7 @@ service cloud.firestore {
                'hourFormat', 'defaultPage', 'taskRetentionPeriod',
                'visualConfig', 'updatedAt',
                'customAccent', 'accentFromContext', 'pureBlack', 'fontScale', 'reduceMotion',
-               'navOrder', 'ticketsContext'
+               'navOrder', 'ticketsContext', 'haptics'
              ])
              && (!('context' in data) || isValidContext(data))
              && (!('theme' in data) || (data.theme is string && data.theme in [
@@ -157,6 +157,7 @@ service cloud.firestore {
              && (!('pureBlack' in data) || data.pureBlack is bool)
              && (!('fontScale' in data) || (data.fontScale is number && data.fontScale >= 0.8 && data.fontScale <= 1.4))
              && (!('reduceMotion' in data) || data.reduceMotion is bool)
+             && (!('haptics' in data) || data.haptics is bool)
              && (!('navOrder' in data) || (data.navOrder is list && data.navOrder.size() <= 10))
              && (!('ticketsContext' in data) || (data.ticketsContext is string && data.ticketsContext.size() > 0 && data.ticketsContext.size() <= 64))
              && (!('activeModules' in data) || data.activeModules is map)

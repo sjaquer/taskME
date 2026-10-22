@@ -7,6 +7,7 @@ import { ArrowRight, CalendarDays, Check, Clock } from "lucide-react";
 import { useUser, useFirestore, useTasks, useRoutines, useActiveContext } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContextStore } from "@/lib/store";
+import { haptic } from "@/lib/native-features";
 import { consumeLaunchRedirect } from "@/lib/launch-state";
 import { getDueMeta } from "@/lib/tasks";
 import { cn, formatTime } from "@/lib/utils";
@@ -103,8 +104,10 @@ export default function Home() {
   const currentOrNext = todayRoutines.find((item) => item.isNow) ?? todayRoutines.find((item) => !item.isPast);
   const remainingRoutines = todayRoutines.filter((item) => !item.isPast && item !== currentOrNext);
   const firstName = user.displayName?.split(" ")[0];
-  const toggleTask = (task: Task) =>
+  const toggleTask = (task: Task) => {
+    haptic();
     updateTask(firestore, user.uid, task.id, { status: task.status === "Hecho" ? "Pendiente" : "Hecho" });
+  };
 
   return (
     <div className="mx-auto w-full max-w-2xl space-y-8 pb-12">

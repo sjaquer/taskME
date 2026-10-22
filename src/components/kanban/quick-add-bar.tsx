@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { VoiceButton } from "@/components/forms/voice-button";
 
 interface QuickAddBarProps {
   /** Devuelve true si la tarea se creó (para limpiar el campo). */
@@ -35,6 +36,7 @@ export function QuickAddBar({ onCreate, onOpenDetails, aiOpen, onToggleAi }: Qui
         enterKeyHint="done"
         className="h-9 min-w-0 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground/70"
       />
+      <VoiceButton onText={(text) => setTitle((current) => (current ? `${current} ${text}` : text))} />
       <button
         type="button"
         onClick={() => {

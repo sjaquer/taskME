@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { Filter, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBackDismiss } from "@/hooks/use-back-dismiss";
 import type { Priority, Project } from "@/types/task";
 
 const PRIORITY_FILTERS: { value: Priority | "all"; label: string }[] = [
@@ -36,6 +37,7 @@ export function KanbanToolbar({
   panelExtras,
 }: KanbanToolbarProps) {
   const [panelOpen, setPanelOpen] = useState(false);
+  useBackDismiss(panelOpen, () => setPanelOpen(false));
   const activeFilters = (priorityFilter !== "all" ? 1 : 0) + (projectFilter !== "all" ? 1 : 0);
 
   return (

@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const {
     theme, setTheme,
     colorMode, setColorMode,
-    customAccent, accentFromContext, pureBlack, fontScale, reduceMotion, updateAppearance,
+    customAccent, accentFromContext, pureBlack, fontScale, reduceMotion, haptics, updateAppearance,
     visualConfig, updateVisualConfig,
     hourFormat, setHourFormat,
     defaultPage, setDefaultPage,
@@ -177,6 +177,12 @@ export default function SettingsPage() {
             description="Quita animaciones y transiciones."
             checked={reduceMotion}
             onCheckedChange={(checked) => updateAppearance({ reduceMotion: checked })}
+          />
+          <SettingSwitch
+            label="Vibración"
+            description="Vibración corta al completar o borrar (en el teléfono)."
+            checked={haptics}
+            onCheckedChange={(checked) => updateAppearance({ haptics: checked })}
           />
           <SettingSwitch
             label="Modo compacto"

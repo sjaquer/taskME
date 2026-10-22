@@ -6,6 +6,7 @@ import { format, addDays, startOfWeek, isSameDay, getDay } from "date-fns";
 import { es } from "date-fns/locale";
 import { Inbox } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
+import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser } from "@/firebase/provider";
@@ -138,6 +139,7 @@ export default function SchedulePage() {
 
   const handleDeleteRoutine = (routineId: string) => {
     const deletedRoutine = routines.find((routine) => routine.id === routineId);
+    haptic(25);
     deleteRoutine(firestore, user.uid, routineId);
     if (!deletedRoutine) {
       toast({ title: "Rutina eliminada", variant: "warning" });

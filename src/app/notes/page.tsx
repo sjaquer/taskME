@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
+import { VoiceButton } from "@/components/forms/voice-button";
 import { Field, FormPanel, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useAppContextStore } from "@/lib/store";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useActiveContext, useNotes } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
+import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { noteSchema } from "@/lib/schemas";
 import { createNote, updateNote, deleteNote } from "@/services/note-service";
@@ -98,6 +100,7 @@ export default function NotesPage() {
   const handleDelete = (noteId: string) => {
     if (!user || !firestore) return;
     const deletedNote = notes.find((note) => note.id === noteId);
+    haptic(25);
     deleteNote(firestore, user.uid, noteId);
     if (!deletedNote) {
       toast({ variant: "warning", title: "Nota eliminada" });
@@ -146,7 +149,17 @@ export default function NotesPage() {
             </Select>
           </Field>
 
-          <Field label="Contenido">
+          <Field
+            label={
+              <span className="flex items-center justify-between">
+                Contenido
+                <VoiceButton
+                  onText={(text) => setForm((current) => ({ ...current, content: current.content ? `${current.content} ${text}` : text }))}
+                  className="h-7 w-7"
+                />
+              </span>
+            }
+          >
             <Textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}

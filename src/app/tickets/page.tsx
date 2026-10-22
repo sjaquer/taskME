@@ -23,6 +23,7 @@ import { useFirestore, useUser } from "@/firebase/provider";
 import { useContexts, useProjects, useTasks } from "@/firebase/user-data";
 import { useAppContextStore } from "@/lib/store";
 import { toast } from "@/hooks/use-toast";
+import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { getDueMeta, isTaskStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
@@ -189,6 +190,7 @@ function TicketsPageContent() {
   const handleDelete = (ticketId: string) => {
     if (!user || !firestore) return;
     const deletedTicket = tickets.find((ticket) => ticket.id === ticketId);
+    haptic(25);
     deleteTask(firestore, user.uid, ticketId);
     if (!deletedTicket) {
       toast({ variant: "warning", title: "Ticket eliminado" });
@@ -203,6 +205,7 @@ function TicketsPageContent() {
 
   const handleMove = (ticketId: string, status: string) => {
     if (!user || !firestore || !isTaskStatus(status)) return;
+    haptic();
     updateTask(firestore, user.uid, ticketId, { status });
     toast({ variant: "success", title: "Estado actualizado" });
   };
