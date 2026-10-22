@@ -17,7 +17,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { AppContext, Priority, Task } from '@/types/task';
+import type { AppContext, Priority } from '@/types/task';
 import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
@@ -73,12 +73,6 @@ export async function cleanupCompletedTasks(
   return staleDocs.length;
 }
 
-// Los tickets siempre viven en el contexto 'Trabajo'; se filtra en memoria
-// sobre el resultado de buildTasksQuery para evitar un índice compuesto extra.
-export function buildTicketsQuery(firestore: Firestore, userId: string) {
-  return buildTasksQuery(firestore, userId, 'Trabajo');
-}
-
 export interface TaskInput {
   title: string;
   description?: string;
@@ -132,8 +126,4 @@ export function deleteTasks(firestore: Firestore, userId: string, taskIds: strin
 
 export function completeTask(firestore: Firestore, userId: string, taskId: string) {
   updateTask(firestore, userId, taskId, { status: 'Hecho' });
-}
-
-export function filterTickets(tasks: Task[]): Task[] {
-  return tasks.filter((task) => task.isTicket);
 }
