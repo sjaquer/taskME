@@ -52,9 +52,10 @@ export function ClientShell({ children }: { children: ReactNode }) {
   );
 }
 
-// Mismo criterio que la pantalla de login: invitado o email verificado.
+// App personal: se entra con la sesión de la dueña (obtenida con el PIN).
+// Las sesiones anónimas de versiones anteriores ya no dan acceso.
 function canEnterApp(user: ReturnType<typeof useUser>['user']) {
-  return !!user && (user.isAnonymous || user.emailVerified);
+  return !!user && !user.isAnonymous;
 }
 
 function ShellRouter({ children }: { children: ReactNode }) {

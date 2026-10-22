@@ -12,7 +12,8 @@ export function getUserSettingsRef(firestore: Firestore, userId: string) {
   return doc(firestore, 'users', userId, 'settings', 'app');
 }
 
-export async function logoutUser(auth: Auth) {
+/** Cierra la sesión de este dispositivo: la próxima vez pedirá el PIN. */
+export async function lockDevice(auth: Auth) {
   await signOut(auth);
 }
 

@@ -42,6 +42,7 @@ export default defineConfig({
         FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
         FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
         OWNER_UID: 'e2e-owner',
+        APP_PIN: '2468',
       },
     },
   ],

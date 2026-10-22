@@ -2,16 +2,15 @@
 
 import { useState } from "react";
 import {
-  Bell, Check, Compass, Info, Fingerprint, Layers, LogOut, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
+  Bell, Check, Compass, Info, Layers, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUser, useAuth, useFirestore } from "@/firebase";
+import { useUser, useFirestore } from "@/firebase";
 import { useAppContextStore } from "@/lib/store";
 import type { AppTheme, HourFormat, TaskRetentionPeriod } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
-import { logoutUser } from "@/services/user-service";
 import { cleanupCompletedTasks } from "@/services/task-service";
 import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
@@ -41,7 +40,6 @@ const FONT_SCALES = [
 
 export default function SettingsPage() {
   const { user } = useUser();
-  const auth = useAuth();
   const firestore = useFirestore();
   const {
     theme, setTheme,
@@ -54,11 +52,6 @@ export default function SettingsPage() {
   } = useAppContextStore();
 
   const [isCleaning, setIsCleaning] = useState(false);
-
-  const handleLogout = async () => {
-    await logoutUser(auth);
-    window.location.href = "/login";
-  };
 
   const handleCleanupNow = async () => {
     if (!user) return;
@@ -80,20 +73,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-8 pb-12">
-      <div className="flex items-center justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <h2 className="text-2xl font-black tracking-tight md:text-3xl">Ajustes</h2>
-          {user?.email && (
-            <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
-              <Fingerprint className="h-3.5 w-3.5 shrink-0 text-primary/60" />
-              <span className="truncate font-data">{user.email}</span>
-            </p>
-          )}
-        </div>
-        <Button onClick={handleLogout} variant="outline" className="shrink-0 gap-2 rounded-xl text-xs font-bold">
-          <LogOut className="h-4 w-4" /> Salir
-        </Button>
-      </div>
+      <h2 className="text-2xl font-black tracking-tight md:text-3xl">Ajustes</h2>
 
       <SettingsSection id="contextos" icon={<Layers className="h-3.5 w-3.5 text-primary" />} title="Contextos">
         <ContextsManager />

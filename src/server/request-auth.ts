@@ -16,7 +16,7 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
   const bearerPrefix = 'Bearer ';
 
   if (!authHeader.startsWith(bearerPrefix)) {
-    throw new RequestAuthError('Falta el token Bearer de Firebase. Inicia sesión otra vez.', 401);
+    throw new RequestAuthError('Falta el token Bearer de Firebase. Desbloquea la app otra vez.', 401);
   }
 
   const token = authHeader.slice(bearerPrefix.length).trim();
@@ -24,6 +24,17 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
     throw new RequestAuthError('El token Bearer de Firebase está vacío o es inválido.', 401);
   }
 
+  const uid = await verifyTokenUid(token);
+
+  // App personal: solo la dueña (OWNER_UID) puede usar la API.
+  const ownerUid = process.env.OWNER_UID?.trim();
+  if (ownerUid && uid !== ownerUid) {
+    throw new RequestAuthError('Esta app es personal: tu sesión no tiene acceso.', 403);
+  }
+  return uid;
+}
+
+async function verifyTokenUid(token: string): Promise<string> {
   try {
     const decoded = await adminAuth.verifyIdToken(token, true);
     return decoded.uid;
@@ -37,11 +48,9 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
         const parts = token.split('.');
         if (parts.length === 3) {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
-          if (payload) {
-            const uid = payload.uid || payload.user_id || payload.sub;
-            if (typeof uid === 'string' && uid) {
-              return uid;
-            }
+          const uid = payload?.uid || payload?.user_id || payload?.sub;
+          if (typeof uid === 'string' && uid) {
+            return uid;
           }
         }
       } catch (decodeErr) {
@@ -50,6 +59,6 @@ export async function requireUserIdFromRequest(req: NextRequest): Promise<string
     }
 
     console.error('Authentication verification failed:', err instanceof Error ? err.message : err);
-    throw new RequestAuthError('No se pudo validar tu sesión de Firebase.', 401);
+    throw new RequestAuthError('No se pudo validar tu sesión. Desbloquea la app otra vez.', 401);
   }
 }

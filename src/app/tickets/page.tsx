@@ -11,7 +11,7 @@ import { PublicTicketForm } from "@/components/tickets/public-ticket-form";
  */
 export default function TicketsPublicPage() {
   const { user } = useUser();
-  const isOwnerSession = !!user && (user.isAnonymous || user.emailVerified);
+  const isOwnerSession = !!user && !user.isAnonymous;
 
   return (
     <div className="min-h-[100dvh] w-full px-4 pb-12 pt-[calc(2rem+env(safe-area-inset-top))]">

@@ -1,15 +1,23 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const PROJECT_ID = 'demo-taskme';
+const OWNER_UID = 'e2e-owner';
+const PIN = '2468'; // APP_PIN de playwright.config.ts
 const ownerHeaders = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' };
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-/** Entra como invitado (usuario nuevo y vacío en cada test). */
-async function loginAsGuest(page: Page) {
+/** Borra todos los datos del emulador: cada test parte de cero (incluye intentos de PIN). */
+async function resetEmulatorData() {
+  await fetch(`http://127.0.0.1:8080/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`, { method: 'DELETE' });
+}
+
+/** Desbloquea la app con el PIN (no hay cuentas: se entra como la dueña). */
+async function unlock(page: Page) {
   await page.goto('/login');
-  await page.getByRole('button', { name: /invitado/i }).click();
+  await page.getByLabel('PIN').fill(PIN);
+  await page.getByRole('button', { name: 'Desbloquear' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
 }
 
@@ -27,29 +35,66 @@ async function addTask(page: Page, title: string) {
 
 const taskForm = (page: Page) => page.locator('div.glass-card-elevated', { has: page.getByRole('heading', { name: /tarea$/ }) });
 
-/** Documentos de una subcolección del usuario actual, leídos del emulador. */
-async function readUserCollection(page: Page, collection: string) {
-  const uid = await page.evaluate(
-    () =>
-      new Promise<string>((resolve) => {
-        const request = indexedDB.open('firebaseLocalStorageDb');
-        request.onsuccess = () => {
-          const all = request.result.transaction('firebaseLocalStorage', 'readonly').objectStore('firebaseLocalStorage').getAll();
-          all.onsuccess = () => resolve(all.result.find((row) => row.value?.uid)?.value.uid);
-        };
-      })
-  );
+/** Documentos de una subcolección de la dueña, leídos del emulador. */
+async function readUserCollection(collection: string) {
   const response = await fetch(
-    `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${uid}/${collection}`,
+    `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${OWNER_UID}/${collection}`,
     { headers: ownerHeaders }
   );
   const body = (await response.json()) as { documents?: { fields: Record<string, { stringValue?: string }> }[] };
   return (body.documents ?? []).map((doc) => doc.fields);
 }
 
-test.describe('con sesión', () => {
+test.beforeEach(async () => {
+  await resetEmulatorData();
+});
+
+test.describe('acceso con PIN', () => {
+  test('PIN incorrecto muestra error; el correcto desbloquea y queda recordado', async ({ page }) => {
+    await page.goto('/kanban');
+    await expect(page).toHaveURL(/\/login$/);
+    await page.getByLabel('PIN').fill('0000');
+    await page.getByRole('button', { name: 'Desbloquear' }).click();
+    await expect(page.getByRole('alert')).toHaveText('PIN incorrecto.');
+    await page.getByLabel('PIN').fill(PIN);
+    await page.getByRole('button', { name: 'Desbloquear' }).click();
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'));
+    await page.reload();
+    await page.goto('/kanban');
+    await expect(page.getByLabel('Título de la nueva tarea')).toBeVisible();
+  });
+
+  test('tras 5 intentos fallidos se bloquea, incluso con el PIN correcto', async ({ page }) => {
+    await page.goto('/login');
+    for (let attempt = 0; attempt < 5; attempt++) {
+      await page.getByLabel('PIN').fill(`99${attempt}9`);
+      await page.getByRole('button', { name: 'Desbloquear' }).click();
+      await expect(page.getByRole('alert')).toHaveText('PIN incorrecto.');
+    }
+    await page.getByLabel('PIN').fill(PIN);
+    await page.getByRole('button', { name: 'Desbloquear' }).click();
+    await expect(page.getByRole('alert')).toHaveText(/Demasiados intentos/);
+  });
+
+  test('"Bloquear este dispositivo" vuelve a pedir el PIN', async ({ page }) => {
+    await unlock(page);
+    await page.goto('/settings');
+    await page.getByRole('button', { name: 'Bloquear este dispositivo' }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await page.goto('/kanban');
+    await expect(page).toHaveURL(/\/login$/);
+  });
+
+  test('ya no existen registro, invitado ni login con Google', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByRole('button', { name: /invitado|google|registr|crear cuenta/i })).toHaveCount(0);
+    await expect(page.getByRole('textbox', { name: /correo|email/i })).toHaveCount(0);
+  });
+});
+
+test.describe('con la app desbloqueada', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsGuest(page);
+    await unlock(page);
   });
 
   test('la página se desplaza con el dedo', async ({ page }) => {
@@ -98,15 +143,16 @@ test.describe('con sesión', () => {
     }
     await form.getByRole('button', { name: 'Crear tarea' }).click();
 
-    await expect(page.getByText('Hoy · 23:59')).toBeVisible();
+    await expect(page.getByText('Hoy · 23:59', { exact: true })).toBeVisible();
     await page.getByText('0/2 subtareas').click();
     await page.getByRole('button', { name: 'Luz' }).click();
     await expect(page.getByText('1/2 subtareas')).toBeVisible();
 
     await page.getByRole('button', { name: 'Completar "Pagar servicios"' }).first().click();
-    await expect(page.getByText('Mañana · 23:59')).toBeVisible();
+    // exact: el aviso también menciona la fecha ("Próxima: Mañana · 23:59.").
+    await expect(page.getByText('Mañana · 23:59', { exact: true })).toBeVisible();
 
-    await expect.poll(async () => (await readUserCollection(page, 'tasks')).filter((t) => t.title.stringValue === 'Pagar servicios').length).toBe(2);
+    await expect.poll(async () => (await readUserCollection('tasks')).filter((t) => t.title.stringValue === 'Pagar servicios').length).toBe(2);
   });
 
   test('quitar la fecha al editar la elimina del documento', async ({ page }) => {
@@ -121,7 +167,7 @@ test.describe('con sesión', () => {
     await form.locator('input[type=date]').fill('');
     await form.getByRole('button', { name: 'Guardar cambios' }).click();
     await expect
-      .poll(async () => (await readUserCollection(page, 'tasks')).find((t) => t.title.stringValue === 'Tarea con fecha'))
+      .poll(async () => (await readUserCollection('tasks')).find((t) => t.title.stringValue === 'Tarea con fecha'))
       .toEqual(expect.not.objectContaining({ dueDate: expect.anything() }));
   });
 
@@ -226,7 +272,7 @@ test.describe('con sesión', () => {
   });
 });
 
-test.describe('sin sesión', () => {
+test.describe('sin desbloquear', () => {
   test('el formulario público envía un ticket a la cuenta dueña', async ({ page }) => {
     await page.goto('/tickets');
     await expect(page.getByRole('link', { name: 'Administrar tickets' })).toHaveCount(0);
@@ -237,7 +283,7 @@ test.describe('sin sesión', () => {
     await expect(page.getByRole('heading', { name: 'Solicitud enviada' })).toBeVisible();
 
     const response = await fetch(
-      `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/e2e-owner/tasks`,
+      `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${OWNER_UID}/tasks`,
       { headers: ownerHeaders }
     );
     const body = (await response.json()) as { documents?: { fields: Record<string, { stringValue?: string; booleanValue?: boolean }> }[] };
@@ -246,7 +292,7 @@ test.describe('sin sesión', () => {
     expect(ticket?.fields.requesterName.stringValue).toBe('Ana');
   });
 
-  test('la administración de tickets exige sesión', async ({ page }) => {
+  test('la administración de tickets exige desbloquear la app', async ({ page }) => {
     await page.goto('/tickets/admin');
     await expect(page).toHaveURL(/\/login$/);
   });

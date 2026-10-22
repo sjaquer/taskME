@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { getDocs, collection } from "firebase/firestore";
-import { useFirestore, useUser } from "@/firebase/provider";
+import { LockKeyhole } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useAuth, useFirestore, useUser } from "@/firebase/provider";
+import { lockDevice } from "@/services/user-service";
 import { getVoiceSource } from "@/lib/native-features";
 import { isNativeAndroidContainer } from "@/lib/native-bridge";
 
@@ -17,6 +20,7 @@ interface Diagnostics {
 /** Versión y estado del dispositivo, útil para revisar la integración con la APK. */
 export function AboutSection() {
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user } = useUser();
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
 
@@ -55,7 +59,13 @@ export function AboutSection() {
       ]
     : [];
 
+  const handleLock = async () => {
+    await lockDevice(auth);
+    window.location.href = "/login";
+  };
+
   return (
+    <div className="space-y-3">
     <dl className="glass-card divide-y divide-border">
       {rows.map(([label, value]) => (
         <div key={label} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -64,5 +74,11 @@ export function AboutSection() {
         </div>
       ))}
     </dl>
+      <Button onClick={handleLock} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
+        <LockKeyhole className="h-4 w-4" />
+        Bloquear este dispositivo
+      </Button>
+      <p className="text-center text-[11px] text-muted-foreground">Al volver a abrir la app te pedirá el PIN.</p>
+    </div>
   );
 }

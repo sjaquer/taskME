@@ -57,3 +57,17 @@ export async function consumeRateLimits(rules: RateLimitRule[]): Promise<boolean
     return true;
   });
 }
+
+/**
+ * Indica si alguna regla ya alcanzó su límite, sin consumir.
+ * Útil cuando solo los intentos fallidos deben contar (p. ej. el PIN).
+ */
+export async function isRateLimited(rules: RateLimitRule[]): Promise<boolean> {
+  const now = Date.now();
+  const snaps = await Promise.all(rules.map((rule) => adminDb.collection(RATE_LIMITS_COLLECTION).doc(rule.key).get()));
+  return snaps.some((snap, index) => {
+    const data = snap.data() as { windowStart?: number; count?: number } | undefined;
+    if (data?.windowStart === undefined || now - data.windowStart >= rules[index].windowMs) return false;
+    return (data.count ?? 0) >= rules[index].limit;
+  });
+}
