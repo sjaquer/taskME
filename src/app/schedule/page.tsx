@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useRoutines } from "@/firebase/user-data";
-import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +47,6 @@ export default function SchedulePage() {
   const { context } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
 
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -72,9 +70,6 @@ export default function SchedulePage() {
 
   const { data: routines } = useRoutines(context);
 
-  useEffect(() => {
-    if (!isUserLoading && !user) router.push("/login");
-  }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) return (
     <div className="max-w-2xl mx-auto space-y-6 py-4 px-0">

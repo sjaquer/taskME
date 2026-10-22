@@ -1,7 +1,7 @@
 'use client';
 
 import { type ReactNode, Suspense, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Header } from '@/components/layout/header';
 import { BottomNav } from '@/components/navigation/bottom-nav';
@@ -55,9 +55,15 @@ export function ClientShell({ children }: { children: ReactNode }) {
   );
 }
 
+// Mismo criterio que la pantalla de login: invitado o email verificado.
+function canEnterApp(user: ReturnType<typeof useUser>['user']) {
+  return !!user && (user.isAnonymous || user.emailVerified);
+}
+
 function ShellRouter({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { user } = useUser();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
 
   // Si la app se abrió directamente en otra pantalla (deep link de una notificación,
   // por ejemplo), ya no corresponde saltar a la página de inicio al visitar "/".
@@ -70,6 +76,14 @@ function ShellRouter({ children }: { children: ReactNode }) {
   // /tickets es público solo para visitantes sin sesión (crear un ticket);
   // una vez autenticado, el dueño ve el shell completo con la gestión de tickets.
   const isPublic = PUBLIC_ROUTES.includes(pathname) || (pathname === '/tickets' && !user);
+  const isAuthorized = canEnterApp(user);
+
+  // Control de sesión central para todas las rutas privadas.
+  useEffect(() => {
+    if (!isPublic && !isUserLoading && !isAuthorized) {
+      router.replace('/login');
+    }
+  }, [isPublic, isUserLoading, isAuthorized, router]);
 
   if (isPublic) {
     return (
@@ -90,6 +104,10 @@ function ShellRouter({ children }: { children: ReactNode }) {
         </main>
       </div>
     );
+  }
+
+  if (!isAuthorized) {
+    return <div className="min-h-[100dvh] w-full bg-background" aria-busy="true" />;
   }
 
   return (

@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useRef, useState } from "react";
 import { NotebookText, Plus, Pencil, Trash2, Inbox, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,6 @@ export default function NotesPage() {
   const { context } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   const formRef = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState<NoteFormState>(INITIAL_FORM);
@@ -43,9 +41,6 @@ export default function NotesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<NoteCategory | "all">("all");
 
-  useEffect(() => {
-    if (!isUserLoading && !user) router.push("/login");
-  }, [user, isUserLoading, router]);
 
   const { data: notes, isLoading } = useNotes(context);
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -276,7 +275,6 @@ export default function KanbanPage() {
   const { context } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   const formPanelRef = useRef<HTMLDivElement>(null);
 
   // Dual View Configuration
@@ -321,11 +319,6 @@ export default function KanbanPage() {
     })
   );
 
-  useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push("/login");
-    }
-  }, [user, isUserLoading, router]);
 
   const projectsById = useMemo(() => new Map(projects.map((p) => [p.id, p])), [projects]);
   const activeProjects = useMemo(() => projects.filter((p) => !p.archived), [projects]);

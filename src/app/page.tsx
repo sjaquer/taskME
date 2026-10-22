@@ -37,11 +37,8 @@ export default function Home() {
   const dashboardEnabled = activeModules.dashboard;
 
   useEffect(() => {
-    if (isUserLoading) return;
-    if (!user) {
-      router.replace("/login");
-      return;
-    }
+    // La sesión la controla el shell (AuthGate); aquí solo se decide la página de inicio.
+    if (isUserLoading || !user) return;
     if (!dashboardEnabled) {
       router.replace(defaultPage && defaultPage !== "/" ? defaultPage : "/kanban");
       return;
