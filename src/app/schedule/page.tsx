@@ -257,13 +257,13 @@ export default function SchedulePage() {
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <div className="flex items-center gap-2 text-sm font-semibold capitalize">
+        <div className="flex items-center gap-2 text-sm font-semibold">
           {format(weekStart, "d MMM", { locale: es })} – {format(addDays(weekStart, 6), "d MMM", { locale: es })}
           {!isCurrentWeek && (
             <button
               type="button"
               onClick={() => setSelectedDate(new Date())}
-              className="rounded-lg px-2 py-1 text-xs font-semibold normal-case text-primary hover:bg-primary/10"
+              className="rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
             >
               Hoy
             </button>
