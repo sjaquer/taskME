@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { NotebookText, Plus, Pencil, Trash2, Inbox, X, Loader2 } from "lucide-react";
+import { NotebookText, Plus, Pencil, Trash2, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, FormPanel, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useAppContextStore } from "@/lib/store";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useNotes } from "@/firebase/user-data";
@@ -134,30 +134,19 @@ export default function NotesPage() {
 
       {/* Formulario embebido — sin modal */}
       {formOpen && (
-        <div ref={formRef} className="glass-card-elevated border border-border rounded-3xl p-5 sm:p-6 space-y-4 w-full">
-          <div className="flex items-center justify-between border-b border-border/40 pb-3">
-            <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
-              {editingNote ? "Editar Nota" : "Nueva Nota"}
-            </h3>
-            <button type="button" onClick={closeForm} className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título</Label>
+        <FormPanel ref={formRef} title={editingNote ? "Editar Nota" : "Nueva Nota"} onClose={closeForm}>
+          <Field label="Título">
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Ej. Apuntes de la clase de hoy"
-              className="h-11 rounded-2xl border-border bg-muted/20"
+              className={fieldInputClassName}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Categoría</Label>
+          <Field label="Categoría">
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v as NoteCategory })}>
-              <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
+              <SelectTrigger className={fieldInputClassName}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="border-border bg-card">
@@ -166,30 +155,21 @@ export default function NotesPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Contenido</Label>
+          <Field label="Contenido">
             <Textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
               placeholder="Escribe tu recordatorio o apunte..."
               className="min-h-[140px] rounded-2xl border-border bg-muted/20"
             />
-          </div>
+          </Field>
 
-          <div className="pt-2 border-t border-border/40">
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="h-11 w-full rounded-2xl bg-primary text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
-            >
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              {editingNote ? "Guardar cambios" : "Crear nota"}
-            </Button>
-          </div>
-        </div>
+          <SubmitButton onClick={handleSubmit} isSaving={isSaving}>
+            {editingNote ? "Guardar cambios" : "Crear nota"}
+          </SubmitButton>
+        </FormPanel>
       )}
 
       {/* Filtro por categoría */}

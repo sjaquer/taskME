@@ -4,16 +4,15 @@ import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { format, addDays, startOfWeek, isSameDay, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { Plus, Inbox, CalendarDays, X } from "lucide-react";
+import { Plus, Inbox, CalendarDays } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useRoutines } from "@/firebase/user-data";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, FormPanel, PrioritySelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { toast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TacticalButton } from "@/components/atoms";
@@ -178,88 +177,76 @@ export default function SchedulePage() {
 
       {/* Formulario embebido (crear/editar) — sin modal */}
       {formOpen && (
-        <div className="glass-card-elevated border border-border rounded-2xl p-5 sm:p-6 space-y-4 w-full">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-black uppercase tracking-tighter">
-              {editingRoutine ? "Editar Rutina" : "Nueva Rutina"}
-            </h3>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <FormPanel title={editingRoutine ? "Editar Rutina" : "Nueva Rutina"} onClose={closeForm}>
+          <Field label="Nombre">
+            <Input
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              placeholder="Ej: Gimnasio, Estudio, Reunión..."
+              className={fieldInputClassName}
+            />
+          </Field>
 
-          <div className="space-y-1.5">
-            <Label className="text-[9px] uppercase font-black text-primary tracking-widest">Nombre</Label>
-            <Input value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Ej: Gimnasio, Estudio, Reunión..." className="bg-muted/30 border-border h-11 rounded-lg" />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[9px] uppercase font-black tracking-widest">Días de la semana</Label>
+          <Field label="Días de la semana">
             <div className="flex justify-between gap-1">
               {WEEK_DAYS.map((day) => (
-                <button key={day.value} onClick={() => setFormData((prev) => ({
-                  ...prev,
-                  recurringDays: prev.recurringDays.includes(day.value)
-                    ? prev.recurringDays.filter((d) => d !== day.value)
-                    : [...prev.recurringDays, day.value],
-                }))} className={cn(
-                  "w-9 h-9 rounded-lg text-[11px] font-black transition-all border",
-                  formData.recurringDays.includes(day.value)
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-muted/30 border-border text-muted-foreground"
-                )}>
+                <button
+                  key={day.value}
+                  type="button"
+                  aria-pressed={formData.recurringDays.includes(day.value)}
+                  onClick={() => setFormData((prev) => ({
+                    ...prev,
+                    recurringDays: prev.recurringDays.includes(day.value)
+                      ? prev.recurringDays.filter((d) => d !== day.value)
+                      : [...prev.recurringDays, day.value],
+                  }))}
+                  className={cn(
+                    "w-9 h-9 rounded-lg text-[11px] font-black transition-all border",
+                    formData.recurringDays.includes(day.value)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted/30 border-border text-muted-foreground"
+                  )}
+                >
                   {day.label}
                 </button>
               ))}
             </div>
+          </Field>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Inicio">
+              <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className={cn(fieldInputClassName, "font-data")} />
+            </Field>
+            <Field label="Fin">
+              <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className={cn(fieldInputClassName, "font-data")} />
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[9px] uppercase font-black tracking-widest">Inicio</Label>
-              <Input type="time" value={formData.startTime} onChange={(e) => setFormData({ ...formData, startTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[9px] uppercase font-black tracking-widest">Fin</Label>
-              <Input type="time" value={formData.endTime} onChange={(e) => setFormData({ ...formData, endTime: e.target.value })} className="bg-muted/30 border-border h-11 rounded-lg font-data" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[9px] uppercase font-black tracking-widest">Prioridad</Label>
-              <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v as Priority })}>
-                <SelectTrigger className="bg-muted/30 border-border h-11 rounded-lg"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="baja">Baja</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="alta">Alta</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-[9px] uppercase font-black tracking-widest">Color</Label>
+            <Field label="Prioridad">
+              <PrioritySelect value={formData.priority} onChange={(priority) => setFormData({ ...formData, priority })} />
+            </Field>
+            <Field label="Color">
               <div className="flex gap-1.5 flex-wrap pt-1">
                 {ROUTINE_COLORS.map((c) => (
-                  <button key={c.value} onClick={() => setFormData({ ...formData, color: c.value })}
-                    className={cn("w-7 h-7 rounded-full border-2 transition-all", formData.color === c.value ? "border-white scale-110" : "border-transparent opacity-60 hover:opacity-100")}
+                  <button
+                    key={c.value}
+                    type="button"
+                    aria-label={c.label}
+                    aria-pressed={formData.color === c.value}
+                    onClick={() => setFormData({ ...formData, color: c.value })}
+                    className={cn("w-7 h-7 rounded-full border-2 transition-all", formData.color === c.value ? "border-foreground scale-110" : "border-transparent opacity-60 hover:opacity-100")}
                     style={{ backgroundColor: c.value }}
                   />
                 ))}
               </div>
-            </div>
+            </Field>
           </div>
 
-          <div className="flex gap-3 pt-2">
-            <TacticalButton onClick={handleSaveRoutine} className="w-full">
-              {editingRoutine ? "Actualizar Rutina" : "Crear Rutina"}
-            </TacticalButton>
-          </div>
-        </div>
+          <SubmitButton onClick={handleSaveRoutine}>
+            {editingRoutine ? "Actualizar Rutina" : "Crear Rutina"}
+          </SubmitButton>
+        </FormPanel>
       )}
 
       {/* Day Selector */}

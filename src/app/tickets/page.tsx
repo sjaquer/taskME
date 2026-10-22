@@ -11,16 +11,14 @@ import {
   CalendarClock,
   CalendarCheck,
   UserRound,
-  Loader2,
   Inbox,
-  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Field, FormPanel, PrioritySelect, ProjectSelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useProjects, useTasks } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
@@ -251,146 +249,102 @@ function TicketsPageContent() {
 
       {/* Formulario embebido — sin modal */}
       {formOpen && (
-        <div ref={formRef} className="glass-card-elevated border border-border rounded-3xl p-5 sm:p-6 space-y-4 w-full">
-          <div className="flex items-center justify-between border-b border-border/40 pb-3">
-            <h3 className="text-lg font-black uppercase tracking-tighter text-foreground">
-              {editingTicket ? "Editar Ticket" : "Nuevo Ticket"}
-            </h3>
-            <button type="button" onClick={closeForm} className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título corto</Label>
+        <FormPanel ref={formRef} title={editingTicket ? "Editar Ticket" : "Nuevo Ticket"} onClose={closeForm}>
+          <Field label="Título corto">
             <Input
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="Ej. Ajustar reporte mensual"
-              className="h-11 rounded-2xl border-border bg-muted/20"
+              className={fieldInputClassName}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Acción que se solicita</Label>
+          <Field label="Acción que se solicita">
             <Textarea
               value={form.requestedAction}
               onChange={(e) => setForm({ ...form, requestedAction: e.target.value })}
               placeholder="¿Qué necesitas que se haga exactamente?"
               className="min-h-[80px] rounded-2xl border-border bg-muted/20"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Descripción</Label>
+          <Field label="Descripción">
             <Textarea
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
               placeholder="Contexto adicional de la tarea"
               className="min-h-[80px] rounded-2xl border-border bg-muted/20"
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Nombre de quien lo pide</Label>
+          <Field label="Nombre de quien lo pide">
             <Input
               value={form.requesterName}
               onChange={(e) => setForm({ ...form, requesterName: e.target.value })}
               placeholder="Ej. María, equipo de marketing..."
-              className="h-11 rounded-2xl border-border bg-muted/20"
+              className={fieldInputClassName}
             />
-          </div>
+          </Field>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Fecha límite</Label>
+            <Field label="Fecha límite">
               <Input
                 type="date"
                 value={form.dueDate}
                 onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-                className="h-11 rounded-2xl border-border bg-muted/20 [color-scheme:dark]"
+                className={fieldInputClassName}
               />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Fecha de revisión</Label>
+            </Field>
+            <Field label="Fecha de revisión">
               <Input
                 type="date"
                 value={form.reviewDate}
                 onChange={(e) => setForm({ ...form, reviewDate: e.target.value })}
-                className="h-11 rounded-2xl border-border bg-muted/20 [color-scheme:dark]"
+                className={fieldInputClassName}
               />
-            </div>
+            </Field>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Prioridad</Label>
-              <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as Priority })}>
-                <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-border bg-card">
-                  <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Media</SelectItem>
-                  <SelectItem value="baja">Baja</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Proyecto</Label>
-              <Select value={form.projectId || "sin-proyecto"} onValueChange={(v) => setForm({ ...form, projectId: v === "sin-proyecto" ? "" : v })}>
-                <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
-                  <SelectValue placeholder="Sin proyecto" />
-                </SelectTrigger>
-                <SelectContent className="border-border bg-card">
-                  <SelectItem value="sin-proyecto">Sin proyecto</SelectItem>
-                  {activeProjects.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Field label="Prioridad">
+              <PrioritySelect value={form.priority} onChange={(priority) => setForm({ ...form, priority })} />
+            </Field>
+            <Field label="Proyecto">
+              <ProjectSelect value={form.projectId} onChange={(projectId) => setForm({ ...form, projectId })} projects={activeProjects} />
+            </Field>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Etiquetas</Label>
+          <Field label="Etiquetas">
             <Input
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
               placeholder="cliente, urgente, diseño"
-              className="h-11 rounded-2xl border-border bg-muted/20"
+              className={fieldInputClassName}
             />
-          </div>
+          </Field>
 
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-1.5">
-              <LinkIcon className="h-3.5 w-3.5 text-primary" /> Link de referencia (opcional)
-            </Label>
+          <Field
+            label={
+              <span className="flex items-center gap-1.5">
+                <LinkIcon className="h-3.5 w-3.5 text-primary" /> Link de referencia (opcional)
+              </span>
+            }
+          >
             <Input
               value={form.referenceUrl}
               onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })}
               placeholder="https://drive.google.com/..."
-              className="h-11 rounded-2xl border-border bg-muted/20"
+              className={fieldInputClassName}
             />
             <p className="text-[10px] text-muted-foreground/70">
               Adjuntar múltiples documentos con comentario llega en una futura iteración. Por ahora puedes dejar aquí un único link de referencia.
             </p>
-          </div>
+          </Field>
 
-          <div className="pt-2 border-t border-border/40">
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSaving}
-              className="h-11 w-full rounded-2xl bg-primary text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
-            >
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-              {editingTicket ? "Guardar cambios" : "Crear ticket"}
-            </Button>
-          </div>
-        </div>
+          <SubmitButton onClick={handleSubmit} isSaving={isSaving}>
+            {editingTicket ? "Guardar cambios" : "Crear ticket"}
+          </SubmitButton>
+        </FormPanel>
       )}
 
       {/* Lista de tickets pendientes */}
@@ -565,94 +519,74 @@ function PublicTicketForm() {
           onChange={(e) => setForm({ ...form, website: e.target.value })}
           className="absolute -left-[9999px] h-0 w-0 opacity-0"
         />
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título corto</Label>
+        <Field label="Título corto">
           <Input
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
             placeholder="Ej. Ajustar reporte mensual"
-            className="h-11 rounded-2xl border-border bg-muted/20"
+            className={fieldInputClassName}
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Acción que se solicita</Label>
+        <Field label="Acción que se solicita">
           <Textarea
             value={form.requestedAction}
             onChange={(e) => setForm({ ...form, requestedAction: e.target.value })}
             placeholder="¿Qué necesitas que se haga exactamente?"
             className="min-h-[80px] rounded-2xl border-border bg-muted/20"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Descripción</Label>
+        <Field label="Descripción">
           <Textarea
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="Contexto adicional de la tarea"
             className="min-h-[80px] rounded-2xl border-border bg-muted/20"
           />
-        </div>
+        </Field>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Tu nombre</Label>
+        <Field label="Tu nombre">
           <Input
             value={form.requesterName}
             onChange={(e) => setForm({ ...form, requesterName: e.target.value })}
             placeholder="Ej. María, equipo de marketing..."
-            className="h-11 rounded-2xl border-border bg-muted/20"
+            className={fieldInputClassName}
           />
-        </div>
+        </Field>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Fecha límite</Label>
+          <Field label="Fecha límite">
             <Input
               type="date"
               value={form.dueDate}
               onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
-              className="h-11 rounded-2xl border-border bg-muted/20 [color-scheme:dark]"
+              className={fieldInputClassName}
             />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Prioridad</Label>
-            <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as Priority })}>
-              <SelectTrigger className="h-11 rounded-2xl border-border bg-muted/20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="border-border bg-card">
-                <SelectItem value="alta">Alta</SelectItem>
-                <SelectItem value="media">Media</SelectItem>
-                <SelectItem value="baja">Baja</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          </Field>
+          <Field label="Prioridad">
+            <PrioritySelect value={form.priority} onChange={(priority) => setForm({ ...form, priority })} />
+          </Field>
         </div>
 
-        <div className="space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-1.5">
-            <LinkIcon className="h-3.5 w-3.5 text-primary" /> Link de referencia (opcional)
-          </Label>
+        <Field
+          label={
+            <span className="flex items-center gap-1.5">
+              <LinkIcon className="h-3.5 w-3.5 text-primary" /> Link de referencia (opcional)
+            </span>
+          }
+        >
           <Input
             value={form.referenceUrl}
             onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })}
             placeholder="https://drive.google.com/..."
-            className="h-11 rounded-2xl border-border bg-muted/20"
+            className={fieldInputClassName}
           />
-        </div>
+        </Field>
 
-        <div className="pt-2 border-t border-border/40">
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="h-11 w-full rounded-2xl bg-primary text-[10px] font-black uppercase tracking-[0.3em] text-primary-foreground"
-          >
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-            Crear ticket
-          </Button>
-        </div>
+        <SubmitButton onClick={handleSubmit} isSaving={isSaving}>
+          Crear ticket
+        </SubmitButton>
       </div>
     </div>
   );
