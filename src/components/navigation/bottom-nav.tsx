@@ -13,7 +13,7 @@ export function BottomNav() {
   const visibleItems = getVisibleNavItems(navOrder, activeModules);
 
   return (
-    <nav className="fixed bottom-4 left-3 right-3 z-50 glass-blur gpu-blur border border-border rounded-2xl px-1.5 py-1 md:hidden transition-all duration-500 shadow-2xl pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
+    <nav aria-label="Navegación principal" className="bottom-nav fixed bottom-4 left-3 right-3 z-50 glass-blur gpu-blur border border-border rounded-2xl px-1.5 py-1 md:hidden transition-all duration-500 shadow-2xl pb-[calc(0.25rem+env(safe-area-inset-bottom))]">
       <div className="flex justify-around items-center max-w-md mx-auto h-14">
         {visibleItems.map((item) => {
           const isActive = pathname === item.href;

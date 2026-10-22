@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Pencil, Trash2, Inbox } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ export default function NotesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const formRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const [form, setForm] = useState<NoteFormState>(INITIAL_FORM);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
@@ -112,6 +114,14 @@ export default function NotesPage() {
       onUndo: () => restoreUserDocument(firestore, user.uid, "notes", deletedNote),
     });
   };
+
+  // Enlace directo (atajo "Nueva nota"): /notes?new=1
+  useEffect(() => {
+    if (!user || !new URLSearchParams(window.location.search).has("new")) return;
+    openCreateForm();
+    router.replace("/notes");
+    // openCreateForm solo cambia estado local; basta con ejecutarlo al tener sesión.
+  }, [user]);
 
   if (isUserLoading || !user) return null;
 

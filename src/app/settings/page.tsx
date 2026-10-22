@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Bell, Check, Compass, Fingerprint, Layers, LogOut, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
+  Bell, Check, Compass, Info, Fingerprint, Layers, LogOut, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ import { cleanupCompletedTasks } from "@/services/task-service";
 import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
+import { AboutSection } from "@/components/settings/about-section";
 import { Segmented, SettingRow, SettingSwitch, SettingsSection } from "@/components/settings/settings-ui";
 
 const THEME_OPTIONS: { value: Exclude<AppTheme, "custom">; label: string; color: string }[] = [
@@ -288,6 +289,10 @@ export default function SettingsPage() {
           <p className="text-[11px] text-muted-foreground">Permisos para alertas del navegador y la app Android.</p>
           <NotificationSetup className="h-10 rounded-xl text-[10px] tracking-[0.2em]" />
         </div>
+      </SettingsSection>
+
+      <SettingsSection id="acerca" icon={<Info className="h-3.5 w-3.5 text-primary" />} title="Acerca de">
+        <AboutSection />
       </SettingsSection>
     </div>
   );

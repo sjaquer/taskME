@@ -54,6 +54,7 @@ export default function KanbanPage() {
   const router = useRouter();
   const activeContext = useActiveContext();
   const formPanelRef = useRef<HTMLDivElement>(null);
+  const quickAddRef = useRef<HTMLInputElement>(null);
 
   // Firestore aplica las escrituras locales al instante (latency compensation),
   // así que no hace falta un estado optimista propio.
@@ -99,6 +100,16 @@ export default function KanbanPage() {
     [tasks]
   );
   const hasSearch = searchQuery.trim().length > 0;
+
+  // Enlaces directos (atajos del manifest): ?new=1 enfoca "Añadir tarea", ?ai=1 abre la IA.
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("new") && !params.has("ai")) return;
+    if (params.has("ai")) setAiOpen(true);
+    if (params.has("new")) requestAnimationFrame(() => quickAddRef.current?.focus());
+    router.replace("/kanban");
+  }, [user, router]);
 
   // Sin diálogo modal: el primer toque en "Limpiar Hechos" pide confirmación y el segundo borra.
   useEffect(() => {
@@ -341,6 +352,7 @@ export default function KanbanPage() {
         onOpenDetails={(title) => openTaskForm({ title })}
         aiOpen={aiOpen}
         onToggleAi={() => setAiOpen((open) => !open)}
+        inputRef={quickAddRef}
       />
 
       {aiOpen && <AiPlanner isGenerating={isGenerating} onGenerate={handleGenerateTasks} onClose={() => setAiOpen(false)} />}

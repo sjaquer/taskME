@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Ref } from "react";
 import { Plus, SlidersHorizontal, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { VoiceButton } from "@/components/forms/voice-button";
@@ -11,10 +11,11 @@ interface QuickAddBarProps {
   onOpenDetails: (title: string) => void;
   aiOpen: boolean;
   onToggleAi: () => void;
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 /** Campo único para agregar tareas: Enter crea, "Detalles" abre el formulario completo. */
-export function QuickAddBar({ onCreate, onOpenDetails, aiOpen, onToggleAi }: QuickAddBarProps) {
+export function QuickAddBar({ onCreate, onOpenDetails, aiOpen, onToggleAi, inputRef }: QuickAddBarProps) {
   const [title, setTitle] = useState("");
 
   const create = async () => {
@@ -26,6 +27,7 @@ export function QuickAddBar({ onCreate, onOpenDetails, aiOpen, onToggleAi }: Qui
     <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-muted/20 p-1.5 focus-within:border-primary/50">
       <Plus className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
       <input
+        ref={inputRef}
         value={title}
         onChange={(event) => setTitle(event.target.value)}
         onKeyDown={(event) => {

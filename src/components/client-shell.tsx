@@ -27,6 +27,7 @@ import { NotificationMonitor } from './notification-monitor';
 import { NativeBridgeProvider } from './native-bridge-provider';
 import { AppearanceManager } from './appearance-manager';
 import { SettingsSync } from './settings-sync';
+import { DeviceState } from './device-state';
 import { useUser } from '@/firebase';
 import { consumeLaunchRedirect } from '@/lib/launch-state';
 
@@ -191,6 +192,7 @@ function ClientShellInner({ children }: { children: ReactNode }) {
           </PageTransition>
         </main>
         <BottomNav />
+        <DeviceState />
       </div>
     </div>
   );
