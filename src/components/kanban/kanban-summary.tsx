@@ -1,7 +1,7 @@
 "use client";
 
 import { LayoutGrid, List } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 
 export type KanbanViewMode = "flow" | "board";
 
@@ -39,8 +39,8 @@ export function KanbanSummary({
               "Sin tareas todavía"
             ) : (
               <>
-                {pending} pendientes · {inProgress} en curso
-                {critical > 0 && <span className="text-red-400"> · {critical} críticas</span>}
+                {pluralize(pending, "pendiente")} · {inProgress} en curso
+                {critical > 0 && <span className="text-red-400"> · {pluralize(critical, "crítica")}</span>}
               </>
             )}
           </p>

@@ -10,7 +10,7 @@ import { useAppContextStore } from "@/lib/store";
 import { haptic } from "@/lib/native-features";
 import { consumeLaunchRedirect } from "@/lib/launch-state";
 import { getDueMeta, timeToMinutes } from "@/lib/tasks";
-import { cn, formatTime } from "@/lib/utils";
+import { cn, formatTime, pluralize } from "@/lib/utils";
 import { setTaskStatus } from "@/services/task-service";
 import type { Priority, Routine, Task } from "@/types/task";
 
@@ -118,8 +118,8 @@ export default function Home() {
             `Todo al día en ${activeContext.name}.`
           ) : (
             <>
-              {summary.openCount} pendientes en {activeContext.name}
-              {summary.overdueCount > 0 && <span className="text-red-400"> · {summary.overdueCount} vencidas</span>}
+              {pluralize(summary.openCount, "pendiente")} en {activeContext.name}
+              {summary.overdueCount > 0 && <span className="text-red-400"> · {pluralize(summary.overdueCount, "vencida")}</span>}
             </>
           )}
         </p>
