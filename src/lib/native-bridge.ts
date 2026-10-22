@@ -58,7 +58,9 @@ export async function callNativeBridge(
   payload: Record<string, unknown> = {},
   timeoutMs = DEFAULT_TIMEOUT_MS
 ): Promise<NativeBridgeResponse> {
-  if (!isNativeAndroidContainer()) {
+  // Las APK que solo exponen window.AndroidNative no soportan el protocolo
+  // request/response; sin este chequeo la llamada esperaría hasta el timeout.
+  if (typeof window === 'undefined' || typeof window.AndroidBridge?.postMessage !== 'function') {
     throw new Error('Native bridge unavailable');
   }
 
@@ -84,6 +86,6 @@ export async function callNativeBridge(
     });
   });
 
-  window.AndroidBridge?.postMessage(JSON.stringify(request));
+  window.AndroidBridge.postMessage(JSON.stringify(request));
   return promise;
 }

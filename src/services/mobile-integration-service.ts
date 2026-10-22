@@ -58,9 +58,28 @@ export async function markNotificationAsRead(user: User, notificationId: string)
   return response.ok;
 }
 
+/**
+ * Registra un token FCM entregado por la APK (callback window.onNativeTokenReceived).
+ * La APK actual no expone información del dispositivo por este canal.
+ */
+export async function registerAndroidPushToken(user: User, pushToken: string) {
+  const payload: DeviceRegistrationPayload = {
+    platform: 'android',
+    pushToken,
+    ...buildClientLocaleData(),
+  };
+  const response = await postWithAuth(user, '/api/v1/devices/register', payload);
+  return response.ok;
+}
+
 export async function registerNativeAndroidDevice(user: User) {
   if (!isNativeAndroidContainer()) {
     return { ok: false, reason: 'not-native-container' } as const;
+  }
+
+  if (typeof window.AndroidBridge?.postMessage !== 'function') {
+    // APK con interfaz AndroidNative: el token llega por window.onNativeTokenReceived.
+    return { ok: false, reason: 'legacy-native-interface' } as const;
   }
 
   initializeNativeBridgeListener();

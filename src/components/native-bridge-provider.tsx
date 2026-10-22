@@ -1,55 +1,57 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAuth, useUser } from '@/firebase';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
-import { toast } from '@/hooks/use-toast';
+import { useEffect, useRef } from 'react';
+import { useUser } from '@/firebase';
+import { registerAndroidPushToken } from '@/services/mobile-integration-service';
 
 /**
  * Proveedor global que escucha eventos enviados por la APK nativa
- * y los sincroniza con Firebase o el estado de la web.
+ * y los sincroniza con el backend o el estado de la web.
  */
 export function NativeBridgeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
-  const firestore = useFirestore();
+  // La APK puede entregar el token antes de que exista sesión; se guarda hasta entonces.
+  const pendingTokenRef = useRef<string | null>(null);
+  const registeredRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. Escuchar Token de Notificaciones (FCM)
-    window.onNativeTokenReceived = async (token: string) => {
-      console.log('FCM Token received from Native:', token);
-      
-      if (user && firestore) {
-        try {
-          const userRef = doc(firestore, 'users', user.uid);
-          await updateDoc(userRef, {
-            fcmToken: token,
-            lastTokenSync: serverTimestamp(),
-            platform: 'android-native'
-          });
-        } catch (err) {
-          console.error('Error saving native FCM token:', err);
-        }
-      }
+    // 1. Token de notificaciones (FCM) entregado por la APK
+    window.onNativeTokenReceived = (token: string) => {
+      if (typeof token !== 'string' || token.length < 20) return;
+      pendingTokenRef.current = token;
+      if (user) syncPendingToken(user);
     };
 
-    // 2. Escuchar resultado de Dictado por Voz (Micrófono Nativo)
-    // Este evento será capturado por los componentes que lo necesiten
-    // pero aquí podemos poner un log global o disparar un evento custom.
+    // 2. Resultado de dictado por voz (micrófono nativo), reenviado como evento
+    // para los componentes que lo necesiten.
     window.onVoiceResult = (text: string) => {
-      const event = new CustomEvent('nativeVoiceResult', { detail: text });
-      window.dispatchEvent(event);
+      window.dispatchEvent(new CustomEvent('nativeVoiceResult', { detail: text }));
     };
+
+    if (user) syncPendingToken(user);
 
     return () => {
-      if (typeof window !== 'undefined') {
-        window.onNativeTokenReceived = undefined;
-        window.onVoiceResult = undefined;
-      }
+      window.onNativeTokenReceived = undefined;
+      window.onVoiceResult = undefined;
     };
-  }, [user, firestore]);
+
+    function syncPendingToken(currentUser: NonNullable<typeof user>) {
+      const token = pendingTokenRef.current;
+      const key = `${currentUser.uid}:${token}`;
+      if (!token || registeredRef.current === key) return;
+      registeredRef.current = key;
+      registerAndroidPushToken(currentUser, token)
+        .then((ok) => {
+          if (!ok) registeredRef.current = null;
+        })
+        .catch((err) => {
+          registeredRef.current = null;
+          console.error('Error registering native FCM token:', err);
+        });
+    }
+  }, [user]);
 
   return <>{children}</>;
 }
