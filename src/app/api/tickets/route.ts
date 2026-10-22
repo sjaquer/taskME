@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/server/firebase-admin';
+import { consumeRateLimits, getClientIpHash } from '@/server/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +18,13 @@ const publicTicketSchema = z.object({
   referenceUrl: z.string().trim().url().max(2000).optional(),
   priority: z.enum(['baja', 'media', 'alta']),
   tags: z.array(z.string()).max(5).optional(),
+  // Campo trampa: oculto en el formulario, solo lo completan los bots.
+  website: z.string().max(200).optional(),
 });
+
+const HOUR_MS = 60 * 60 * 1000;
+const MAX_TICKETS_PER_IP_PER_HOUR = 5;
+const MAX_PUBLIC_TICKETS_PER_DAY = 50;
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,6 +35,22 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = publicTicketSchema.parse(await req.json());
+
+    if (payload.website) {
+      // Respuesta exitosa para no darle pistas al bot; no se guarda nada.
+      return NextResponse.json({ ok: true });
+    }
+
+    const allowed = await consumeRateLimits([
+      { key: `public_tickets_ip_${getClientIpHash(req)}`, limit: MAX_TICKETS_PER_IP_PER_HOUR, windowMs: HOUR_MS },
+      { key: 'public_tickets_global', limit: MAX_PUBLIC_TICKETS_PER_DAY, windowMs: 24 * HOUR_MS },
+    ]);
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, error: 'Se enviaron demasiados tickets. Intenta de nuevo más tarde.', code: 'RATE_LIMIT_EXCEEDED' },
+        { status: 429 }
+      );
+    }
 
     const tasksRef = adminDb.collection('users').doc(ownerId).collection('tasks');
     const docRef = await tasksRef.add({

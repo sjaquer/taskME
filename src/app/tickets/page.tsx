@@ -551,6 +551,7 @@ const PUBLIC_INITIAL_FORM = {
   dueDate: "",
   referenceUrl: "",
   priority: "media" as Priority,
+  website: "",
 };
 
 function PublicTicketForm() {
@@ -578,14 +579,22 @@ function PublicTicketForm() {
           priority: result.data.priority,
           dueDate: result.data.dueDate || undefined,
           referenceUrl: result.data.referenceUrl || undefined,
+          website: form.website || undefined,
         }),
       });
 
-      if (!response.ok) throw new Error();
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(typeof body?.error === "string" ? body.error : "No se pudo enviar el ticket. Intenta de nuevo.");
+      }
 
       setSubmitted(true);
-    } catch {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo enviar el ticket. Intenta de nuevo." });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error && error.message ? error.message : "No se pudo enviar el ticket. Intenta de nuevo.",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -616,6 +625,17 @@ function PublicTicketForm() {
       </div>
 
       <div className="glass-card-elevated border border-border rounded-3xl p-5 sm:p-6 space-y-4 w-full">
+        {/* Campo trampa anti-spam: invisible para personas */}
+        <input
+          type="text"
+          name="website"
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          value={form.website}
+          onChange={(e) => setForm({ ...form, website: e.target.value })}
+          className="absolute -left-[9999px] h-0 w-0 opacity-0"
+        />
         <div className="space-y-2">
           <Label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">Título corto</Label>
           <Input
