@@ -5,8 +5,10 @@ Cada regla existe por una razón concreta; si deja de aplicar, bórrala.
 
 ## Qué es
 
-TaskMe es una app **personal** de productividad (una sola cuenta dueña): tablero Kanban, horario de rutinas,
-tickets (pedidos de terceros, también por formulario público), notas y ajustes de personalización.
+TaskMe es una app **100 % personal: una sola persona, sin cuentas ni varios usuarios**. Se desbloquea con un
+PIN (`APP_PIN`) por dispositivo y todos los datos viven en `users/{OWNER_UID}`. No agregues registro, login,
+perfiles ni nada multiusuario. Módulos: tablero Kanban, horario de rutinas, tickets (pedidos de terceros por
+el formulario público `/tickets`; gestión en `/tickets/admin`), notas y personalización.
 Se usa sobre todo **dentro de una APK Android que la carga en un WebView**.
 
 ## Stack
@@ -37,8 +39,8 @@ NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_FIREBASE_EMULATORS=true npx next dev -p 9127
 firebase deploy --only firestore:rules
 ```
 
-Todavía no hay tests ni configuración de ESLint (planificado). Antes de dar un cambio por terminado,
-como mínimo `npm run typecheck` y `npm run build` deben pasar.
+Antes de dar un cambio por terminado deben pasar `npm run check` (tipos + lint + unitarios) y
+`npm run build`; si tocas reglas, `npm run test:rules`; si tocas flujos de UI, `npm run test:e2e`.
 
 ## Estructura
 
@@ -94,8 +96,9 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
   `UserDataProvider` mantiene una sola suscripción por colección; no abras `onSnapshot` nuevos en páginas.
 - **Escrituras**: usa `src/services/*`; no llames a Firestore directamente desde páginas. Firestore aplica las
   escrituras locales al instante, así que no hace falta estado optimista propio.
-- **Sesión**: la controla `ShellRouter` en `client-shell.tsx` (invitado o email verificado). Las páginas no
-  redirigen a `/login` por su cuenta.
+- **Acceso**: `/login` es la pantalla de PIN; `/api/v1/auth/pin` valida el PIN y entrega un custom token de
+  `OWNER_UID`. `ShellRouter` (`client-shell.tsx`) protege las rutas privadas y `requireUserIdFromRequest`
+  rechaza en la API cualquier uid distinto de `OWNER_UID`. Las páginas no redirigen por su cuenta.
 - **UI minimalista**: cada página usa `PageHeader` (título + una línea de resumen + acción compacta);
   herramientas secundarias van plegadas (filtros, menús "⋯"), no a la vista.
 - **Formularios**: arma los formularios con `src/components/forms/form-fields.tsx` (FormPanel, Field,
@@ -107,4 +110,4 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ## Plan de mejoras
 
 Se trabaja por fases: 0 bugs → 1 base de código → 2 personalización (incluye contextos creados por el
-usuario) → 3 integración WebView → 4 mejoras por página → 5 tests y lint. Fases 0 a 4 completadas; queda la 5 (tests y lint).
+usuario) → 3 integración WebView → 4 mejoras por página → 5 tests y lint. Todas completadas.

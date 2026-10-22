@@ -56,14 +56,34 @@ FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 
-# UID de la cuenta dueña: destino de los tickets enviados por el formulario público
+# App personal (una sola persona, sin cuentas):
+# UID de Firebase de la dueña: todos los datos viven en users/{OWNER_UID}
 OWNER_UID=
+# PIN para desbloquear la app en cada dispositivo (mínimo 4 caracteres; solo en el servidor)
+APP_PIN=
 
 # IA (Gemini)
 GEMINI_API_KEY=
 # Opcional: modelo a usar (por defecto googleai/gemini-flash-latest)
 GEMINI_MODEL=
 ```
+
+### Acceso con PIN (sin cuentas)
+
+No hay registro ni inicio de sesión: la primera vez en cada dispositivo se escribe el PIN y la sesión
+queda recordada (Ajustes → Acerca de → "Bloquear este dispositivo" la cierra). El servidor valida el PIN,
+bloquea tras 5 intentos fallidos en 15 minutos y entrega un token de Firebase para entrar como `OWNER_UID`;
+la API rechaza cualquier otro usuario.
+
+Para producción (Firebase App Hosting):
+
+1. Define `APP_PIN` y `OWNER_UID` en el backend (por ejemplo como secretos:
+   `firebase apphosting:secrets:set APP_PIN`).
+2. El servidor firma el token con su cuenta de servicio: dale el rol
+   **Service Account Token Creator** (`roles/iam.serviceAccountTokenCreator`) a la cuenta de servicio del
+   backend, o configura `FIREBASE_CLIENT_EMAIL` / `FIREBASE_PRIVATE_KEY`.
+3. Recomendado: en Firebase Console → Authentication, desactiva los proveedores que ya no se usan
+   (correo/contraseña, Google, anónimo). El acceso por PIN no los necesita.
 
 Las reglas de seguridad están en `firestore.rules` y se despliegan aparte de la web:
 
@@ -75,8 +95,21 @@ firebase deploy --only firestore:rules
 
 ```bash
 firebase emulators:start --only auth,firestore
-NEXT_PUBLIC_FIREBASE_EMULATORS=true npm run dev   # entra como invitado
+NEXT_PUBLIC_FIREBASE_EMULATORS=true FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+  FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 APP_PIN=1234 OWNER_UID=yo npm run dev
 ```
+
+## Tests
+
+```bash
+npm run check       # tipos + lint + tests unitarios
+npm test            # tests unitarios (Vitest)
+npm run test:rules  # firestore.rules contra el emulador
+npm run test:e2e    # de punta a punta con Playwright (levanta emuladores y un servidor aislado)
+```
+
+Los tests de punta a punta usan un proyecto `demo-` en los emuladores: nunca tocan datos reales. El de la
+IA llama a Gemini de verdad y solo corre con `E2E_AI=1`.
 
 ## Scripts
 
@@ -85,6 +118,7 @@ npm run dev         # servidor de desarrollo (puerto 9002)
 npm run build       # build de producción
 npm run start       # servir el build
 npm run typecheck   # chequeo de tipos
+npm run lint        # ESLint
 ```
 
 ## Estructura
@@ -104,6 +138,7 @@ docs/            especificación del puente WebView ↔ Android
 
 | Ruta | Auth | Uso |
 |---|---|---|
+| `POST /api/v1/auth/pin` | pública (con límite) | validar el PIN y obtener la sesión de la dueña |
 | `POST /api/tickets` | pública (con límite) | crear ticket desde el formulario público |
 | `POST /api/v1/ai/tasks` | Bearer | generar tareas desde texto |
 | `POST /api/v1/devices/register` | Bearer | registrar token push de un dispositivo |
@@ -111,7 +146,7 @@ docs/            especificación del puente WebView ↔ Android
 | `POST /api/v1/notifications/{id}/opened` · `/read` | Bearer | marcar notificación |
 | `POST /api/v1/events/mobile-log` | Bearer | telemetría mínima de la app |
 
-Las rutas Bearer esperan `Authorization: Bearer <Firebase ID token>`.
+Las rutas Bearer esperan `Authorization: Bearer <Firebase ID token>` de la dueña (`OWNER_UID`).
 
 ## Licencia
 
