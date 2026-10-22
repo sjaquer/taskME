@@ -197,3 +197,29 @@ export function sortTasks<T extends SortableTask>(tasks: T[], sort: TaskSort): T
   };
   return [...tasks].sort(comparators[sort]);
 }
+
+/** "HH:mm" → minutos desde medianoche, o null si no es válido. */
+export function timeToMinutes(time: string | undefined): number | null {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return null;
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Rutinas que comparten algún día y se superponen en horario con `candidate`
+ * (se ignora la propia rutina al editarla).
+ */
+export function findOverlappingRoutines<
+  T extends { id: string; startTime: string; endTime: string; recurringDays: number[] }
+>(candidate: { id?: string; startTime: string; endTime: string; recurringDays: number[] }, routines: T[]): T[] {
+  const start = timeToMinutes(candidate.startTime);
+  const end = timeToMinutes(candidate.endTime);
+  if (start === null || end === null) return [];
+  return routines.filter((routine) => {
+    if (routine.id === candidate.id) return false;
+    if (!routine.recurringDays?.some((day) => candidate.recurringDays.includes(day))) return false;
+    const otherStart = timeToMinutes(routine.startTime);
+    const otherEnd = timeToMinutes(routine.endTime);
+    return otherStart !== null && otherEnd !== null && start < otherEnd && otherStart < end;
+  });
+}

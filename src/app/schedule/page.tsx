@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { format, addDays, startOfWeek, isSameDay, getDay } from "date-fns";
 import { es } from "date-fns/locale";
-import { Inbox } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox } from "lucide-react";
 import { useAppContextStore } from "@/lib/store";
 import { haptic } from "@/lib/native-features";
 import { cn } from "@/lib/utils";
 import { routineSchema } from "@/lib/schemas";
+import { findOverlappingRoutines } from "@/lib/tasks";
 import { useFirestore, useUser } from "@/firebase/provider";
 import { useActiveContext, useRoutines } from "@/firebase/user-data";
 import { Input } from "@/components/ui/input";
@@ -65,8 +66,9 @@ export default function SchedulePage() {
     setFormOpen(false);
   }, [context]);
 
-  const startDate = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const days = [...Array(14)].map((_, i) => addDays(startDate, i));
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const days = [...Array(7)].map((_, i) => addDays(weekStart, i));
+  const isCurrentWeek = isSameDay(weekStart, startOfWeek(new Date(), { weekStartsOn: 1 }));
 
   const { data: routines } = useRoutines(context);
 
@@ -109,9 +111,19 @@ export default function SchedulePage() {
       createRoutine(firestore, user.uid, routineData);
     }
 
+    // Se guarda igual, pero se avisa si choca con otra rutina del mismo contexto.
+    const overlapping = findOverlappingRoutines({ ...routineData, id: editingRoutine?.id }, routines);
     resetForm();
     setFormOpen(false);
-    toast({ variant: "success", title: editingRoutine ? "Rutina actualizada" : "Rutina creada" });
+    if (overlapping.length > 0) {
+      toast({
+        variant: "warning",
+        title: editingRoutine ? "Rutina actualizada, con choque de horario" : "Rutina creada, con choque de horario",
+        description: `Se superpone con: ${overlapping.map((routine) => routine.title).join(", ")}.`,
+      });
+    } else {
+      toast({ variant: "success", title: editingRoutine ? "Rutina actualizada" : "Rutina creada" });
+    }
   };
 
   const openCreateForm = () => {
@@ -235,13 +247,45 @@ export default function SchedulePage() {
         </FormPanel>
       )}
 
+      {/* Semana */}
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => setSelectedDate((date) => addDays(date, -7))}
+          aria-label="Semana anterior"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-2 text-sm font-semibold capitalize">
+          {format(weekStart, "d MMM", { locale: es })} – {format(addDays(weekStart, 6), "d MMM", { locale: es })}
+          {!isCurrentWeek && (
+            <button
+              type="button"
+              onClick={() => setSelectedDate(new Date())}
+              className="rounded-lg px-2 py-1 text-xs font-semibold normal-case text-primary hover:bg-primary/10"
+            >
+              Hoy
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setSelectedDate((date) => addDays(date, 7))}
+          aria-label="Semana siguiente"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-border text-muted-foreground hover:text-foreground"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
+
       {/* Day Selector */}
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+      <div className="grid grid-cols-7 gap-1.5">
         {days.map((day) => {
           const isSelected = isSameDay(day, selectedDate);
           return (
             <button key={day.toString()} type="button" aria-pressed={isSelected} onClick={() => setSelectedDate(day)} className={cn(
-              "flex-shrink-0 w-14 py-2.5 rounded-2xl flex flex-col items-center gap-0.5 transition-colors border",
+              "py-2.5 rounded-2xl flex flex-col items-center gap-0.5 transition-colors border",
               isSelected
                 ? "bg-primary/15 text-primary border-primary/50"
                 : "border-border text-foreground hover:bg-muted/30"
@@ -249,7 +293,7 @@ export default function SchedulePage() {
               <span className={cn("text-[10px] uppercase font-bold tracking-wide", isSelected ? "text-primary/80" : "text-muted-foreground/60")}>
                 {format(day, "EEE", { locale: es })}
               </span>
-              <span className="text-lg font-black font-data">{format(day, "d")}</span>
+              <span className={cn("text-lg font-black font-data", isSameDay(day, new Date()) && !isSelected && "text-primary")}>{format(day, "d")}</span>
             </button>
           );
         })}

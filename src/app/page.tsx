@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAppContextStore } from "@/lib/store";
 import { haptic } from "@/lib/native-features";
 import { consumeLaunchRedirect } from "@/lib/launch-state";
-import { getDueMeta } from "@/lib/tasks";
+import { getDueMeta, timeToMinutes } from "@/lib/tasks";
 import { cn, formatTime } from "@/lib/utils";
 import { setTaskStatus } from "@/services/task-service";
 import type { Priority, Routine, Task } from "@/types/task";
@@ -22,12 +22,6 @@ function getGreeting(date: Date) {
   if (hour < 12) return "Buenos días";
   if (hour < 19) return "Buenas tardes";
   return "Buenas noches";
-}
-
-function toMinutes(time: string | undefined) {
-  if (!time) return null;
-  const [hours, minutes] = time.split(":").map(Number);
-  return Number.isNaN(hours) || Number.isNaN(minutes) ? null : hours * 60 + minutes;
 }
 
 export default function Home() {
@@ -92,8 +86,8 @@ export default function Home() {
     return routines
       .filter((routine) => routine.recurringDays?.includes(day))
       .map((routine) => {
-        const start = toMinutes(routine.startTime) ?? 0;
-        const end = toMinutes(routine.endTime) ?? start;
+        const start = timeToMinutes(routine.startTime) ?? 0;
+        const end = timeToMinutes(routine.endTime) ?? start;
         return { routine, start, end, isNow: nowMinutes >= start && nowMinutes < end, isPast: nowMinutes >= end };
       })
       .sort((a, b) => a.start - b.start);
