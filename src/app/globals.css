@@ -254,9 +254,11 @@
   .safe-top {
     padding-top: env(safe-area-inset-top);
   }
+  /* Margen lateral mínimo de 1rem, mayor si el dispositivo tiene notch.
+     (Antes reemplazaba al px-4 del contenedor y dejaba el contenido pegado al borde.) */
   .safe-x {
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
   }
   .safe-y {
     padding-top: env(safe-area-inset-top);

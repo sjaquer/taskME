@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragEndEvent,
@@ -14,11 +15,12 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useAppContextStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
 import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase/provider";
-import { useProjects, useTasks } from "@/firebase/user-data";
+import { useActiveContext, useProjects, useTasks } from "@/firebase/user-data";
 import { createTask, deleteTask, deleteTasks, updateTask } from "@/services/task-service";
 import { createProject, updateProject, archiveProject } from "@/services/project-service";
 import { restoreUserDocument, restoreUserDocuments } from "@/services/restore-service";
@@ -27,12 +29,12 @@ import { toastWithUndo } from "@/components/undo-toast";
 import { TaskFormPanel, type TaskFormState } from "@/components/kanban/task-form-panel";
 import { ProjectManager } from "@/components/kanban/project-manager";
 import { StatusSection } from "@/components/kanban/status-section";
-import { KanbanHeader } from "@/components/kanban/kanban-header";
-import { KanbanToolbar, type KanbanViewMode } from "@/components/kanban/kanban-toolbar";
-import { QuickCapture, type QuickCaptureDraft } from "@/components/kanban/quick-capture";
+import { KanbanSummary, type KanbanViewMode } from "@/components/kanban/kanban-summary";
+import { KanbanToolbar } from "@/components/kanban/kanban-toolbar";
+import { QuickAddBar } from "@/components/kanban/quick-add-bar";
 import { AiPlanner } from "@/components/kanban/ai-planner";
 import { KanbanColumn } from "@/components/organisms/kanban-column";
-import type { Priority, ProjectFormData, Task } from "@/types/task";
+import type { Priority, ProjectFormData, Task, TaskStatus } from "@/types/task";
 
 const INITIAL_TASK_FORM: TaskFormState = {
   title: "",
@@ -48,6 +50,8 @@ export default function KanbanPage() {
   const { context } = useAppContextStore();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
+  const activeContext = useActiveContext();
   const formPanelRef = useRef<HTMLDivElement>(null);
 
   // Firestore aplica las escrituras locales al instante (latency compensation),
@@ -65,6 +69,7 @@ export default function KanbanPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [confirmClearCompleted, setConfirmClearCompleted] = useState(false);
 
   const sensors = useSensors(
@@ -87,6 +92,7 @@ export default function KanbanPage() {
       total: tasks.length,
       completed: tasks.filter((task) => task.status === "Hecho").length,
       inProgress: tasks.filter((task) => task.status === "Haciendo").length,
+      pending: tasks.filter((task) => task.status === "Pendiente").length,
       critical: tasks.filter((task) => task.priority === "alta" && task.status !== "Hecho").length,
     }),
     [tasks]
@@ -134,7 +140,7 @@ export default function KanbanPage() {
   };
 
   /** Valida y guarda; devuelve false si la validación falla. */
-  const saveTask = (draft: TaskFormState, taskToUpdate: Task | null): boolean => {
+  const saveTask = (draft: TaskFormState, taskToUpdate: Task | null, { silent = false } = {}): boolean => {
     const result = taskSchema.safeParse({
       title: draft.title,
       description: draft.description,
@@ -156,7 +162,7 @@ export default function KanbanPage() {
       toast({ variant: "success", title: "Tarea actualizada" });
     } else {
       createTask(firestore, user.uid, result.data);
-      toast({ variant: "success", title: "Tarea creada" });
+      if (!silent) toast({ variant: "success", title: "Tarea creada" });
     }
     return true;
   };
@@ -170,12 +176,16 @@ export default function KanbanPage() {
     }
   };
 
-  const handleQuickCreate = async (draft: QuickCaptureDraft) => {
-    if (!draft.title.trim()) {
-      toast({ variant: "destructive", title: "Falta el título", description: "Escribe una tarea corta para crearla rápido." });
-      return false;
+  // La tarea aparece al instante en la lista: no hace falta aviso.
+  const handleQuickCreate = (title: string) => saveTask({ ...INITIAL_TASK_FORM, title }, null, { silent: true });
+
+  // Los tickets tienen campos propios: se editan en su página.
+  const handleEdit = (task: Task) => {
+    if (task.isTicket) {
+      router.push(`/tickets?edit=${task.id}`);
+      return;
     }
-    return saveTask({ ...INITIAL_TASK_FORM, ...draft }, null);
+    openTaskForm(undefined, task);
   };
 
   const handleDeleteTask = (taskId: string) => {
@@ -193,10 +203,8 @@ export default function KanbanPage() {
     });
   };
 
-  const handleMoveTask = (taskId: string, status: string) => {
-    if (!isTaskStatus(status)) return;
+  const handleMoveTask = (taskId: string, status: TaskStatus) => {
     updateTask(firestore, user.uid, taskId, { status });
-    toast({ variant: "success", title: "Estado actualizado", description: `Ahora está en ${status}.` });
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
@@ -205,7 +213,7 @@ export default function KanbanPage() {
     // Se puede soltar sobre una columna (id = estado) o sobre otra tarjeta.
     const targetStatus = tasks.find((task) => task.id === overId)?.status ?? overId;
     const currentTask = tasks.find((task) => task.id === active.id);
-    if (currentTask && currentTask.status !== targetStatus) {
+    if (currentTask && currentTask.status !== targetStatus && isTaskStatus(targetStatus)) {
       handleMoveTask(currentTask.id, targetStatus);
     }
   };
@@ -302,34 +310,37 @@ export default function KanbanPage() {
     toast({ variant: "warning", title: "Proyecto archivado" });
   };
 
-  return (
-    <div className="space-y-6 pb-12 max-w-[1400px] mx-auto px-0">
-      <section className="rounded-[28px] border border-border bg-gradient-to-br from-background via-card/40 to-background p-6 shadow-md md:p-8">
-        <div className="flex flex-col gap-6">
-          <KanbanHeader {...stats} />
-          <KanbanToolbar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            priorityFilter={priorityFilter}
-            onPriorityFilterChange={setPriorityFilter}
-            projectFilter={projectFilter}
-            onProjectFilterChange={setProjectFilter}
-            projects={activeProjects}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            onNewTask={() => openTaskForm()}
-            onClearCompleted={handleClearCompleted}
-            confirmClearCount={confirmClearCompleted ? stats.completed : null}
-          />
-        </div>
-      </section>
+  const clearCompletedButton = (
+    <button
+      type="button"
+      onClick={handleClearCompleted}
+      className={cn(
+        "flex h-8 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-colors",
+        confirmClearCompleted ? "bg-red-500/10 text-red-400" : "text-muted-foreground hover:text-red-400"
+      )}
+    >
+      <Trash2 className="h-3.5 w-3.5" />
+      {confirmClearCompleted ? `¿Borrar ${stats.completed}?` : "Limpiar"}
+    </button>
+  );
 
-      <ProjectManager
-        projects={projects}
-        onCreate={handleCreateProject}
-        onUpdate={handleUpdateProject}
-        onArchive={handleArchiveProject}
+  return (
+    <div className={cn("mx-auto w-full space-y-5 pb-12", viewMode === "board" ? "max-w-[1400px]" : "max-w-3xl")}>
+      <KanbanSummary
+        contextName={activeContext.name}
+        {...stats}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
+
+      <QuickAddBar
+        onCreate={handleQuickCreate}
+        onOpenDetails={(title) => openTaskForm({ title })}
+        aiOpen={aiOpen}
+        onToggleAi={() => setAiOpen((open) => !open)}
+      />
+
+      {aiOpen && <AiPlanner isGenerating={isGenerating} onGenerate={handleGenerateTasks} onClose={() => setAiOpen(false)} />}
 
       {/* Formulario embebido de tarea (crear/editar) — sin modal */}
       {formOpen && (
@@ -348,12 +359,35 @@ export default function KanbanPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <QuickCapture isSaving={isSaving} onCreate={handleQuickCreate} onAddDetails={(draft) => openTaskForm(draft)} />
-        <AiPlanner isGenerating={isGenerating} onGenerate={handleGenerateTasks} />
-      </div>
+      <KanbanToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        priorityFilter={priorityFilter}
+        onPriorityFilterChange={setPriorityFilter}
+        projectFilter={projectFilter}
+        onProjectFilterChange={setProjectFilter}
+        projects={activeProjects}
+        panelExtras={
+          <>
+            <ProjectManager
+              projects={projects}
+              onCreate={handleCreateProject}
+              onUpdate={handleUpdateProject}
+              onArchive={handleArchiveProject}
+            />
+            {stats.completed > 0 && (
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <p className="text-xs text-muted-foreground">
+                  {stats.completed === 1 ? "1 tarea completada" : `${stats.completed} tareas completadas`}
+                </p>
+                {clearCompletedButton}
+              </div>
+            )}
+          </>
+        }
+      />
 
-      <div className="border-t border-border/40 pt-6">
+      <div>
         {isTasksLoading && visibleTasks.length === 0 ? (
           <div className="space-y-4">
             {[0, 1, 2].map((index) => (
@@ -361,17 +395,17 @@ export default function KanbanPage() {
             ))}
           </div>
         ) : visibleTasks.length === 0 ? (
-          <div className="rounded-[28px] border border-dashed border-border bg-muted/10 px-6 py-16 text-center">
+          <div className="px-6 py-14 text-center">
             <CheckCircle className="mx-auto w-12 h-12 text-muted-foreground/30 stroke-[1]" />
             <p className="mt-4 text-sm font-bold text-foreground">
               {hasSearch ? "No se encontraron tareas coincidentes." : "No hay tareas en esta categoría."}
             </p>
             <p className="mt-1.5 text-xs text-muted-foreground">
-              {hasSearch ? "Intenta con otra palabra clave." : "Crea una tarea arriba para comenzar."}
+              {hasSearch ? "Intenta con otra palabra clave." : "Escribe una en la barra de arriba para comenzar."}
             </p>
           </div>
         ) : viewMode === "flow" ? (
-          <div className="space-y-4">
+          <div className="space-y-2">
             {TASK_STATUSES.map((status) => (
               <StatusSection
                 key={status}
@@ -379,9 +413,10 @@ export default function KanbanPage() {
                 tasks={groupedTasks.get(status) || []}
                 projectsById={projectsById}
                 onAdd={(presetStatus) => openTaskForm({ status: presetStatus })}
-                onEdit={(task) => openTaskForm(undefined, task)}
+                onEdit={handleEdit}
                 onDelete={handleDeleteTask}
                 onMove={handleMoveTask}
+                headerAction={status === "Hecho" && stats.completed > 0 ? clearCompletedButton : undefined}
               />
             ))}
           </div>
@@ -394,7 +429,7 @@ export default function KanbanPage() {
                   status={status}
                   tasks={groupedTasks.get(status) || []}
                   onDelete={handleDeleteTask}
-                  onEdit={(task) => openTaskForm(undefined, task)}
+                  onEdit={handleEdit}
                 />
               ))}
             </div>

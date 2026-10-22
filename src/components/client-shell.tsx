@@ -183,7 +183,7 @@ function ClientShellInner({ children }: { children: ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 z-10">
         <Header />
         <main className={cn(
-          "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] px-4 sm:px-6 md:px-8 lg:px-12 md:pb-10 max-w-7xl mx-auto w-full safe-x transition-all duration-500",
+          "flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] pb-[calc(6rem+env(safe-area-inset-bottom))] safe-x sm:px-6 md:px-8 lg:px-12 md:pb-10 max-w-7xl mx-auto w-full transition-all duration-500",
           visualConfig.compactMode ? "space-y-4" : "space-y-8"
         )}>
           <PageTransition pathname={pathname} className="w-full h-full flex flex-col">

@@ -1,18 +1,15 @@
 "use client";
 
-import { LayoutGrid, List, Plus, Search } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useState, type ReactNode } from "react";
+import { Filter, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Priority, Project } from "@/types/task";
 
-export type KanbanViewMode = "flow" | "board";
-
-const PRIORITY_FILTERS: { value: Priority | "all"; label: string; activeClassName: string }[] = [
-  { value: "all", label: "Todas", activeClassName: "bg-primary/20 text-primary border border-primary/30" },
-  { value: "alta", label: "Alta", activeClassName: "bg-red-500/20 text-red-300 border border-red-500/30" },
-  { value: "media", label: "Media", activeClassName: "bg-amber-500/20 text-amber-300 border border-amber-500/30" },
-  { value: "baja", label: "Baja", activeClassName: "bg-blue-500/20 text-blue-300 border border-blue-500/30" },
+const PRIORITY_FILTERS: { value: Priority | "all"; label: string }[] = [
+  { value: "all", label: "Todas" },
+  { value: "alta", label: "Alta" },
+  { value: "media", label: "Media" },
+  { value: "baja", label: "Baja" },
 ];
 
 interface KanbanToolbarProps {
@@ -23,15 +20,11 @@ interface KanbanToolbarProps {
   projectFilter: string;
   onProjectFilterChange: (value: string) => void;
   projects: Project[];
-  viewMode: KanbanViewMode;
-  onViewModeChange: (mode: KanbanViewMode) => void;
-  onNewTask: () => void;
-  onClearCompleted: () => void;
-  /** Cantidad de tareas hechas cuando se está pidiendo confirmar la limpieza. */
-  confirmClearCount: number | null;
+  /** Contenido extra del panel de filtros (gestión de proyectos, limpieza, etc.). */
+  panelExtras?: ReactNode;
 }
 
-/** Búsqueda, filtros, cambio de vista y acciones generales del tablero. */
+/** Buscador siempre visible; filtros y herramientas secundarias en un panel plegable. */
 export function KanbanToolbar({
   searchQuery,
   onSearchChange,
@@ -40,130 +33,106 @@ export function KanbanToolbar({
   projectFilter,
   onProjectFilterChange,
   projects,
-  viewMode,
-  onViewModeChange,
-  onNewTask,
-  onClearCompleted,
-  confirmClearCount,
+  panelExtras,
 }: KanbanToolbarProps) {
-  const viewButtonClassName =
-    "flex-1 sm:flex-none justify-center h-11 md:h-10 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-widest px-5 md:px-4 transition-all gap-1.5 active:scale-95";
+  const [panelOpen, setPanelOpen] = useState(false);
+  const activeFilters = (priorityFilter !== "all" ? 1 : 0) + (projectFilter !== "all" ? 1 : 0);
 
   return (
-    <>
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center border-t border-border/40 pt-5">
-        <div className="flex flex-col sm:flex-row gap-3 flex-1">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/50" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => onSearchChange(event.target.value)}
-              placeholder="Buscar por palabra clave o etiqueta..."
-              className="h-12 rounded-2xl border-border bg-muted/20 pl-11 text-base sm:text-sm focus-visible:ring-primary"
-            />
-          </div>
-
-          <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-2xl border border-border overflow-x-auto scrollbar-hide">
-            {PRIORITY_FILTERS.map((filter) => (
-              <Button
-                key={filter.value}
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-pressed={priorityFilter === filter.value}
-                onClick={() => onPriorityFilterChange(filter.value)}
-                className={cn(
-                  "h-11 md:h-9 rounded-xl text-xs md:text-[10px] font-black uppercase tracking-wider px-4 md:px-3 shrink-0 transition-all active:scale-95",
-                  priorityFilter === filter.value ? filter.activeClassName : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {filter.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div className="flex w-full sm:w-auto bg-muted/40 p-1 rounded-2xl border border-border">
-            <Button
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
+          <input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Buscar"
+            aria-label="Buscar tareas"
+            className="h-10 w-full rounded-xl border border-border bg-transparent pl-9 pr-8 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-primary/50"
+          />
+          {searchQuery && (
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              aria-pressed={viewMode === "flow"}
-              onClick={() => onViewModeChange("flow")}
-              className={cn(viewButtonClassName, viewMode === "flow" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}
+              aria-label="Borrar búsqueda"
+              onClick={() => onSearchChange("")}
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:text-foreground"
             >
-              <List className="w-3.5 h-3.5" />
-              Lista
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-pressed={viewMode === "board"}
-              onClick={() => onViewModeChange("board")}
-              className={cn(viewButtonClassName, viewMode === "board" ? "bg-primary text-primary-foreground shadow" : "text-muted-foreground")}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              Tablero
-            </Button>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onNewTask}
-            className="h-12 w-full sm:w-auto rounded-2xl border-border bg-muted/10 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest hover:bg-muted/20 active:scale-95 transition-all"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva Tarea
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClearCompleted}
-            className="h-12 w-full sm:w-auto rounded-2xl border-red-500/20 hover:border-red-500/40 bg-red-500/5 px-5 text-xs md:text-[10px] font-black uppercase tracking-widest text-red-400 hover:bg-red-500/10 active:scale-95 transition-all"
-          >
-            {confirmClearCount !== null ? `¿Borrar ${confirmClearCount} hechas? Toca otra vez` : "Limpiar Hechos"}
-          </Button>
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => setPanelOpen((open) => !open)}
+          aria-expanded={panelOpen}
+          aria-label={activeFilters > 0 ? `Filtros (${activeFilters} activos)` : "Filtros"}
+          className={cn(
+            "flex h-10 shrink-0 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-colors",
+            panelOpen || activeFilters > 0 ? "border-primary/40 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Filter className="h-4 w-4" />
+          <span className="hidden sm:inline">Filtros</span>
+          {activeFilters > 0 && (
+            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
+              {activeFilters}
+            </span>
+          )}
+        </button>
       </div>
 
-      {projects.length > 0 && (
-        <div className="flex items-center gap-1 flex-wrap bg-muted/30 p-1 rounded-2xl border border-border">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-pressed={projectFilter === "all"}
-            onClick={() => onProjectFilterChange("all")}
-            className={cn(
-              "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all",
-              projectFilter === "all" ? "bg-primary/20 text-primary border border-primary/30" : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Todos los proyectos
-          </Button>
-          {projects.map((project) => (
-            <Button
-              key={project.id}
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-pressed={projectFilter === project.id}
-              onClick={() => onProjectFilterChange(project.id)}
-              className={cn(
-                "h-9 rounded-xl text-[10px] font-black uppercase tracking-wider px-3 transition-all gap-1.5",
-                projectFilter === project.id ? "bg-muted/60 border border-border text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: project.color }} />
-              {project.name}
-            </Button>
-          ))}
+      {panelOpen && (
+        <div className="space-y-4 rounded-2xl border border-border bg-muted/10 p-3">
+          <ChipGroup label="Prioridad">
+            {PRIORITY_FILTERS.map((filter) => (
+              <Chip key={filter.value} active={priorityFilter === filter.value} onClick={() => onPriorityFilterChange(filter.value)}>
+                {filter.label}
+              </Chip>
+            ))}
+          </ChipGroup>
+
+          {projects.length > 0 && (
+            <ChipGroup label="Proyecto">
+              <Chip active={projectFilter === "all"} onClick={() => onProjectFilterChange("all")}>
+                Todos
+              </Chip>
+              {projects.map((project) => (
+                <Chip key={project.id} active={projectFilter === project.id} onClick={() => onProjectFilterChange(project.id)}>
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: project.color }} />
+                  {project.name}
+                </Chip>
+              ))}
+            </ChipGroup>
+          )}
+
+          {panelExtras}
         </div>
       )}
-    </>
+    </div>
+  );
+}
+
+function ChipGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</p>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+        active ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   );
 }

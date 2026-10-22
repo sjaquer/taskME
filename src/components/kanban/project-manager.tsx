@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, FolderKanban, Pencil, Archive, Plus, X } from 'lucide-react';
+import { FolderKanban, Pencil, Archive, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Project, ProjectFormData } from '@/types/task';
 
@@ -59,32 +58,21 @@ export function ProjectManager({ projects, onCreate, onUpdate, onArchive, isSavi
   };
 
   return (
-    <details className="group rounded-[28px] border border-border bg-card/50 shadow-sm" open={visibleProjects.length > 0}>
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 md:px-5">
-        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        <div className="min-w-0 flex-1 flex items-center gap-2">
-          <FolderKanban className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Proyectos</h3>
-          <Badge variant="outline" className="rounded-full border-border bg-muted/40 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            {visibleProjects.length}
-          </Badge>
-        </div>
-        <Button
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+          <FolderKanban className="h-3.5 w-3.5" /> Proyectos
+        </p>
+        <button
           type="button"
-          size="sm"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            openCreateForm();
-          }}
-          className="h-8 rounded-xl bg-primary/10 px-3 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/20"
+          onClick={openCreateForm}
+          className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
         >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Nuevo
-        </Button>
-      </summary>
+          <Plus className="h-3.5 w-3.5" /> Nuevo
+        </button>
+      </div>
 
-      <div className="space-y-4 px-4 pb-5 md:px-5">
+      <div className="space-y-3">
         {formOpen && (
           <div className="rounded-2xl border border-border bg-muted/10 p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -180,6 +168,6 @@ export function ProjectManager({ projects, onCreate, onUpdate, onArchive, isSavi
           )
         )}
       </div>
-    </details>
+    </div>
   );
 }

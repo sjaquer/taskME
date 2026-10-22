@@ -1,198 +1,164 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, ChevronDown, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CalendarDays, Check, ChevronDown, MoreHorizontal, Pencil, Plus, Ticket, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { TASK_STATUSES, getDueMeta, getPriorityMeta } from "@/lib/tasks";
-import type { Project, Task } from "@/types/task";
+import { TASK_STATUSES, getDueMeta } from "@/lib/tasks";
+import type { Priority, Project, Task, TaskStatus } from "@/types/task";
 
-// Vista "Lista": tareas agrupadas por estado en secciones plegables.
+const PRIORITY_DOT: Record<Priority, string> = {
+  alta: "bg-red-500",
+  media: "bg-amber-500",
+  baja: "bg-blue-500",
+};
 
-function TaskRow({
-  task,
-  project,
-  onEdit,
-  onDelete,
-  onMove,
-}: {
+interface TaskRowProps {
   task: Task;
   project?: Project;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
-  onMove: (taskId: string, status: string) => void;
-}) {
-  const dueMeta = getDueMeta(task.dueDate);
-  const priorityMeta = getPriorityMeta(task.priority);
+  onMove: (taskId: string, status: TaskStatus) => void;
+}
+
+/** Fila compacta: círculo para completar, título, metadatos y menú de acciones. */
+function TaskRow({ task, project, onEdit, onDelete, onMove }: TaskRowProps) {
+  const dueMeta = task.status === "Hecho" ? null : getDueMeta(task.dueDate);
+  const isDone = task.status === "Hecho";
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border bg-card/70 p-4 shadow-[0_1px_0_rgba(255,255,255,0.02)] transition-all",
-        dueMeta?.isOverdue && "border-red-500/25 bg-red-500/[0.04]",
-        dueMeta?.isUrgent && !dueMeta?.isOverdue && "border-amber-500/25 bg-amber-500/[0.04]"
-      )}
-    >
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className={cn("rounded-full text-[10px] font-black uppercase tracking-widest", priorityMeta.className)}>
-              {priorityMeta.label}
-            </Badge>
-            {task.isTicket && (
-              <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest border-primary/30 bg-primary/10 text-primary">
-                <Ticket className="mr-1 h-3 w-3" />
-                Ticket
-              </Badge>
-            )}
-            {project && (
-              <Badge variant="outline" className="rounded-full text-[10px] font-black uppercase tracking-widest border-border bg-muted/30 text-muted-foreground">
-                <span className="mr-1.5 h-2 w-2 rounded-full inline-block" style={{ backgroundColor: project.color }} />
-                {project.name}
-              </Badge>
-            )}
-            {dueMeta && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "rounded-full text-[10px] font-black uppercase tracking-widest",
-                  dueMeta.isOverdue
-                    ? "border-red-500/30 bg-red-500/10 text-red-300"
-                    : dueMeta.isUrgent
-                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                      : "border-border bg-muted/40 text-muted-foreground"
-                )}
-              >
-                <CalendarDays className="mr-1 h-3 w-3" />
-                {dueMeta.label}
-              </Badge>
-            )}
-          </div>
+    <div className="group flex items-start gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-muted/20">
+      <button
+        type="button"
+        onClick={() => onMove(task.id, isDone ? "Pendiente" : "Hecho")}
+        aria-label={isDone ? `Marcar "${task.title}" como pendiente` : `Completar "${task.title}"`}
+        className={cn(
+          "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+          isDone ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary"
+        )}
+      >
+        {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
+      </button>
 
-          <div className="space-y-1">
-            <h4 className="text-[15px] font-black leading-tight tracking-tight text-foreground">{task.title}</h4>
-            {task.description && <p className="text-sm leading-relaxed text-muted-foreground">{task.description}</p>}
-            {task.isTicket && task.requesterName && (
-              <p className="text-xs font-bold text-primary/70">Solicitado por {task.requesterName}</p>
-            )}
-          </div>
-
-          {task.tags && task.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {task.tags.slice(0, 4).map((tag) => (
-                <span
-                  key={`${task.id}-${tag}`}
-                  className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground"
-                >
-                  {tag}
-                </span>
-              ))}
-              {task.tags.length > 4 && (
-                <span className="pt-1 text-[10px] font-black text-muted-foreground/50">+{task.tags.length - 4}</span>
+      <button type="button" onClick={() => onEdit(task)} className="min-w-0 flex-1 text-left">
+        <p className={cn("text-sm font-semibold leading-snug", isDone && "text-muted-foreground line-through")}>{task.title}</p>
+        {task.description && !isDone && (
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{task.description}</p>
+        )}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className={cn("h-1.5 w-1.5 rounded-full", PRIORITY_DOT[task.priority])} />
+            {task.priority}
+          </span>
+          {dueMeta && (
+            <span
+              className={cn(
+                "flex items-center gap-1",
+                dueMeta.isOverdue ? "font-semibold text-red-400" : dueMeta.isUrgent && "text-amber-400"
               )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2 lg:min-w-[200px] lg:items-end">
-          <Select value={task.status} onValueChange={(value) => onMove(task.id, value)}>
-            <SelectTrigger className="h-9 w-full rounded-xl border-border bg-muted/30 text-[10px] font-black uppercase tracking-widest lg:w-[200px]">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent className="border-border bg-card">
-              {TASK_STATUSES.map((status) => (
-                <SelectItem key={`${task.id}-${status}`} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-2">
-            {task.isTicket ? (
-              <Link
-                href={`/tickets?edit=${task.id}`}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary"
-              >
-                <Pencil className="h-4 w-4" />
-              </Link>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => onEdit(task)}
-                className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-primary"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onDelete(task.id)}
-              className="h-9 w-9 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:text-red-400"
             >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-muted-foreground/50">{task.status}</p>
+              <CalendarDays className="h-3 w-3" />
+              {dueMeta.label}
+            </span>
+          )}
+          {project && (
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: project.color }} />
+              {project.name}
+            </span>
+          )}
+          {task.isTicket && (
+            <span className="flex items-center gap-1 text-primary/80">
+              <Ticket className="h-3 w-3" />
+              {task.requesterName || "Ticket"}
+            </span>
+          )}
+          {task.tags?.slice(0, 2).map((tag) => (
+            <span key={tag}>#{tag}</span>
+          ))}
         </div>
-      </div>
+      </button>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={`Acciones de "${task.title}"`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48 rounded-2xl border-border bg-card p-1.5">
+          {task.isTicket ? (
+            <DropdownMenuItem asChild className="rounded-xl">
+              <Link href={`/tickets?edit=${task.id}`}>
+                <Pencil className="mr-2 h-4 w-4" /> Editar ticket
+              </Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => onEdit(task)} className="rounded-xl">
+              <Pencil className="mr-2 h-4 w-4" /> Editar
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mover a</DropdownMenuLabel>
+          {TASK_STATUSES.filter((status) => status !== task.status).map((status) => (
+            <DropdownMenuItem key={status} onSelect={() => onMove(task.id, status)} className="rounded-xl">
+              {status}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => onDelete(task.id)} className="rounded-xl text-red-400 focus:text-red-400">
+            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
 
-export function StatusSection({
-  status,
-  tasks,
-  projectsById,
-  onAdd,
-  onEdit,
-  onDelete,
-  onMove,
-}: {
-  status: string;
+interface StatusSectionProps {
+  status: TaskStatus;
   tasks: Task[];
   projectsById: Map<string, Project>;
-  onAdd: (status: string) => void;
+  onAdd: (status: TaskStatus) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
-  onMove: (taskId: string, status: string) => void;
-}) {
+  onMove: (taskId: string, status: TaskStatus) => void;
+  /** Acción extra en el encabezado (p. ej. "Limpiar" en Hecho). */
+  headerAction?: React.ReactNode;
+}
+
+/** Vista "Lista": tareas de un estado en una sección plegable. */
+export function StatusSection({ status, tasks, projectsById, onAdd, onEdit, onDelete, onMove, headerAction }: StatusSectionProps) {
   return (
-    <details open={status !== "Hecho"} className="group rounded-[28px] border border-border bg-card/50 shadow-sm">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 md:px-5">
-        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-muted-foreground/60">Estado</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-black tracking-tight text-foreground">{status}</h3>
-            <Badge variant="outline" className="rounded-full border-border bg-muted/40 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              {tasks.length}
-            </Badge>
-          </div>
+    <details open={status !== "Hecho"} className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-2 py-2">
+        <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-0 -rotate-90" />
+        <h3 className="text-sm font-bold text-foreground">{status}</h3>
+        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <div className="ml-auto flex items-center gap-1">
+          {headerAction}
+          <button
+            type="button"
+            aria-label={`Nueva tarea en ${status}`}
+            onClick={(event) => {
+              event.preventDefault();
+              onAdd(status);
+            }}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-primary"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onAdd(status);
-          }}
-          className="h-8 rounded-xl bg-primary/10 px-3 text-[10px] font-black uppercase tracking-widest text-primary hover:bg-primary/20"
-        >
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          Nueva
-        </Button>
       </summary>
 
-      <div className="space-y-3 px-4 pb-4 md:px-5">
+      <div className="pb-2">
         {tasks.length > 0 ? (
           tasks.map((task) => (
             <TaskRow
@@ -205,10 +171,7 @@ export function StatusSection({
             />
           ))
         ) : (
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
-            <p className="text-sm font-semibold text-muted-foreground">No hay tareas aquí.</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">Agrega una tarea o mueve una desde otro estado.</p>
-          </div>
+          <p className="px-2 py-3 text-xs text-muted-foreground/70">Nada por aquí.</p>
         )}
       </div>
     </details>

@@ -15,7 +15,7 @@ export function Header() {
 
   return (
     <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 glass-blur gpu-blur px-4 safe-top safe-x flex items-center justify-between border-b border-border min-h-16 transition-all duration-300",
+      "fixed top-0 left-0 right-0 z-50 glass-blur gpu-blur safe-top safe-x flex items-center justify-between border-b border-border min-h-16 transition-all duration-300",
       state === "expanded" ? "md:left-[16rem]" : "md:left-[3rem]"
     )}>
       <div className="flex items-center gap-3">
