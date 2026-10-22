@@ -14,7 +14,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useAppContextStore } from "@/lib/store";
-import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { MAX_TAGS_PER_TASK, TASK_STATUSES, filterTasks, isTaskStatus, groupTasksByStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { taskSchema } from "@/lib/schemas";
 import { toast } from "@/hooks/use-toast";
 import { useFirestore, useUser } from "@/firebase/provider";
@@ -32,7 +32,7 @@ import { KanbanToolbar, type KanbanViewMode } from "@/components/kanban/kanban-t
 import { QuickCapture, type QuickCaptureDraft } from "@/components/kanban/quick-capture";
 import { AiPlanner } from "@/components/kanban/ai-planner";
 import { KanbanColumn } from "@/components/organisms/kanban-column";
-import type { Priority, ProjectFormData, Task, TaskStatus } from "@/types/task";
+import type { Priority, ProjectFormData, Task } from "@/types/task";
 
 const INITIAL_TASK_FORM: TaskFormState = {
   title: "",
@@ -43,10 +43,6 @@ const INITIAL_TASK_FORM: TaskFormState = {
   dueDate: "",
   projectId: "",
 };
-
-function isTaskStatus(value: string): value is TaskStatus {
-  return (TASK_STATUSES as readonly string[]).includes(value);
-}
 
 export default function KanbanPage() {
   const { context } = useAppContextStore();

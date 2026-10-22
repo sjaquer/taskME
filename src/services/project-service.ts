@@ -48,7 +48,7 @@ export function updateProject(
   firestore: Firestore,
   userId: string,
   projectId: string,
-  data: Record<string, unknown>
+  data: Partial<{ name: string; category: string; color: string; archived: boolean }>
 ) {
   const docRef = getProjectDocRef(firestore, userId, projectId);
   updateDocumentNonBlocking(docRef, {

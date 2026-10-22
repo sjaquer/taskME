@@ -24,19 +24,17 @@ function getRoutineDocRef(firestore: Firestore, userId: string, routineId: strin
   return doc(firestore, 'users', userId, 'routines', routineId);
 }
 
-export function createRoutine(
-  firestore: Firestore,
-  userId: string,
-  data: {
-    title: string;
-    startTime: string;
-    endTime: string;
-    recurringDays: number[];
-    priority: Priority;
-    context: AppContext;
-    color?: string;
-  }
-) {
+export interface RoutineInput {
+  title: string;
+  startTime: string;
+  endTime: string;
+  recurringDays: number[];
+  priority: Priority;
+  context: AppContext;
+  color?: string;
+}
+
+export function createRoutine(firestore: Firestore, userId: string, data: RoutineInput) {
   const colRef = getUserRoutinesRef(firestore, userId);
   return addDocumentNonBlocking(colRef, {
     ...data,
@@ -50,7 +48,7 @@ export function updateRoutine(
   firestore: Firestore,
   userId: string,
   routineId: string,
-  data: Record<string, unknown>
+  data: Partial<RoutineInput>
 ) {
   const docRef = getRoutineDocRef(firestore, userId, routineId);
   updateDocumentNonBlocking(docRef, {

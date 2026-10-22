@@ -17,7 +17,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
 } from '@/firebase/non-blocking-updates';
-import type { AppContext, Priority } from '@/types/task';
+import type { AppContext, Priority, TaskStatus } from '@/types/task';
 import type { TaskRetentionPeriod } from '@/lib/store';
 
 // ── TASKS (Kanban + Tickets) ───────────────────────────────
@@ -70,7 +70,7 @@ export interface TaskInput {
   title: string;
   description?: string;
   priority: Priority;
-  status: string;
+  status: TaskStatus;
   tags?: string[];
   dueDate?: string;
   context: AppContext;
@@ -96,7 +96,7 @@ export function updateTask(
   firestore: Firestore,
   userId: string,
   taskId: string,
-  data: Record<string, unknown>
+  data: Partial<TaskInput>
 ) {
   const docRef = getTaskDocRef(firestore, userId, taskId);
   updateDocumentNonBlocking(docRef, {

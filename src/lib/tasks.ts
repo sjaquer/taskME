@@ -4,6 +4,10 @@ import type { Priority, TaskStatus } from '@/types/task';
 // Estados fijos: el Kanban nunca admite estados personalizados adicionales.
 export const TASK_STATUSES: readonly TaskStatus[] = ['Pendiente', 'Haciendo', 'Hecho'];
 
+export function isTaskStatus(value: string): value is TaskStatus {
+  return (TASK_STATUSES as readonly string[]).includes(value);
+}
+
 export const PRIORITIES: readonly Priority[] = ['alta', 'media', 'baja'];
 
 export const MAX_TAGS_PER_TASK = 5;

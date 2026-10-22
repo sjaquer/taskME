@@ -23,7 +23,7 @@ import { useFirestore, useUser } from "@/firebase/provider";
 import { useProjects, useTasks } from "@/firebase/user-data";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { getDueMeta, parseTagInput, toInputDateValue } from "@/lib/tasks";
+import { getDueMeta, isTaskStatus, parseTagInput, toInputDateValue } from "@/lib/tasks";
 import { publicTicketFormSchema, ticketFormSchema } from "@/lib/schemas";
 import { createTask, deleteTask, updateTask } from "@/services/task-service";
 import { restoreUserDocument } from "@/services/restore-service";
@@ -198,7 +198,7 @@ function TicketsPageContent() {
   };
 
   const handleMove = (ticketId: string, status: string) => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !isTaskStatus(status)) return;
     updateTask(firestore, user.uid, ticketId, { status });
     toast({ variant: "success", title: "Estado actualizado" });
   };
