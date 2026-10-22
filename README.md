@@ -16,7 +16,9 @@ Android (WebView) y también desde el navegador.
 - **Ajustes**: módulos visibles, tema y modo de color, efectos visuales, página de inicio, limpieza de
   tareas completadas y notificaciones.
 
-Todo se organiza por **contexto** (`Trabajo` / `Estudio`), seleccionable desde la cabecera.
+Todo se organiza por **contextos** (Trabajo y Estudio de fábrica, más los que crees en Ajustes, con
+nombre, color e icono), seleccionables desde la cabecera. Las preferencias (tema, acento, modo
+Oscuro/Claro/Sistema, negro puro, tamaño de texto, navegación) se sincronizan entre dispositivos.
 
 ## Tecnologías
 
@@ -57,7 +59,18 @@ GEMINI_API_KEY=
 GEMINI_MODEL=
 ```
 
-Las reglas de seguridad están en `firestore.rules` (despliegue con `firebase deploy --only firestore`).
+Las reglas de seguridad están en `firestore.rules` y se despliegan aparte de la web:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+### Probar con emuladores (sin tocar el proyecto real)
+
+```bash
+firebase emulators:start --only auth,firestore
+NEXT_PUBLIC_FIREBASE_EMULATORS=true npm run dev   # entra como invitado
+```
 
 ## Scripts
 

@@ -25,6 +25,13 @@ npm install
 npm run dev        # http://localhost:9002
 npm run build
 npm run typecheck  # tsc --noEmit
+
+# Probar sin tocar el proyecto real (emuladores de Auth + Firestore, valida firestore.rules):
+firebase emulators:start --only auth,firestore
+NEXT_PUBLIC_FIREBASE_EMULATORS=true npm run dev
+
+# Las reglas NO se despliegan con la web:
+firebase deploy --only firestore:rules
 ```
 
 Todavía no hay tests ni configuración de ESLint (planificado). Antes de dar un cambio por terminado,
@@ -45,7 +52,12 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ## Datos (Firestore)
 
 - Todo cuelga de `users/{uid}/…`: `tasks` (un ticket es una task con `isTicket: true`), `routines`,
-  `projects`, `notes`, `settings/app`, `devices`, `notifications`, `mobile_logs`.
+  `projects`, `notes`, `contexts`, `settings/app`, `devices`, `notifications`, `mobile_logs`.
+- **Contextos**: el campo `context` de cada documento guarda el **id** de un doc de `contexts`. Los originales
+  usan `Trabajo` y `Estudio` como id (sin migración). Nunca compares contra nombres fijos: usa
+  `useContexts()` / `useActiveContext()` y muestra `name`. Los de fábrica viven en memoria hasta el primer cambio.
+- `settings/app` se sincroniza con el store de Zustand (`SettingsSync`); si agregas una preferencia
+  sincronizada, súmala al esquema de `settings-sync.tsx` y a `isValidSettingsDoc` en las reglas.
 - `rate_limits/*` solo lo usa el servidor (Admin SDK); los clientes no tienen acceso.
 - **`firestore.rules` valida el esquema con `hasOnly([...])`**: si agregas un campo a un documento,
   agrégalo también a la regla correspondiente o la escritura será rechazada en silencio
@@ -73,6 +85,8 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
   escrituras locales al instante, así que no hace falta estado optimista propio.
 - **Sesión**: la controla `ShellRouter` en `client-shell.tsx` (invitado o email verificado). Las páginas no
   redirigen a `/login` por su cuenta.
+- **UI minimalista**: cada página usa `PageHeader` (título + una línea de resumen + acción compacta);
+  herramientas secundarias van plegadas (filtros, menús "⋯"), no a la vista.
 - **Formularios**: arma los formularios con `src/components/forms/form-fields.tsx` (FormPanel, Field,
   PrioritySelect, ProjectSelect, SubmitButton) y valida con los esquemas de `src/lib/schemas.ts`.
 - Valida con Zod todo lo que entra por `/api` y lo que devuelve la IA.
@@ -82,4 +96,4 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ## Plan de mejoras
 
 Se trabaja por fases: 0 bugs → 1 base de código → 2 personalización (incluye contextos creados por el
-usuario, hoy fijos en `Trabajo`/`Estudio`) → 3 integración WebView → 4 mejoras por página → 5 tests y lint.
+usuario) → 3 integración WebView → 4 mejoras por página → 5 tests y lint. Fases 0, 1 y 2 completadas.
