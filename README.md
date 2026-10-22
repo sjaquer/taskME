@@ -1,165 +1,99 @@
-# ⚡ TaskMe v2.0 - High-Performance Productivity System
+# ⚡ TaskMe
 
-TaskMe is a professional-grade productivity ecosystem designed with a "Cyber-Focus" aesthetic. Optimized for performance and security, it allows users to orchestrate workflows, academic routines, and personal events in a unified, persistent cloud-based interface.
+App personal de productividad con estética "Cyber-Focus": tablero Kanban, horario de rutinas, tickets,
+notas y una capa de IA para convertir texto libre en tareas. Pensada para usarse dentro de una APK
+Android (WebView) y también desde el navegador.
 
----
+## Módulos
 
-## 🇪🇸 Resumen (Español)
+- **Inicio**: resumen del contexto activo (pendientes, críticas, próxima tarea).
+- **Tablero (Kanban)**: vista lista o columnas con arrastrar y soltar, filtros por prioridad y proyecto,
+  búsqueda, proyectos, captura rápida y generación de tareas con IA (Gemini).
+- **Horario**: rutinas semanales recurrentes con indicador de progreso en vivo.
+- **Tickets**: pedidos de trabajo de terceros. Sin sesión, `/tickets` muestra un formulario público
+  (con anti-spam) que los envía a la cuenta dueña.
+- **Notas**: apuntes rápidos por categoría.
+- **Ajustes**: módulos visibles, tema y modo de color, efectos visuales, página de inicio, limpieza de
+  tareas completadas y notificaciones.
 
-TaskMe es un ecosistema de productividad diseñado bajo una estética "Cyber-Focus". Permite gestionar flujos de trabajo, rutinas académicas y eventos personales en una interfaz unificada y persistente en la nube.
+Todo se organiza por **contexto** (`Trabajo` / `Estudio`), seleccionable desde la cabecera.
 
-### Tecnologías Core
-- **Framework**: Next.js 15.5 (App Router, Turbopack)
-- **Runtime**: React 19
-- **Base de Datos**: Firebase Firestore + Admin SDK
-- **Autenticación**: Firebase Auth
-- **Estilos**: Tailwind CSS + Radix UI
-- **Estado**: Zustand
-- **IA**: Google Genkit + Generative AI
-- **Formularios**: React Hook Form + Zod
-- **Drag & Drop**: dnd-kit
-- **Animaciones**: Framer Motion
+## Tecnologías
 
----
+Next.js 15 (App Router, Turbopack) · React 19 · TypeScript · Firebase Auth + Firestore + Admin SDK ·
+Tailwind CSS + Radix UI · Zustand · Genkit + Gemini · dnd-kit · Framer Motion · Zod
 
-## 🚀 Key Features / Funcionalidades Principales
+## Puesta en marcha
 
-### 1. Process Orchestration (Kanban) / Orquestación de Procesos
-- **Dynamic Board**: Personalized state management with drag & drop. / Gestión de estados con arrastre fluido.
-- **Drag & Drop**: Built with dnd-kit for smooth interactions. / Construido con dnd-kit para interacciones fluidas.
-- **Visual Prioritization**: Dynamic task sorting and filtering. / Ordenamiento dinámico y filtrado visual.
+Requisitos: Node.js 20+ y un proyecto de Firebase con Auth y Firestore.
 
-### 2. Routine Monitor (Schedule) / Monitor de Rutinas
-- **Recurring Blocks**: Weekly schedule configuration. / Configuración de horarios semanales.
-- **Live Tracking**: Real-time progress visualization. / Seguimiento en vivo con visualización en tiempo real.
-
-### 3. Event Control (Calendar) / Control de Eventos
-- **Google Calendar Integration**: Two-way sync with Google Calendar. / Integración bidireccional con Google Calendar.
-- **React Day Picker**: Advanced calendar interactions. / Interacciones avanzadas con calendario.
-
-### 4. Intelligence Layer / Capa de Inteligencia
-- **Google Genkit**: AI-powered task suggestions and automation. / Sugerencias de tareas impulsadas por IA.
-- **Generative AI**: Contextual assistance within the app. / Asistencia contextual dentro de la aplicación.
-
-### 5. Mobile Integration / Integración Móvil
-- **Native Bridge**: Seamless webview communication. / Comunicación bidireccional con aplicaciones nativas.
-- **Notification System**: Push notifications and in-app alerts. / Notificaciones push y alertas en la aplicación.
-
----
-
-## 🛠️ Setup & Installation / Instalación
-
-### Prerequisites
-- Node.js 20+
-- Firebase Project with Firestore enabled
-- Google Cloud Console Project (for Calendar API & Generative AI)
-
-### 1. Clone the repository
-```bash
-git clone https://github.com/your-username/taskme.git
-cd taskme
-```
-
-### 2. Install dependencies
 ```bash
 npm install
+npm run dev   # http://localhost:9002
 ```
 
-### 3. Environment Variables
-Create `.env.local` with your configuration:
+### Variables de entorno (`.env.local`)
+
 ```env
-# Firebase
-NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+# Firebase (cliente)
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=
 
-# Firebase Admin (Server-side)
-FIREBASE_SERVICE_ACCOUNT_KEY=your_service_account_key_json
-# OR
-FIREBASE_PROJECT_ID=your_project_id
-FIREBASE_CLIENT_EMAIL=your_client_email
-FIREBASE_PRIVATE_KEY=your_private_key
+# Firebase Admin (servidor). Si faltan, se usan las credenciales por defecto del entorno.
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
 
-# Google Calendar
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+# UID de la cuenta dueña: destino de los tickets enviados por el formulario público
+OWNER_UID=
 
-# Google Generative AI
-GOOGLE_GENERATIVE_AI_API_KEY=your_genai_api_key
+# IA (Gemini)
+GEMINI_API_KEY=
+# Opcional: modelo a usar (por defecto googleai/gemini-flash-latest)
+GEMINI_MODEL=
 ```
 
-### 4. Run development server
-```bash
-npm run dev
-```
+Las reglas de seguridad están en `firestore.rules` (despliegue con `firebase deploy --only firestore`).
 
-The application will start at `http://localhost:9002` (configured port).
-
-### 5. Optional: Run Genkit AI Development
-```bash
-npm run genkit:dev      # Start Genkit development server
-npm run genkit:watch    # Watch mode for AI features
-```
-
----
-
-## 🏗️ Project Structure
-
-```
-src/
-├── app/                 # Next.js pages (Kanban, Calendar, Schedule, etc.)
-├── components/          # React components (Atomic design: atoms, molecules, organisms)
-├── services/           # Business logic (tasks, users, notifications)
-├── hooks/              # Custom hooks (Google Calendar, Mobile Bridge, Notifications)
-├── firebase/           # Firebase configuration and setup
-├── server/             # Server-side code (Firebase Admin, Auth)
-├── ai/                 # AI/Genkit features (Development)
-├── lib/                # Utilities and helpers
-└── types/              # TypeScript definitions
-```
-
----
-
-## 🔒 Security & Optimization / Seguridad y Optimización
-
-- **Defense in Depth**: Firestore rules for identity and schema validation.
-- **Zod Validation**: Client-side data sanitization with React Hook Form.
-- **Non-Blocking Architecture**: Optimistic UI mutations for instant feedback.
-- **Precision Queries**: Server-side filtering to minimize Firebase costs.
-- **TypeScript Strict**: Full type safety across the codebase.
-- **ESLint Configuration**: Strict linting rules enforced at build time.
-
----
-
-## 📊 Available Scripts
+## Scripts
 
 ```bash
-npm run dev              # Start Next.js dev server (Turbopack) on port 9002
-npm run genkit:dev     # Start Genkit AI development server
-npm run genkit:watch   # Watch mode for AI features
-npm run build          # Production build
-npm run start          # Start production server
-npm run typecheck      # TypeScript type checking only
-npm run lint           # Run ESLint
+npm run dev         # servidor de desarrollo (puerto 9002)
+npm run build       # build de producción
+npm run start       # servir el build
+npm run typecheck   # chequeo de tipos
 ```
 
----
+## Estructura
 
-## 🔌 API Routes
+```
+src/app/         páginas y rutas /api
+src/components/  componentes (ui, atoms, molecules, organisms, kanban, navegación)
+src/services/    acceso a Firestore por entidad
+src/firebase/    inicialización y hooks de Firestore
+src/server/      código solo de servidor (Admin SDK, auth, rate limit)
+src/lib/         store, puente nativo Android, utilidades
+src/types/       tipos del dominio
+docs/            especificación del puente WebView ↔ Android
+```
 
-The application exposes API endpoints at `/api/v1/` for server-side operations:
-- Task management
-- User data synchronization
-- Webhook integrations
-- Authentication flows
+## API
 
----
+| Ruta | Auth | Uso |
+|---|---|---|
+| `POST /api/tickets` | pública (con límite) | crear ticket desde el formulario público |
+| `POST /api/v1/ai/tasks` | Bearer | generar tareas desde texto |
+| `POST /api/v1/devices/register` | Bearer | registrar token push de un dispositivo |
+| `DELETE /api/v1/devices/{id}` | Bearer | dar de baja un dispositivo |
+| `POST /api/v1/notifications/{id}/opened` · `/read` | Bearer | marcar notificación |
+| `POST /api/v1/events/mobile-log` | Bearer | telemetría mínima de la app |
 
-## 📜 License / Licencia
+Las rutas Bearer esperan `Authorization: Bearer <Firebase ID token>`.
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+## Licencia
 
----
-*Developed for high-performance operators.*
+MIT. Ver [LICENSE](LICENSE).
