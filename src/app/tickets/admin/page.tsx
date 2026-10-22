@@ -31,7 +31,10 @@ import { haptic } from "@/lib/native-features";
 import { cn, pluralize } from "@/lib/utils";
 import { getDueMeta, isTaskStatus, parseTagInput, sortTasks, toInputDateValue } from "@/lib/tasks";
 import { ticketFormSchema } from "@/lib/schemas";
-import { createTask, deleteTask, updateTask } from "@/services/task-service";
+import { createTask, deleteTask, newTaskId, updateTask } from "@/services/task-service";
+import { scheduleAttachmentDeletion, syncAttachments, toAttachmentMeta, type AttachmentDraft } from "@/services/attachment-service";
+import { AttachmentField } from "@/components/attachments/attachment-field";
+import { AttachmentGallery } from "@/components/attachments/attachment-gallery";
 import { restoreUserDocument } from "@/services/restore-service";
 import { toastWithUndo } from "@/components/undo-toast";
 import { shareTicketFormLink } from "@/components/tickets/share-ticket-link";
@@ -48,6 +51,7 @@ interface TicketFormState {
   priority: Priority;
   tags: string;
   projectId: string;
+  attachments: AttachmentDraft[];
 }
 
 const INITIAL_FORM: TicketFormState = {
@@ -61,6 +65,7 @@ const INITIAL_FORM: TicketFormState = {
   priority: "media",
   tags: "",
   projectId: "",
+  attachments: [],
 };
 
 /** Gestión de tickets (solo con sesión). El formulario público vive en /tickets. */
@@ -139,6 +144,7 @@ function TicketsPageContent() {
       priority: ticket.priority,
       tags: ticket.tags?.join(", ") || "",
       projectId: ticket.projectId || "",
+      attachments: ticket.attachments || [],
     });
     setFormOpen(true);
     requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -172,7 +178,10 @@ function TicketsPageContent() {
   const handleSubmit = async () => {
     if (!user || !firestore) return;
 
-    const result = ticketFormSchema.safeParse(form);
+    const result = ticketFormSchema.safeParse({
+      ...form,
+      attachments: form.attachments.map(toAttachmentMeta),
+    });
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;
@@ -180,6 +189,18 @@ function TicketsPageContent() {
 
     setIsSaving(true);
     try {
+      const ticketId = editingTicket?.id ?? newTaskId(firestore, user.uid);
+      syncAttachments(
+        firestore,
+        user.uid,
+        { type: "task", id: ticketId },
+        form.attachments,
+        editingTicket?.attachments
+      ).catch((error) => {
+        console.error("Error al guardar imágenes:", error);
+        toast({ variant: "destructive", title: "Error", description: "No se pudieron guardar las imágenes." });
+      });
+
       const payload = {
         title: result.data.title,
         requestedAction: result.data.requestedAction,
@@ -190,6 +211,7 @@ function TicketsPageContent() {
         context: ticketsContext,
         isTicket: true,
         userId: user.uid,
+        attachments: result.data.attachments,
         ...(result.data.dueDate ? { dueDate: result.data.dueDate } : {}),
         ...(result.data.reviewDate ? { reviewDate: result.data.reviewDate } : {}),
         ...(result.data.referenceUrl ? { referenceUrl: result.data.referenceUrl } : {}),
@@ -200,7 +222,7 @@ function TicketsPageContent() {
         await updateTask(firestore, user.uid, editingTicket.id, { ...payload, status: editingTicket.status });
         toast({ variant: "success", title: "Ticket actualizado" });
       } else {
-        await createTask(firestore, user.uid, { ...payload, status: "Pendiente" });
+        await createTask(firestore, user.uid, { ...payload, status: "Pendiente" }, ticketId);
         toast({ variant: "success", title: "Ticket creado", description: `Se agregó a tu tablero de ${ticketsContextName}.` });
       }
 
@@ -219,10 +241,18 @@ function TicketsPageContent() {
       toast({ variant: "warning", title: "Ticket eliminado" });
       return;
     }
+    const cancelImageDeletion = scheduleAttachmentDeletion(
+      firestore,
+      user.uid,
+      (deletedTicket.attachments ?? []).map((a) => a.id)
+    );
     toastWithUndo({
       title: "Ticket eliminado",
       description: deletedTicket.title,
-      onUndo: () => restoreUserDocument(firestore, user.uid, "tasks", deletedTicket),
+      onUndo: () => {
+        cancelImageDeletion();
+        restoreUserDocument(firestore, user.uid, "tasks", deletedTicket);
+      },
     });
   };
 
@@ -340,9 +370,13 @@ function TicketsPageContent() {
               placeholder="https://drive.google.com/..."
               className={fieldInputClassName}
             />
-            <p className="text-[10px] text-muted-foreground/70">
-              Adjuntar múltiples documentos con comentario llega en una futura iteración. Por ahora puedes dejar aquí un único link de referencia.
-            </p>
+          </Field>
+
+          <Field label="Imágenes">
+            <AttachmentField
+              value={form.attachments}
+              onChange={(attachments) => setForm({ ...form, attachments })}
+            />
           </Field>
 
           <SubmitButton onClick={handleSubmit} isSaving={isSaving}>
@@ -441,6 +475,9 @@ function TicketsPageContent() {
                     <p className="text-xs font-bold text-primary/70 flex items-center gap-1.5">
                       <UserRound className="h-3.5 w-3.5" /> {ticket.requesterName}
                     </p>
+                  )}
+                  {ticket.attachments && ticket.attachments.length > 0 && (
+                    <AttachmentGallery attachments={ticket.attachments} className="pt-1" />
                   )}
                 </div>
 

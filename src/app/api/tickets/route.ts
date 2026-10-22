@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/server/firebase-admin';
-import { prioritySchema } from '@/lib/schemas';
+import { prioritySchema, publicAttachmentSchema } from '@/lib/schemas';
+import { MAX_PUBLIC_ATTACHMENTS } from '@/lib/images';
 import { DEFAULT_TICKETS_CONTEXT } from '@/lib/contexts';
 import { consumeRateLimits, getClientIpHash } from '@/server/rate-limit';
 
@@ -20,6 +21,7 @@ const publicTicketSchema = z.object({
   referenceUrl: z.string().trim().url().max(2000).optional(),
   priority: prioritySchema,
   tags: z.array(z.string()).max(5).optional(),
+  attachments: z.array(publicAttachmentSchema).max(MAX_PUBLIC_ATTACHMENTS).optional(),
   // Campo trampa: oculto en el formulario, solo lo completan los bots.
   website: z.string().max(200).optional(),
 });
@@ -68,7 +70,35 @@ export async function POST(req: NextRequest) {
 
     const ownerRef = adminDb.collection('users').doc(ownerId);
     const tasksRef = ownerRef.collection('tasks');
-    const docRef = await tasksRef.add({
+    const taskDocRef = tasksRef.doc();
+    const batch = adminDb.batch();
+
+    const attachmentMetas = (payload.attachments ?? []).map((att) => {
+      const attDocRef = ownerRef.collection('attachments').doc();
+      batch.set(attDocRef, {
+        userId: ownerId,
+        parentType: 'task',
+        parentId: taskDocRef.id,
+        name: att.name,
+        mime: att.mime,
+        size: att.size,
+        width: att.width,
+        height: att.height,
+        data: att.dataUrl,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      return {
+        id: attDocRef.id,
+        name: att.name,
+        mime: att.mime,
+        size: att.size,
+        width: att.width,
+        height: att.height,
+        thumb: att.thumb,
+      };
+    });
+
+    batch.set(taskDocRef, {
       title: payload.title,
       requestedAction: payload.requestedAction,
       description: payload.description || '',
@@ -79,6 +109,7 @@ export async function POST(req: NextRequest) {
       status: 'Pendiente',
       isTicket: true,
       userId: ownerId,
+      ...(attachmentMetas.length > 0 ? { attachments: attachmentMetas } : {}),
       ...(payload.dueDate ? { dueDate: payload.dueDate } : {}),
       ...(payload.reviewDate ? { reviewDate: payload.reviewDate } : {}),
       ...(payload.referenceUrl ? { referenceUrl: payload.referenceUrl } : {}),
@@ -86,7 +117,9 @@ export async function POST(req: NextRequest) {
       updatedAt: FieldValue.serverTimestamp(),
     });
 
-    return NextResponse.json({ ok: true, ticketId: docRef.id });
+    await batch.commit();
+
+    return NextResponse.json({ ok: true, ticketId: taskDocRef.id });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

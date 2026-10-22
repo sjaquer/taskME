@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, PrioritySelect, SubmitButton, fieldInputClassName } from "@/components/forms/form-fields";
+import { AttachmentPicker } from "@/components/attachments/attachment-picker";
+import { MAX_PUBLIC_ATTACHMENTS, type CompressedImage } from "@/lib/images";
+import type { AttachmentDraft } from "@/services/attachment-service";
 import { toast } from "@/hooks/use-toast";
 import { publicTicketFormSchema } from "@/lib/schemas";
 import type { Priority } from "@/types/task";
@@ -18,6 +21,7 @@ const PUBLIC_INITIAL_FORM = {
   dueDate: "",
   referenceUrl: "",
   priority: "media" as Priority,
+  attachments: [] as AttachmentDraft[],
   website: "",
 };
 
@@ -28,7 +32,19 @@ export function PublicTicketForm() {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    const result = publicTicketFormSchema.safeParse(form);
+    const preparedAttachments = form.attachments.map((att) => ({
+      name: att.name,
+      mime: att.mime,
+      size: att.size,
+      width: att.width,
+      height: att.height,
+      thumb: att.thumb,
+      dataUrl: att.dataUrl ?? "",
+    }));
+    const result = publicTicketFormSchema.safeParse({
+      ...form,
+      attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
+    });
     if (!result.success) {
       toast({ variant: "destructive", title: "Error", description: result.error.errors[0].message });
       return;
@@ -47,6 +63,7 @@ export function PublicTicketForm() {
           priority: result.data.priority,
           dueDate: result.data.dueDate || undefined,
           referenceUrl: result.data.referenceUrl || undefined,
+          attachments: result.data.attachments,
           website: form.website || undefined,
         }),
       });
@@ -162,6 +179,24 @@ export function PublicTicketForm() {
             onChange={(e) => setForm({ ...form, referenceUrl: e.target.value })}
             placeholder="https://drive.google.com/..."
             className={fieldInputClassName}
+          />
+        </Field>
+
+        <Field label="Imágenes (opcional)">
+          <AttachmentPicker
+            value={form.attachments}
+            onChange={(attachments) => setForm({ ...form, attachments })}
+            toDraft={(image: CompressedImage): AttachmentDraft => ({
+              id: typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `pub-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              name: image.name,
+              mime: image.mime,
+              size: image.size,
+              width: image.width,
+              height: image.height,
+              thumb: image.thumb,
+              dataUrl: image.dataUrl,
+            })}
+            max={MAX_PUBLIC_ATTACHMENTS}
           />
         </Field>
 

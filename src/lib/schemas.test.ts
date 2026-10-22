@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { contextDefSchema, noteSchema, publicTicketFormSchema, routineSchema, taskSchema } from './schemas';
+import {
+  attachmentMetaSchema,
+  contextDefSchema,
+  noteSchema,
+  publicAttachmentSchema,
+  publicTicketFormSchema,
+  routineSchema,
+  taskSchema,
+  ticketFormSchema,
+} from './schemas';
 
 const validTask = { title: 'Pagar luz', priority: 'alta', status: 'Pendiente', tags: [], context: 'Trabajo' } as const;
 
@@ -41,6 +50,55 @@ describe('routineSchema', () => {
   it('exige al menos un día válido', () => {
     expect(routineSchema.safeParse({ ...routine, recurringDays: [] }).success).toBe(false);
     expect(routineSchema.safeParse({ ...routine, recurringDays: [7] }).success).toBe(false);
+  });
+});
+
+describe('adjuntos e imágenes', () => {
+  const validMeta = {
+    id: 'att1',
+    name: 'foto.webp',
+    mime: 'image/webp' as const,
+    size: 2048,
+    width: 800,
+    height: 600,
+    thumb: 'data:image/webp;base64,YWJj',
+  };
+
+  it('attachmentMetaSchema valida metadatos de imágenes', () => {
+    expect(attachmentMetaSchema.safeParse(validMeta).success).toBe(true);
+    expect(attachmentMetaSchema.safeParse({ ...validMeta, mime: 'image/gif' }).success).toBe(false);
+    expect(attachmentMetaSchema.safeParse({ ...validMeta, size: 700 * 1024 }).success).toBe(false);
+    expect(attachmentMetaSchema.safeParse({ ...validMeta, thumb: 'no-es-data-url' }).success).toBe(false);
+  });
+
+  it('publicAttachmentSchema requiere dataUrl válida', () => {
+    const { id: _id, ...withoutId } = validMeta;
+    const publicAtt = { ...withoutId, dataUrl: 'data:image/webp;base64,YWJj' };
+    expect(publicAttachmentSchema.safeParse(publicAtt).success).toBe(true);
+    expect(publicAttachmentSchema.safeParse({ ...publicAtt, dataUrl: 'invalido' }).success).toBe(false);
+  });
+
+  it('ticketFormSchema y publicTicketFormSchema aceptan adjuntos dentro del límite', () => {
+    const ticket = {
+      title: 'Ajuste',
+      requestedAction: 'Cambiar logo',
+      requesterName: 'Ana',
+      priority: 'media' as const,
+      tags: '',
+      projectId: '',
+      attachments: [validMeta],
+    };
+    expect(ticketFormSchema.safeParse(ticket).success).toBe(true);
+
+    const { id: _id, ...withoutId } = validMeta;
+    const publicTicket = {
+      title: 'Ajuste',
+      requestedAction: 'Cambiar logo',
+      requesterName: 'Ana',
+      priority: 'media' as const,
+      attachments: [{ ...withoutId, dataUrl: 'data:image/webp;base64,YWJj' }],
+    };
+    expect(publicTicketFormSchema.safeParse(publicTicket).success).toBe(true);
   });
 });
 

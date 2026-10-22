@@ -132,6 +132,58 @@ describe('notas', () => {
   });
 });
 
+describe('adjuntos (attachments)', () => {
+  const validAttachment = {
+    userId: OWNER,
+    parentType: 'task',
+    parentId: 't1',
+    name: 'foto.webp',
+    mime: 'image/webp',
+    size: 2048,
+    width: 800,
+    height: 600,
+    data: 'data:image/webp;base64,YWJj',
+  };
+
+  it('la dueña crea un adjunto válido y puede leerlo y borrarlo', async () => {
+    await assertSucceeds(userDoc(ownerDb(), 'attachments/att1').set(validAttachment));
+    await assertSucceeds(userDoc(ownerDb(), 'attachments/att1').get());
+    await assertSucceeds(userDoc(ownerDb(), 'attachments/att1').delete());
+  });
+
+  it('los adjuntos son inmutables: rechaza modificaciones (update)', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`users/${OWNER}/attachments/att1`).set(validAttachment);
+    });
+    await assertFails(userDoc(ownerDb(), 'attachments/att1').update({ name: 'nuevo.webp' }));
+  });
+
+  it('otro usuario o alguien sin sesión no puede leer ni escribir adjuntos', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc(`users/${OWNER}/attachments/att1`).set(validAttachment);
+    });
+    await assertFails(userDoc(strangerDb(), 'attachments/att1').get());
+    await assertFails(userDoc(anonDb(), 'attachments/att1').get());
+    await assertFails(userDoc(strangerDb(), 'attachments/att2').set(validAttachment));
+  });
+
+  it('rechaza adjuntos con campos inválidos, mime desconocido o dataUrl mal formateada', async () => {
+    const db = ownerDb();
+    await assertFails(userDoc(db, 'attachments/a1').set({ ...validAttachment, hacker: true }));
+    await assertFails(userDoc(db, 'attachments/a2').set({ ...validAttachment, mime: 'image/gif' }));
+    await assertFails(userDoc(db, 'attachments/a3').set({ ...validAttachment, parentType: 'usuario' }));
+    await assertFails(userDoc(db, 'attachments/a4').set({ ...validAttachment, size: 700_000 }));
+    await assertFails(userDoc(db, 'attachments/a5').set({ ...validAttachment, data: 'no-es-data-url' }));
+  });
+
+  it('tareas y notas aceptan hasta 6 adjuntos y rechazan más de 6', async () => {
+    const db = ownerDb();
+    const item = (i: number) => ({ id: `att-${i}`, name: `f${i}.webp`, mime: 'image/webp', size: 100, width: 100, height: 100, thumb: 't' });
+    await assertSucceeds(userDoc(db, 'tasks/t-att').set({ ...validTask, attachments: Array.from({ length: 6 }, (_, i) => item(i)) }));
+    await assertFails(userDoc(db, 'tasks/t-att-max').set({ ...validTask, attachments: Array.from({ length: 7 }, (_, i) => item(i)) }));
+  });
+});
+
 describe('colecciones del servidor', () => {
   it('los clientes no acceden a rate_limits', async () => {
     await assertFails(ownerDb().doc('rate_limits/public_tickets_global').get());

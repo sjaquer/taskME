@@ -9,6 +9,7 @@ const ownerHeaders = { Authorization: 'Bearer owner', 'Content-Type': 'applicati
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (date: Date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const TINY_PNG_BUFFER = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 /** Borra todos los datos del emulador: cada test parte de cero (incluye intentos de PIN). */
 async function resetEmulatorData() {
@@ -270,6 +271,79 @@ test.describe('con la app desbloqueada', () => {
     expect(data.tasks[0].createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
+  test('imágenes: adjuntar archivo, previsualizar, crear tarea, abrir visor y descargar', async ({ page }) => {
+    await openKanban(page);
+    await page.getByRole('button', { name: 'Añadir con detalles' }).click();
+    const form = taskForm(page);
+    await form.locator('input').first().fill('Tarea con adjunto');
+    await form.locator('input[type=file]').setInputFiles({
+      name: 'ejemplo.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG_BUFFER,
+    });
+    await expect(form.getByRole('img', { name: /ejemplo\.(webp|png|jpg)/ })).toBeVisible();
+    await form.getByRole('button', { name: 'Crear tarea' }).click();
+
+    const thumbBtn = page.getByRole('button', { name: /Ver imagen ejemplo\.(webp|png|jpg)/ });
+    await expect(thumbBtn).toBeVisible();
+    await thumbBtn.click();
+
+    await expect(page.getByRole('button', { name: 'Descargar' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Compartir' })).toBeVisible();
+
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Descargar' }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/ejemplo\.(webp|png|jpg)/);
+
+    await page.getByRole('button', { name: 'Cerrar' }).click();
+    await expect(page.getByRole('button', { name: 'Descargar' })).toBeHidden();
+  });
+
+  test('imágenes: pegar imagen en el formulario agrega miniatura', async ({ page }) => {
+    await openKanban(page);
+    await page.getByRole('button', { name: 'Añadir con detalles' }).click();
+    const form = taskForm(page);
+
+    await page.evaluate(() => {
+      const b64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const bin = atob(b64);
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const file = new File([bytes], 'pegada.png', { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+      document.dispatchEvent(event);
+    });
+
+    await expect(form.getByRole('img', { name: /pegada\.(webp|png|jpg)/ })).toBeVisible();
+  });
+
+  test('mantenimiento: limpiar imágenes huérfanas', async ({ page }) => {
+    await page.goto('/settings');
+    await page.getByRole('button', { name: 'Limpiar imágenes huérfanas' }).click();
+    await expect(page.getByText(/Sin imágenes huérfanas|Limpieza completada/)).toBeVisible();
+  });
+
+  test('tickets admin: crear ticket con imagen y ver miniatura', async ({ page }) => {
+    await page.goto('/tickets/admin');
+    await page.getByRole('button', { name: 'Nuevo' }).click();
+    const panel = page.locator('div.glass-card-elevated', { has: page.getByRole('heading', { name: 'Nuevo Ticket' }) });
+    await panel.locator('input').first().fill('Ticket interno');
+    await panel.locator('textarea').first().fill('Acción requerida');
+    await panel.getByPlaceholder('Ej. María, equipo de marketing...').fill('Soporte');
+    await panel.locator('input[type=file]').setInputFiles({
+      name: 'ticket-doc.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG_BUFFER,
+    });
+    await expect(panel.getByRole('img', { name: /ticket-doc\.(webp|png|jpg)/ })).toBeVisible();
+    await panel.getByRole('button', { name: 'Crear ticket' }).click();
+
+    await expect(page.getByRole('button', { name: /Ver imagen ticket-doc\.(webp|png|jpg)/ })).toBeVisible();
+  });
+
   test('IA: muestra la propuesta antes de crear (requiere E2E_AI=1 y GEMINI_API_KEY)', async ({ page }) => {
     test.skip(!process.env.E2E_AI, 'Llama a Gemini de verdad; se activa con E2E_AI=1');
     await openKanban(page);
@@ -283,6 +357,30 @@ test.describe('con la app desbloqueada', () => {
 });
 
 test.describe('sin desbloquear', () => {
+  test('el formulario público envía un ticket con imagen al servidor', async ({ page }) => {
+    await page.goto('/tickets');
+    await page.getByPlaceholder('Ej. Ajustar reporte mensual').fill('Ticket con captura');
+    await page.getByPlaceholder('¿Qué necesitas que se haga exactamente?').fill('Revisar la captura adjunta');
+    await page.getByPlaceholder('Ej. María, equipo de marketing...').fill('Laura');
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'pantalla.png',
+      mimeType: 'image/png',
+      buffer: TINY_PNG_BUFFER,
+    });
+    await expect(page.getByRole('img', { name: /pantalla\.(webp|png|jpg)/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Crear ticket' }).click();
+    await expect(page.getByRole('heading', { name: 'Solicitud enviada' })).toBeVisible();
+
+    const response = await fetch(
+      `http://127.0.0.1:8080/v1/projects/${PROJECT_ID}/databases/(default)/documents/users/${OWNER_UID}/tasks`,
+      { headers: ownerHeaders }
+    );
+    const body = (await response.json()) as { documents?: { fields: Record<string, { stringValue?: string; booleanValue?: boolean; arrayValue?: unknown }> }[] };
+    const ticket = body.documents?.find((doc) => doc.fields.title.stringValue === 'Ticket con captura');
+    expect(ticket?.fields.isTicket.booleanValue).toBe(true);
+    expect(ticket?.fields.attachments).toBeDefined();
+  });
+
   test('el formulario público envía un ticket a la cuenta dueña', async ({ page }) => {
     await page.goto('/tickets');
     await expect(page.getByRole('link', { name: 'Administrar tickets' })).toHaveCount(0);

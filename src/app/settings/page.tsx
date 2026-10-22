@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import {
-  Bell, Check, Compass, Info, Ticket, Layers, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
+  Bell, Check, Compass, Images, Info, Ticket, Layers, Monitor, Moon, Palette, RefreshCcw, Shield, SlidersHorizontal, Sun, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import type { AppTheme, HourFormat, TaskRetentionPeriod } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { cleanupCompletedTasks } from "@/services/task-service";
+import { cleanupOrphanAttachments } from "@/services/attachment-service";
 import { NotificationSetup } from "@/components/notification-setup";
 import { ContextsManager } from "@/components/settings/contexts-manager";
 import { NavigationSettings } from "@/components/settings/navigation-settings";
@@ -53,6 +54,7 @@ export default function SettingsPage() {
   } = useAppContextStore();
 
   const [isCleaning, setIsCleaning] = useState(false);
+  const [isCleaningOrphans, setIsCleaningOrphans] = useState(false);
 
   const handleCleanupNow = async () => {
     if (!user) return;
@@ -69,6 +71,27 @@ export default function SettingsPage() {
       toast({ variant: "destructive", title: "Error", description: "No se pudo completar la limpieza." });
     } finally {
       setIsCleaning(false);
+    }
+  };
+
+  const handleCleanupOrphans = async () => {
+    if (!user) return;
+    setIsCleaningOrphans(true);
+    try {
+      const deletedCount = await cleanupOrphanAttachments(firestore, user.uid);
+      toast({
+        variant: "success",
+        title: deletedCount > 0 ? "Limpieza completada" : "Sin imágenes huérfanas",
+        description:
+          deletedCount > 0
+            ? `Se eliminaron ${deletedCount} imagen(es) huérfana(s).`
+            : "Todas las imágenes pertenecen a una tarea o nota.",
+      });
+    } catch (error) {
+      console.error("Error al limpiar imágenes huérfanas:", error);
+      toast({ variant: "destructive", title: "Error", description: "No se pudieron limpiar las imágenes huérfanas." });
+    } finally {
+      setIsCleaningOrphans(false);
     }
   };
 
@@ -264,6 +287,12 @@ export default function SettingsPage() {
             <Button onClick={handleCleanupNow} disabled={isCleaning} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
               {isCleaning ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
               Limpiar tareas completadas ahora
+            </Button>
+          </div>
+          <div className="p-4">
+            <Button onClick={handleCleanupOrphans} disabled={isCleaningOrphans} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
+              {isCleaningOrphans ? <RefreshCcw className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
+              Limpiar imágenes huérfanas
             </Button>
           </div>
           <div className="space-y-2 p-4">

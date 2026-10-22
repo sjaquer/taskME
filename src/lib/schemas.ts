@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_ATTACHMENTS, MAX_STORED_BYTES } from '@/lib/images';
+import { MAX_ATTACHMENTS, MAX_PUBLIC_ATTACHMENTS, MAX_STORED_BYTES } from '@/lib/images';
 
 // Esquemas Zod compartidos entre formularios del cliente y rutas /api.
 // Deben mantenerse alineados con las validaciones de firestore.rules.
@@ -79,18 +79,23 @@ export const ticketFormSchema = z.object({
   priority: prioritySchema,
   tags: z.string(),
   projectId: z.string(),
+  attachments: z.array(attachmentMetaSchema).max(MAX_ATTACHMENTS, `Máximo ${MAX_ATTACHMENTS} imágenes`).optional(),
 });
 
 /** Formulario público de tickets (sin sesión). */
-export const publicTicketFormSchema = ticketFormSchema.pick({
-  title: true,
-  requestedAction: true,
-  description: true,
-  requesterName: true,
-  dueDate: true,
-  referenceUrl: true,
-  priority: true,
-});
+export const publicTicketFormSchema = ticketFormSchema
+  .pick({
+    title: true,
+    requestedAction: true,
+    description: true,
+    requesterName: true,
+    dueDate: true,
+    referenceUrl: true,
+    priority: true,
+  })
+  .extend({
+    attachments: z.array(publicAttachmentSchema).max(MAX_PUBLIC_ATTACHMENTS, `Máximo ${MAX_PUBLIC_ATTACHMENTS} imágenes`).optional(),
+  });
 
 export const noteSchema = z.object({
   title: z.string().trim().min(1, 'El título es requerido').max(140),
