@@ -7,14 +7,20 @@ Android (WebView) y también desde el navegador.
 ## Módulos
 
 - **Inicio**: resumen del contexto activo (pendientes, críticas, próxima tarea).
-- **Tablero (Kanban)**: vista lista o columnas con arrastrar y soltar, filtros por prioridad y proyecto,
-  búsqueda, proyectos, captura rápida y generación de tareas con IA (Gemini).
-- **Horario**: rutinas semanales recurrentes con indicador de progreso en vivo.
-- **Tickets**: pedidos de trabajo de terceros. Sin sesión, `/tickets` muestra un formulario público
-  (con anti-spam) que los envía a la cuenta dueña.
-- **Notas**: apuntes rápidos por categoría.
-- **Ajustes**: módulos visibles, tema y modo de color, efectos visuales, página de inicio, limpieza de
-  tareas completadas y notificaciones.
+- **Inicio**: lo de ahora y de hoy (rutina en curso, tareas que vencen, prioridad alta).
+- **Tablero (Kanban)**: lista o columnas; tareas con fecha y hora, subtareas y repetición diaria/semanal/
+  mensual; orden inteligente, filtros (prioridad, proyecto, vencidas), búsqueda, proyectos y planificador IA
+  (Gemini) con vista previa antes de crear.
+- **Horario**: rutinas semanales por semana, progreso en vivo y aviso de choques de horario.
+- **Tickets**: pedidos de terceros con historial y búsqueda. Sin sesión, `/tickets` muestra un formulario
+  público (con anti-spam) cuyo enlace se puede compartir.
+- **Notas**: apuntes por categoría, con búsqueda, notas fijadas y dictado por voz.
+- **Ajustes**: contextos, apariencia, navegación, mantenimiento, exportar datos (JSON), notificaciones y
+  diagnóstico de la app.
+
+En el teléfono (APK WebView o navegador): el botón atrás cierra paneles, vibración al completar, dictado por
+voz, aviso sin conexión, barra inferior que se oculta con el teclado y atajos del manifest
+(`/kanban?new=1`, `/notes?new=1`).
 
 Todo se organiza por **contextos** (Trabajo y Estudio de fábrica, más los que crees en Ajustes, con
 nombre, color e icono), seleccionables desde la cabecera. Las preferencias (tema, acento, modo

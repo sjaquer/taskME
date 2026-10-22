@@ -30,6 +30,9 @@ npm run typecheck  # tsc --noEmit
 firebase emulators:start --only auth,firestore
 NEXT_PUBLIC_FIREBASE_EMULATORS=true npm run dev
 
+# Un segundo servidor (pruebas) debe usar otra carpeta para no pisar el .next del principal:
+NEXT_DIST_DIR=.next-e2e NEXT_PUBLIC_FIREBASE_EMULATORS=true npx next dev -p 9127
+
 # Las reglas NO se despliegan con la web:
 firebase deploy --only firestore:rules
 ```
@@ -62,7 +65,10 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 - **`firestore.rules` valida el esquema con `hasOnly([...])`**: si agregas un campo a un documento,
   agrégalo también a la regla correspondiente o la escritura será rechazada en silencio
   (las escrituras son "non-blocking" y el error solo llega al `errorEmitter`).
-- Las fechas `dueDate` / `reviewDate` se guardan como texto `YYYY-MM-DD` (sin hora).
+- Las fechas `dueDate` / `reviewDate` se guardan como texto `YYYY-MM-DD`; la hora opcional va aparte en
+  `dueTime` (`HH:mm`). Las tareas pueden tener `checklist` (subtareas) y `recurrence` (daily/weekly/monthly).
+- Cambia el estado de una tarea con `setTaskStatus` (crea la siguiente ocurrencia de las recurrentes).
+  Para quitar un campo opcional al editar, pásalo en `clear` de `updateTask` (updateDoc no borra campos).
 - Los estados del Kanban son fijos: `Pendiente`, `Haciendo`, `Hecho`.
 
 ## Integración Android (WebView)
@@ -74,10 +80,15 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
   `AndroidBridge.postMessage` / `onNativeMessage` (ver `docs/android-webview-spec.md`) es para una APK futura.
 - Evita diálogos modales: los formularios van embebidos en la página ("sin modal") por estabilidad en el
   WebView. Para acciones destructivas usa `toastWithUndo` (`src/components/undo-toast.tsx`).
+- Todo panel que se abre sobre la página (formulario, filtros, IA) usa `useBackDismiss` para que el botón
+  atrás de Android lo cierre (`FormPanel` ya lo incluye).
+- Funciones del dispositivo en `src/lib/native-features.ts`: `haptic()` y dictado (`VoiceButton`), con la
+  APK actual (`AndroidNative`) y respaldo del navegador.
 - En el WebView la API `Notification` del navegador normalmente no existe.
 
 ## Convenciones
 
+- Varios archivos usan fin de línea CRLF: al editarlos, consérvalo.
 - UI y mensajes en español. Commits con prefijo convencional (`fix(kanban): …`), en español o inglés.
 - **Lecturas**: usa `useTasks(context?)`, `useProjects`, `useNotes`, `useRoutines` de `@/firebase/user-data`.
   `UserDataProvider` mantiene una sola suscripción por colección; no abras `onSnapshot` nuevos en páginas.
@@ -96,4 +107,4 @@ src/types/          tipos del dominio (task.ts, mobile.ts, native-bridge.d.ts)
 ## Plan de mejoras
 
 Se trabaja por fases: 0 bugs → 1 base de código → 2 personalización (incluye contextos creados por el
-usuario) → 3 integración WebView → 4 mejoras por página → 5 tests y lint. Fases 0, 1 y 2 completadas.
+usuario) → 3 integración WebView → 4 mejoras por página → 5 tests y lint. Fases 0 a 4 completadas; queda la 5 (tests y lint).
