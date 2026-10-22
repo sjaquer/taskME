@@ -2,8 +2,8 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
+import { connectAuthEmulator, getAuth } from 'firebase/auth';
+import { connectFirestoreEmulator, getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -43,11 +43,25 @@ export function getSdks(firebaseApp: FirebaseApp) {
     firestore = getFirestore(firebaseApp);
   }
 
+  const auth = getAuth(firebaseApp);
+  connectEmulatorsOnce(auth, firestore);
+
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
+    auth,
     firestore
   };
+}
+
+let emulatorsConnected = false;
+
+// Solo desarrollo/pruebas: NEXT_PUBLIC_FIREBASE_EMULATORS=true usa los emuladores
+// locales de Auth y Firestore (ver "emulators" en firebase.json) en lugar del proyecto real.
+function connectEmulatorsOnce(auth: ReturnType<typeof getAuth>, firestore: ReturnType<typeof getFirestore>) {
+  if (emulatorsConnected || process.env.NEXT_PUBLIC_FIREBASE_EMULATORS !== 'true') return;
+  emulatorsConnected = true;
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
 }
 
 export {
