@@ -8,26 +8,36 @@ import { useContexts, useNotes, useProjects, useRoutines, useTasks } from "@/fir
 import { toast } from "@/hooks/use-toast";
 import { isNativeAndroidContainer } from "@/lib/native-bridge";
 
-// Los Timestamp de Firestore se exportan como fecha ISO legible.
+function isTimestampLike(value: unknown): value is { seconds: number; nanoseconds: number } {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    typeof (value as { seconds?: unknown }).seconds === "number" &&
+    typeof (value as { nanoseconds?: unknown }).nanoseconds === "number"
+  );
+}
+
+// Los Timestamp de Firestore se exportan como fecha ISO legible. (JSON.stringify
+// aplica su toJSON antes del replacer, por eso llegan como { seconds, nanoseconds }.)
 function serialize(value: unknown): string {
   return JSON.stringify(
     value,
     (_key, current) =>
-      current && typeof current === "object" && typeof (current as { toDate?: unknown }).toDate === "function"
-        ? (current as { toDate: () => Date }).toDate().toISOString()
-        : current,
+      isTimestampLike(current) ? new Date(current.seconds * 1000 + current.nanoseconds / 1e6).toISOString() : current,
     2
   );
 }
 
 /** Descarga una copia de seguridad JSON con todos los datos del usuario. */
 export function ExportDataButton() {
-  const { data: tasks } = useTasks();
-  const { data: notes } = useNotes();
-  const { data: routines } = useRoutines();
-  const { data: projects } = useProjects();
-  const { data: contexts } = useContexts();
+  const { data: tasks, isLoading: tasksLoading } = useTasks();
+  const { data: notes, isLoading: notesLoading } = useNotes();
+  const { data: routines, isLoading: routinesLoading } = useRoutines();
+  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: contexts, isLoading: contextsLoading } = useContexts();
   const [isExporting, setIsExporting] = useState(false);
+  // No exportar hasta tener todas las colecciones: el respaldo saldría incompleto.
+  const isLoadingData = tasksLoading || notesLoading || routinesLoading || projectsLoading || contextsLoading;
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -73,9 +83,9 @@ export function ExportDataButton() {
   };
 
   return (
-    <Button onClick={handleExport} disabled={isExporting} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
-      {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-      Exportar mis datos (JSON)
+    <Button onClick={handleExport} disabled={isExporting || isLoadingData} variant="outline" className="h-10 w-full gap-2 rounded-xl text-xs font-bold">
+      {isExporting || isLoadingData ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+      {isLoadingData ? "Cargando datos…" : "Exportar mis datos (JSON)"}
     </Button>
   );
 }
