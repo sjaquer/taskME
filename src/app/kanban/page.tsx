@@ -689,7 +689,10 @@ export default function KanbanPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${idToken}`,
         },
-        body: JSON.stringify({ prompt: aiPrompt }),
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
       });
 
       const errorPayload = await response.json().catch(() => null);
